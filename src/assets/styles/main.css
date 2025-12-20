@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary-color: #1e3a8a;
+  --primary-hover: #1e40af;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --bg-body: #f8fafc;
+  --error: #ef4444;
+  --success: #10b981;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: white;
+  color: var(--text-main);
+  min-height: 100vh;
+}
+
+/* PrimeVue Overrides */
+.p-button {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+}
+
+.p-button:hover {
+  background-color: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+}
+
+.p-inputtext {
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 1rem !important;
+}
+
+.p-password-input {
+  width: 100% !important;
+}
+
+/* Utility Classes */
+.w-full {
+  width: 100%;
+}
+
+.mt-3 {
+  margin-top: 1rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.ml-2 {
+  margin-left: 0.5rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}

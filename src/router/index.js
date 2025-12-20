@@ -26,6 +26,11 @@ const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: () => import('../views/DashboardView.vue')
+  },
+  {
+    path: '/comparateur',
+    name: 'comparateur',
+    component: () => import('../views/CompareQuotesView.vue')
   }
 ]
 

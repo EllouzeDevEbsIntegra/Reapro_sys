@@ -76,6 +76,14 @@
             </div>
         </div>
 
+        <!-- Navigation Arrows -->
+        <button class="nav-arrow left" @click="$emit('prev')" aria-label="Précédent">
+            <i class="pi pi-chevron-left"></i>
+        </button>
+        <button class="nav-arrow right" @click="$emit('next')" aria-label="Suivant">
+            <i class="pi pi-chevron-right"></i>
+        </button>
+
         <!-- Body Section: 70/30 Split -->
         <div class="main-layout">
             <!-- Section 2: Tables (70% width) -->
@@ -275,13 +283,6 @@
         <div class="dialog-content-wrapper">
             <div class="sidebar-header dialog-header">
                 <div class="header-actions">
-                    <Button 
-                        icon="pi pi-chevron-left" 
-                        text 
-                        rounded 
-                        @click="showHistoryDialog = false" 
-                        class="toggle-sidebar-btn" 
-                    />
                     <button class="history-btn">Historique</button>
                     <div class="item-title-inline">
                         {{ line.itemNo }} • {{ line.description || 'Temoins de freins' }}
@@ -291,6 +292,13 @@
                         <span class="year">2025</span>
                         <span class="arrow">&gt;</span>
                     </div>
+                    <Button 
+                        icon="pi pi-times" 
+                        text 
+                        rounded 
+                        @click="showHistoryDialog = false" 
+                        class="close-dialog-btn" 
+                    />
                 </div>
             </div>
 
@@ -306,10 +314,13 @@
                     <table class="modern-table">
                         <thead>
                             <tr>
-                                <th style="width: 20%">Date</th>
-                                <th style="width: 45%">Client</th>
-                                <th style="width: 15%">Qte</th>
-                                <th style="width: 20%">Action</th>
+                                <th style="width: 15%">Date</th>
+                                <th style="width: 20%">Client</th>
+                                <th style="width: 10%">Qte</th>
+                                <th style="width: 10%">Prix</th>
+                                <th style="width: 15%">Total</th>
+                                <th style="width: 15%">Statut</th>
+                                <th style="width: 15%">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -317,6 +328,9 @@
                                 <td>12/12/2025</td>
                                 <td>Client {{ selectedCompany }} {{ i }}</td>
                                 <td>{{ Math.floor(Math.random() * 10) + 1 }}</td>
+                                <td>{{ (Math.random() * 100).toFixed(2) }} €</td>
+                                <td>{{ (Math.random() * 1000).toFixed(2) }} €</td>
+                                <td><span class="status-badge">Livré</span></td>
                                 <td>
                                     <Button icon="pi pi-eye" text rounded size="small" />
                                 </td>
@@ -352,7 +366,7 @@ const props = defineProps({
     }
 })
 
-defineEmits(['back'])
+defineEmits(['back', 'prev', 'next'])
 
 const isSidebarExpanded = ref(false)
 const showHistoryDialog = ref(false)
@@ -613,10 +627,10 @@ const openHistory = (company) => {
     width: 30%;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 20px;
+    padding: 15px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
     background: white;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -644,7 +658,7 @@ const openHistory = (company) => {
 
 .table-header-row {
     background-color: #f8fafc;
-    padding: 10px 15px;
+    padding: 15px 15px;
     border-bottom: 1px solid #e2e8f0;
 }
 
@@ -672,7 +686,7 @@ const openHistory = (company) => {
     font-weight: 700;
     font-size: 0.85rem;
     text-align: left;
-    padding: 12px 15px;
+    padding: 18px 15px;
     border-bottom: 2px solid #e2e8f0;
     white-space: nowrap;
 }
@@ -743,13 +757,6 @@ const openHistory = (company) => {
 }
 
 /* Sidebar Specific Styles */
-.sidebar-header {
-    padding-bottom: 5px;
-    min-height: 45px;
-    display: flex;
-    align-items: center;
-}
-
 .header-actions {
     display: flex;
     align-items: center;
@@ -770,7 +777,7 @@ const openHistory = (company) => {
     font-size: 0.9rem;
     color: #1e293b;
     background: #f1f5f9;
-    padding: 8px 15px;
+    padding: 10px 12px;
     border-radius: 8px;
     border-left: 4px solid #3b82f6;
     white-space: nowrap;
@@ -784,7 +791,7 @@ const openHistory = (company) => {
     color: #fff;
     border: none;
     border-radius: 8px;
-    padding: 8px 10px;
+    padding: 12px 10px;
     font-weight: 700;
     font-size: 0.85rem;
     cursor: pointer;
@@ -800,7 +807,7 @@ const openHistory = (company) => {
     width: 20%;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 8px 15px;
+    padding: 10px 12px;
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -815,7 +822,7 @@ const openHistory = (company) => {
     align-items: center;
     border: 1px solid #fdba74;
     border-radius: 8px;
-    height: 46px;
+    height: 40px;
     overflow: hidden;
     background-color: #fff7ed;
 }
@@ -848,22 +855,22 @@ const openHistory = (company) => {
 
 /* Dialog Specific Styles */
 .history-dialog :deep(.p-dialog-content) {
-    padding: 40px;
+    padding: 20px !important;
     background-color: #f8fafc;
-    border-radius: 12px;
+    border-radius: 20px;
 }
 
 .dialog-content-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 30px;
+    gap: 20px;
+    padding: 20px !important;
 }
 
 .dialog-header {
     background: transparent;
-    padding: 0 15px 10px 15px;
+    padding: 0;
     border: none;
-    min-height: 55px;
 }
 
 .dialog-stats-bar {
@@ -891,5 +898,48 @@ const openHistory = (company) => {
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
+}
+
+/* Navigation Arrows Styles */
+.nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    border-radius: 6px;
+}
+
+.nav-arrow:hover {
+    background: white;
+    color: #3b82f6;
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    width: 38px;
+}
+
+.nav-arrow:active {
+    transform: translateY(-50%) scale(0.98);
+}
+
+.nav-arrow.left {
+    left: 10px;
+}
+
+.nav-arrow.right {
+    right: 10px;
+}
+
+.nav-arrow i {
+    font-size: 1.2rem;
 }
 </style>

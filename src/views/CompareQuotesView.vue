@@ -135,7 +135,7 @@
 
             <!-- Line Detail View -->
             <CompareQuoteLineDetail v-else :line="selectedLine" :totalElements="compareStore.totalLinesElements"
-                @back="selectedLine = null" />
+                @back="selectedLine = null" @prev="handlePrevLine" @next="handleNextLine" />
         </main>
     </div>
 </template>
@@ -196,6 +196,26 @@ const selectQuote = (quote) => {
 
 const handleLineSelected = (line) => {
     selectedLine.value = line
+}
+
+const handlePrevLine = () => {
+    if (!selectedLine.value) return
+    const lines = compareStore.selectedQuoteLines
+    const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
+    
+    if (currentIndex > 0) {
+        selectedLine.value = lines[currentIndex - 1]
+    }
+}
+
+const handleNextLine = () => {
+    if (!selectedLine.value) return
+    const lines = compareStore.selectedQuoteLines
+    const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
+    
+    if (currentIndex < lines.length - 1) {
+        selectedLine.value = lines[currentIndex + 1]
+    }
 }
 
 const formatDate = (dateString) => {

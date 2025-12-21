@@ -31,6 +31,11 @@ const routes = [
     path: '/comparateur',
     name: 'comparateur',
     component: () => import('../views/CompareQuotesView.vue')
+  },
+  {
+    path: '/comparateur/:compareQuoteNo',
+    name: 'comparateur-detail',
+    component: () => import('../views/CompareQuoteDetailView.vue')
   }
 ]
 

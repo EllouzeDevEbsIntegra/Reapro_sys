@@ -1,0 +1,133 @@
+﻿/* --- Pagination Styles (Midone Clean Style) - STANDALONE VERSION --- */
+.custom-pagination-container {
+  background: white !important;
+  border-top: 1px solid #e2e8f0 !important;
+  padding: 0.75rem 1rem !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  z-index: 100 !important;
+}
+
+.p-paginator {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  width: 100% !important;
+}
+
+/* CRITICAL: Force all interactive elements to be clickable */
+.p-paginator .p-link,
+.p-paginator .p-dropdown,
+.p-paginator .p-dropdown *,
+.p-paginator .p-paginator-pages * {
+  pointer-events: all !important;
+  cursor: pointer !important;
+}
+
+/* Dropdown Styling */
+.p-paginator .p-dropdown {
+  height: 2.25rem !important;
+  min-width: 4.5rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 6px !important;
+}
+
+.p-paginator .p-dropdown .p-dropdown-label {
+  padding: 0 0.5rem !important;
+  color: #475569 !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+}
+
+.p-paginator .p-dropdown .p-dropdown-trigger {
+  width: 1.5rem !important;
+  color: #64748b !important;
+}
+
+/* Page Links Styling */
+.p-paginator .p-paginator-pages {
+  display: flex !important;
+  gap: 0.25rem !important;
+  min-width: 2.25rem !important;
+  /* Ensure it doesn't collapse */
+}
+
+.p-paginator .p-paginator-page {
+  color: #475569 !important;
+  /* Darker text for numbers */
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  min-width: 2.25rem !important;
+  height: 2.25rem !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s !important;
+}
+
+.p-paginator .p-paginator-page.p-highlight {
+  background: white !important;
+  border: 1px solid #94a3b8 !important;
+  /* Stronger border for active page */
+  color: #1e293b !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Navigation Icons Styling */
+.p-paginator .p-link {
+  color: #475569 !important;
+  /* Darker icons for better visibility */
+  min-width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.p-paginator .p-link:not(.p-disabled):hover {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.p-paginator .p-disabled {
+  opacity: 0.2 !important;
+  cursor: default !important;
+}
+
+/* Dropdown Panel - CRITICAL for PrimeVue 4 */
+.p-dropdown-panel {
+  z-index: 999999 !important;
+  background: white !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.p-dropdown-items-wrapper {
+  padding: 0.25rem !important;
+}
+
+.p-dropdown-item {
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 4px !important;
+  font-size: 0.875rem !important;
+  color: #475569 !important;
+}
+
+.p-dropdown-item.p-highlight {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+}

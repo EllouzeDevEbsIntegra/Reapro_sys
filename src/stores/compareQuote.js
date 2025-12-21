@@ -6,10 +6,13 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
         quotes: [],
         selectedQuoteLines: [],
         totalElements: 0,
+        totalLinesElements: 0,
         isLoading: false,
         error: null,
         currentPage: 0,
-        pageSize: 50
+        pageSize: 20,
+        currentLinesPage: 0,
+        linesPageSize: 20
     }),
 
     actions: {
@@ -35,13 +38,35 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        async fetchCompareQuoteLines(compareQuoteNo) {
+        async fetchCompareQuoteLines(compareQuoteNo, filters = {}) {
             this.isLoading = true
             this.error = null
             this.selectedQuoteLines = []
             try {
-                const response = await axios.get(`/api/compare-quotes/${compareQuoteNo}/lines`)
-                this.selectedQuoteLines = response.data
+                const params = {
+                    page: filters.page || 0,
+                    size: filters.size || this.linesPageSize
+                }
+
+                if (filters.search) {
+                    params.search = filters.search
+                }
+
+                if (filters.pageNumber !== undefined && filters.pageNumber !== null && filters.pageNumber !== '') {
+                    params.pageNumber = filters.pageNumber
+                }
+
+                const response = await axios.get(`/api/compare-quotes/${compareQuoteNo}/lines`, { params })
+
+                // Handle both paginated and non-paginated responses
+                if (response.data.content) {
+                    this.selectedQuoteLines = response.data.content
+                    this.totalLinesElements = response.data.totalElements
+                    this.currentLinesPage = response.data.number
+                } else {
+                    this.selectedQuoteLines = response.data
+                    this.totalLinesElements = response.data.length
+                }
             } catch (err) {
                 this.error = err.response?.data?.message || 'Erreur lors de la récupération des lignes'
                 console.error('Fetch lines error:', err)

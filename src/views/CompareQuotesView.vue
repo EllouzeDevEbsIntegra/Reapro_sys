@@ -1,113 +1,188 @@
 <template>
-    <div class="compare-quotes-layout">
+    <div class="page-layout">
         <TheNavbar />
 
-        <div class="compare-quotes-content animate-fade-in">
-            <div class="page-header flex justify-between items-center mb-6">
-                <div>
-                    <h1>Comparateur Achat</h1>
-                    <p class="text-muted">Gérez et comparez vos offres d'achat.</p>
+        <main class="main-content">
+            <!-- Dual Headers -->
+            <div class="flex gap-6 mb-6">
+                <!-- Left Header: Comparateur -->
+                <div class="w-2/3 header-bar">
+                    <h1>Comparateur</h1>
+
+                    <IconField iconPosition="left" class="search-field" style="width: 300px;">
+                        <InputIcon class="pi pi-search" />
+                        <InputText v-model="searchQuery" placeholder="Rechercher (N°, Description)..."
+                            @input="handleSearch" />
+                    </IconField>
+
+                    <div class="spacer"></div>
                 </div>
-                <div class="header-actions">
-                    <span class="p-input-icon-left">
-                        <i class="pi pi-search" />
-                        <InputText v-model="searchQuery" placeholder="Rechercher..." @input="handleSearch" />
-                    </span>
+
+                <!-- Right Header: Lignes -->
+                <div class="w-1/3 header-bar">
+                    <h1>Lignes</h1>
+
+                    <IconField iconPosition="left" class="search-field" style="width: 200px;">
+                        <InputIcon class="pi pi-search" />
+                        <InputText v-model="linesSearchQuery" placeholder="Rechercher article..."
+                            @input="handleLinesSearch" />
+                    </IconField>
+
+                    <div class="spacer"></div>
                 </div>
             </div>
 
-            <div class="grid">
-                <div :class="selectedQuote ? 'col-12 lg:col-5' : 'col-12'">
-                    <Card class="table-card">
-                        <template #content>
-                            <DataTable :value="compareStore.quotes" :loading="compareStore.isLoading" :paginator="true"
-                                :rows="compareStore.pageSize" :totalRecords="compareStore.totalElements" lazy
-                                @page="onPage($event)" selectionMode="single" v-model:selection="selectedQuote"
-                                @row-select="onRowSelect" responsiveLayout="scroll" class="p-datatable-sm">
-                                <Column field="no" header="N°" sortable></Column>
-                                <Column field="description" header="Description" sortable></Column>
-                                <Column field="creationDate" header="Date Création" sortable>
-                                    <template #body="slotProps">
-                                        {{ formatDate(slotProps.data.creationDate) }}
-                                    </template>
-                                </Column>
-                                <Column field="status" header="Statut">
-                                    <template #body="slotProps">
-                                        <Tag :value="getStatusLabel(slotProps.data.status)"
-                                            :severity="getStatusSeverity(slotProps.data.status)" />
-                                    </template>
-                                </Column>
-                            </DataTable>
+            <div class="flex gap-6 h-[calc(100vh-220px)]">
+                <!-- Left Panel: List (2/3 width) -->
+                <div
+                    class="w-2/3 transition-all duration-300 ease-in-out flex flex-col gap-0 overflow-hidden glass-card p-0">
+                    <DataTable :value="compareStore.quotes" :loading="compareStore.isLoading"
+                        v-model:selection="selectedQuote" selectionMode="single" @row-select="onRowSelect"
+                        @row-unselect="onRowUnselect" responsiveLayout="scroll"
+                        class="p-datatable-hover flex-1 midone-table" :rowHover="true" scrollable scrollHeight="flex">
+
+                        <Column field="no" header="N°" sortable style="min-width: 150px">
+                            <template #body="slotProps">
+                                <span style="font-weight: 600; color: var(--primary-color);">
+                                    {{ slotProps.data.no }}
+                                </span>
+                            </template>
+                        </Column>
+
+                        <Column field="description" header="Description" sortable style="min-width: 250px"></Column>
+
+                        <Column field="creationDate" header="Date Création" sortable style="min-width: 150px">
+                            <template #body="slotProps">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="pi pi-calendar"
+                                        style="color: var(--text-muted); font-size: 0.875rem;"></i>
+                                    {{ formatDate(slotProps.data.creationDate) }}
+                                </div>
+                            </template>
+                        </Column>
+
+                        <Column field="status" header="Statut" style="min-width: 120px">
+                            <template #body="slotProps">
+                                <span :class="getStatusClass(slotProps.data.status)">
+                                    {{ getStatusLabel(slotProps.data.status) }}
+                                </span>
+                            </template>
+                        </Column>
+
+                        <Column header="Actions" style="width: 80px">
+                            <template #body="slotProps">
+                                <Button icon="pi pi-chevron-right" text rounded
+                                    :severity="selectedQuote?.no === slotProps.data.no ? 'primary' : 'secondary'"
+                                    @click.stop="selectQuote(slotProps.data)" />
+                            </template>
+                        </Column>
+
+                        <template #empty>
+                            <div style="text-align: center; padding: 3rem;">
+                                <i class="pi pi-inbox" style="font-size: 3rem; color: var(--text-muted);"></i>
+                                <p style="margin-top: 1rem; color: var(--text-muted);">Aucune comparaison trouvée</p>
+                            </div>
                         </template>
-                    </Card>
+                    </DataTable>
+
+                    <!-- Custom Pagination Bar - CENTERED -->
+                    <div class="custom-pagination-bar justify-center gap-6">
+                        <div class="flex items-center gap-2">
+                            <Button icon="pi pi-angle-double-left" text rounded size="small"
+                                :disabled="compareStore.currentPage === 0"
+                                @click="compareStore.fetchCompareQuotes(0, searchQuery)" />
+                            <Button icon="pi pi-angle-left" text rounded size="small"
+                                :disabled="compareStore.currentPage === 0"
+                                @click="compareStore.fetchCompareQuotes(compareStore.currentPage - 1, searchQuery)" />
+
+                            <div class="flex items-center gap-1 mx-2">
+                                <Button v-for="page in totalPages" :key="page" :label="page.toString()" size="small"
+                                    class="page-num-btn"
+                                    :class="{ 'active-page': compareStore.currentPage === page - 1 }"
+                                    @click="compareStore.fetchCompareQuotes(page - 1, searchQuery)" />
+                            </div>
+
+                            <Button icon="pi pi-angle-right" text rounded size="small"
+                                :disabled="compareStore.currentPage >= totalPages - 1"
+                                @click="compareStore.fetchCompareQuotes(compareStore.currentPage + 1, searchQuery)" />
+                            <Button icon="pi pi-angle-double-right" text rounded size="small"
+                                :disabled="compareStore.currentPage >= totalPages - 1"
+                                @click="compareStore.fetchCompareQuotes(totalPages - 1, searchQuery)" />
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <Dropdown v-model="compareStore.pageSize" :options="[10, 20, 50, 100]" class="rows-dropdown"
+                                @change="handleSearch" />
+                        </div>
+                    </div>
                 </div>
 
-                <div v-if="selectedQuote" class="col-12 lg:col-7 animate-slide-in-right">
-                    <Card class="detail-card">
-                        <template #title>
-                            <div class="flex justify-between items-center">
-                                <span>Détails: {{ selectedQuote.no }}</span>
-                                <Button icon="pi pi-times" text rounded aria-label="Fermer" @click="closeDetail" />
-                            </div>
-                        </template>
-                        <template #content>
-                            <div v-if="compareStore.isLoading && !compareStore.quotes.length"
-                                class="flex justify-center p-8">
-                                <ProgressSpinner style="width: 50px; height: 50px" />
-                            </div>
-                            <DataTable v-else :value="compareStore.selectedQuoteLines" class="p-datatable-sm"
-                                responsiveLayout="scroll" scrollable scrollHeight="500px">
-                                <Column field="itemNo" header="Article"></Column>
-                                <Column field="pageNumber" header="Page PDF" class="text-center"></Column>
-                                <Column field="creationDate" header="Date">
-                                    <template #body="slotProps">
-                                        {{ formatDate(slotProps.data.creationDate) }}
-                                    </template>
-                                </Column>
-                            </DataTable>
-                        </template>
-                    </Card>
+                <!-- Right Panel: Details (1/3 width) -->
+                <div class="w-1/3 animate-slide-in-right">
+                    <div class="glass-card h-full overflow-hidden p-0 flex flex-col">
+                        <div v-if="!selectedQuote"
+                            class="h-full flex flex-col items-center justify-center text-gray-400">
+                            <i class="pi pi-arrow-left text-4xl mb-4"></i>
+                            <p>Sélectionnez une comparaison pour voir les détails</p>
+                        </div>
+                        <CompareQuoteLines v-else :compareQuoteNo="selectedQuote.no" :search="linesSearchQuery"
+                            @close="selectedQuote = null" />
+                    </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useCompareQuoteStore } from '../stores/compareQuote'
 import TheNavbar from '../components/TheNavbar.vue'
+import CompareQuoteLines from '../components/CompareQuoteLines.vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
-import Card from 'primevue/card'
-import Tag from 'primevue/tag'
 import Button from 'primevue/button'
-import ProgressSpinner from 'primevue/progressspinner'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import Dropdown from 'primevue/dropdown'
 
 const compareStore = useCompareQuoteStore()
 const searchQuery = ref('')
+const linesSearchQuery = ref('')
 const selectedQuote = ref(null)
 
-onMounted(() => {
-    compareStore.fetchCompareQuotes()
+const totalPages = computed(() => {
+    const total = compareStore.totalElements || 0
+    const size = compareStore.pageSize || 10
+    return Math.max(1, Math.ceil(total / size))
+})
+
+onMounted(async () => {
+    await compareStore.fetchCompareQuotes()
+    if (compareStore.quotes.length > 0) {
+        selectedQuote.value = compareStore.quotes[0]
+    }
 })
 
 const handleSearch = () => {
     compareStore.fetchCompareQuotes(0, searchQuery.value)
 }
 
-const onPage = (event) => {
-    compareStore.fetchCompareQuotes(event.page, searchQuery.value)
+const handleLinesSearch = () => {
+    // The search is handled by passing the prop to CompareQuoteLines
 }
 
 const onRowSelect = (event) => {
-    compareStore.fetchCompareQuoteLines(event.data.no)
+    selectedQuote.value = event.data
 }
 
-const closeDetail = () => {
+const onRowUnselect = () => {
     selectedQuote.value = null
-    compareStore.clearSelectedLines()
+}
+
+const selectQuote = (quote) => {
+    selectedQuote.value = quote
 }
 
 const formatDate = (dateString) => {
@@ -128,58 +203,100 @@ const getStatusLabel = (status) => {
     }
 }
 
-const getStatusSeverity = (status) => {
+const getStatusClass = (status) => {
     switch (status) {
-        case 0: return 'info'
-        case 1: return 'warning'
-        case 2: return 'success'
-        default: return 'secondary'
+        case 0: return 'badge badge-info'
+        case 1: return 'badge badge-warning'
+        case 2: return 'badge badge-success'
+        default: return 'badge'
     }
 }
 </script>
 
 <style scoped>
-.compare-quotes-layout {
+.page-layout {
     min-height: 100vh;
     background-color: #f8fafc;
 }
 
-.compare-quotes-content {
-    padding: 2rem;
-    max-width: 1600px;
-    margin: 0 auto;
+.main-content {
+    width: 100%;
+    padding: 0.5rem 2rem;
 }
 
-.page-header h1 {
-    font-size: 2rem;
+.header-bar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1rem 1.5rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.header-bar h1 {
+    font-size: 1.25rem;
     font-weight: 700;
     color: #1e293b;
+    margin: 0;
+    white-space: nowrap;
 }
 
-.text-muted {
-    color: #64748b;
+.search-field {
+    width: 350px !important;
+    min-width: 200px !important;
+    max-width: 350px !important;
 }
 
-.table-card,
-.detail-card {
-    border-radius: 1rem;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    border: none;
+.search-field :deep(.p-inputtext) {
+    width: 100% !important;
+}
+
+.spacer {
+    flex-grow: 1;
+}
+
+/* Tailwind-like utilities for width transition */
+.w-2\/3 {
+    width: 66.666667%;
+}
+
+.w-1\/3 {
+    width: 33.333333%;
+}
+
+.flex-1 {
+    flex: 1 1 0%;
+}
+
+.h-full {
+    height: 100%;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
 }
 
 .animate-slide-in-right {
-    animation: slideInRight 0.3s ease-out;
+    animation: slideInRight 0.3s ease-out forwards;
 }
 
 @keyframes slideInRight {
     from {
-        transform: translateX(20px);
         opacity: 0;
+        transform: translateX(20px);
     }
 
     to {
-        transform: translateX(0);
         opacity: 1;
+        transform: translateX(0);
     }
 }
 </style>

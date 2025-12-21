@@ -329,98 +329,49 @@ body {
   color: #2563eb !important;
 }
 
-
-/* --- Pagination Styles (Midone Clean Style) --- */
-.p-paginator {
-  background: transparent !important;
-  border: none !important;
-  padding: 1rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 0.5rem !important;
-}
-
+/* --- Pagination Dropdown Fix --- */
 .p-paginator .p-dropdown {
-  height: 2.5rem !important;
-  min-width: 4.5rem !important;
-  display: inline-flex !important;
-  align-items: center !important;
+  height: 2.5rem;
+  align-items: center;
   opacity: 1 !important;
-  pointer-events: all !important;
+  pointer-events: auto !important;
   background: white !important;
   border: 1px solid #e2e8f0 !important;
-  border-radius: 6px !important;
-  cursor: pointer !important;
-  position: relative !important;
-  z-index: 100 !important;
 }
 
-.p-paginator .p-dropdown:hover {
-  border-color: #cbd5e1 !important;
-}
-
-.p-paginator .p-dropdown .p-dropdown-label {
-  padding: 0.5rem 0.75rem !important;
-  padding-right: 2rem !important;
+.p-paginator .p-dropdown-label {
+  padding-right: 1rem !important;
   color: var(--text-primary) !important;
-  font-size: 0.875rem !important;
 }
 
-.p-paginator .p-dropdown .p-dropdown-trigger {
+.p-paginator .p-dropdown-trigger {
   width: 2rem !important;
   color: var(--text-secondary) !important;
 }
 
 .p-paginator .p-paginator-current {
-  display: none !important;
-}
-
-.p-paginator .p-paginator-pages {
-  display: flex !important;
-  gap: 0.25rem !important;
+  color: var(--text-secondary) !important;
+  font-size: 0.875rem !important;
 }
 
 .p-paginator .p-paginator-pages .p-paginator-page {
   color: var(--text-secondary) !important;
   font-weight: 500 !important;
   border-radius: 6px !important;
-  min-width: 2.5rem !important;
-  height: 2.5rem !important;
-  border: none !important;
-  background: transparent !important;
+  min-width: 2rem !important;
+  height: 2rem !important;
 }
 
 .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
   background: #eff6ff !important;
   color: var(--primary-blue-dark) !important;
+  border-color: #dbeafe !important;
 }
 
 .p-paginator .p-paginator-pages .p-paginator-page:not(.p-highlight):hover {
   background: #f8fafc !important;
   color: var(--text-primary) !important;
 }
-
-.p-paginator .p-paginator-first,
-.p-paginator .p-paginator-prev,
-.p-paginator .p-paginator-next,
-.p-paginator .p-paginator-last {
-  color: var(--text-secondary) !important;
-  min-width: 2.5rem !important;
-  height: 2.5rem !important;
-  border-radius: 6px !important;
-  background: transparent !important;
-  border: none !important;
-}
-
-.p-paginator .p-paginator-first:hover,
-.p-paginator .p-paginator-prev:hover,
-.p-paginator .p-paginator-next:hover,
-.p-paginator .p-paginator-last:hover {
-  background: #f8fafc !important;
-  color: var(--text-primary) !important;
-}
-
 /* Input text with icon - add left padding to prevent overlap */
 .p-iconfield .p-inputtext {
   padding-left: 2.5rem !important;

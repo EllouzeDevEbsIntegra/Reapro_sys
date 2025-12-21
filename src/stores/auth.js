@@ -44,8 +44,35 @@ export const useAuthStore = defineStore('auth', {
                 const response = await apiClient.get('/api/admins/me')
                 this.user = response.data
                 localStorage.setItem('user', JSON.stringify(this.user))
+                return this.user
             } catch (error) {
                 console.error('Failed to fetch user profile', error)
+            }
+        },
+
+        async fetchUser() {
+            return await this.fetchUserProfile()
+        },
+
+        async updateProfile(userData) {
+            try {
+                const response = await apiClient.put('/api/admins/me', userData)
+                this.user = response.data
+                localStorage.setItem('user', JSON.stringify(this.user))
+                return this.user
+            } catch (error) {
+                console.error('Failed to update profile', error)
+                throw error
+            }
+        },
+
+        async changeMyPassword(passwordData) {
+            try {
+                const response = await apiClient.post('/api/admins/change-password', passwordData)
+                return response.data
+            } catch (error) {
+                console.error('Failed to change password', error)
+                throw error
             }
         },
 

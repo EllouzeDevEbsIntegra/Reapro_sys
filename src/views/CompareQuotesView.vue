@@ -3,133 +3,139 @@
         <TheNavbar />
 
         <main class="main-content">
-            <!-- Dual Headers -->
-            <div class="flex gap-6 mb-6">
-                <!-- Left Header: Comparateur -->
-                <div class="w-2/3 header-bar">
-                    <h1>Comparateur</h1>
+            <template v-if="!selectedLine">
+                <!-- Dual Headers -->
+                <div class="flex gap-6 mb-6">
+                    <!-- Left Header: Comparateur -->
+                    <div class="w-2/3 header-bar">
+                        <h1>Comparateur</h1>
 
-                    <IconField iconPosition="left" class="search-field" style="width: 300px;">
-                        <InputIcon class="pi pi-search" />
-                        <InputText v-model="searchQuery" placeholder="Rechercher (N°, Description)..."
-                            @input="handleSearch" />
-                    </IconField>
+                        <IconField iconPosition="left" class="search-field" style="width: 300px;">
+                            <InputIcon class="pi pi-search" />
+                            <InputText v-model="searchQuery" placeholder="Rechercher (N°, Description)..."
+                                @input="handleSearch" />
+                        </IconField>
 
-                    <div class="spacer"></div>
+                        <div class="spacer"></div>
+                    </div>
+
+                    <!-- Right Header: Lignes -->
+                    <div class="w-1/3 header-bar">
+                        <h1>Lignes</h1>
+
+                        <IconField iconPosition="left" class="search-field" style="width: 200px;">
+                            <InputIcon class="pi pi-search" />
+                            <InputText v-model="linesSearchQuery" placeholder="Rechercher article..."
+                                @input="handleLinesSearch" />
+                        </IconField>
+
+                        <div class="spacer"></div>
+                    </div>
                 </div>
 
-                <!-- Right Header: Lignes -->
-                <div class="w-1/3 header-bar">
-                    <h1>Lignes</h1>
+                <div class="flex gap-6 h-[calc(100vh-220px)]">
+                    <!-- Left Panel: List (2/3 width) -->
+                    <div
+                        class="w-2/3 transition-all duration-300 ease-in-out flex flex-col gap-0 overflow-hidden glass-card p-0">
+                        <DataTable :value="compareStore.quotes" :loading="compareStore.isLoading"
+                            v-model:selection="selectedQuote" selectionMode="single" @row-select="onRowSelect"
+                            @row-unselect="onRowUnselect" responsiveLayout="scroll"
+                            class="p-datatable-hover flex-1 midone-table" :rowHover="true" scrollable scrollHeight="flex">
 
-                    <IconField iconPosition="left" class="search-field" style="width: 200px;">
-                        <InputIcon class="pi pi-search" />
-                        <InputText v-model="linesSearchQuery" placeholder="Rechercher article..."
-                            @input="handleLinesSearch" />
-                    </IconField>
+                            <Column field="no" header="N°" sortable style="min-width: 150px">
+                                <template #body="slotProps">
+                                    <span style="font-weight: 600; color: var(--primary-color);">
+                                        {{ slotProps.data.no }}
+                                    </span>
+                                </template>
+                            </Column>
 
-                    <div class="spacer"></div>
-                </div>
-            </div>
+                            <Column field="description" header="Description" sortable style="min-width: 250px"></Column>
 
-            <div class="flex gap-6 h-[calc(100vh-220px)]">
-                <!-- Left Panel: List (2/3 width) -->
-                <div
-                    class="w-2/3 transition-all duration-300 ease-in-out flex flex-col gap-0 overflow-hidden glass-card p-0">
-                    <DataTable :value="compareStore.quotes" :loading="compareStore.isLoading"
-                        v-model:selection="selectedQuote" selectionMode="single" @row-select="onRowSelect"
-                        @row-unselect="onRowUnselect" responsiveLayout="scroll"
-                        class="p-datatable-hover flex-1 midone-table" :rowHover="true" scrollable scrollHeight="flex">
+                            <Column field="creationDate" header="Date Création" sortable style="min-width: 150px">
+                                <template #body="slotProps">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="pi pi-calendar"
+                                            style="color: var(--text-muted); font-size: 0.875rem;"></i>
+                                        {{ formatDate(slotProps.data.creationDate) }}
+                                    </div>
+                                </template>
+                            </Column>
 
-                        <Column field="no" header="N°" sortable style="min-width: 150px">
-                            <template #body="slotProps">
-                                <span style="font-weight: 600; color: var(--primary-color);">
-                                    {{ slotProps.data.no }}
-                                </span>
-                            </template>
-                        </Column>
+                            <Column field="status" header="Statut" style="min-width: 120px">
+                                <template #body="slotProps">
+                                    <span :class="getStatusClass(slotProps.data.status)">
+                                        {{ getStatusLabel(slotProps.data.status) }}
+                                    </span>
+                                </template>
+                            </Column>
 
-                        <Column field="description" header="Description" sortable style="min-width: 250px"></Column>
+                            <Column header="Actions" style="width: 80px">
+                                <template #body="slotProps">
+                                    <Button icon="pi pi-chevron-right" text rounded
+                                        :severity="selectedQuote?.no === slotProps.data.no ? 'primary' : 'secondary'"
+                                        @click.stop="selectQuote(slotProps.data)" />
+                                </template>
+                            </Column>
 
-                        <Column field="creationDate" header="Date Création" sortable style="min-width: 150px">
-                            <template #body="slotProps">
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <i class="pi pi-calendar"
-                                        style="color: var(--text-muted); font-size: 0.875rem;"></i>
-                                    {{ formatDate(slotProps.data.creationDate) }}
+                            <template #empty>
+                                <div style="text-align: center; padding: 3rem;">
+                                    <i class="pi pi-inbox" style="font-size: 3rem; color: var(--text-muted);"></i>
+                                    <p style="margin-top: 1rem; color: var(--text-muted);">Aucune comparaison trouvée</p>
                                 </div>
                             </template>
-                        </Column>
+                        </DataTable>
 
-                        <Column field="status" header="Statut" style="min-width: 120px">
-                            <template #body="slotProps">
-                                <span :class="getStatusClass(slotProps.data.status)">
-                                    {{ getStatusLabel(slotProps.data.status) }}
-                                </span>
-                            </template>
-                        </Column>
+                        <!-- Custom Pagination Bar - CENTERED -->
+                        <div class="custom-pagination-bar justify-center gap-6">
+                            <div class="flex items-center gap-2">
+                                <Button icon="pi pi-angle-double-left" text rounded size="small"
+                                    :disabled="compareStore.currentPage === 0"
+                                    @click="compareStore.fetchCompareQuotes(0, searchQuery)" />
+                                <Button icon="pi pi-angle-left" text rounded size="small"
+                                    :disabled="compareStore.currentPage === 0"
+                                    @click="compareStore.fetchCompareQuotes(compareStore.currentPage - 1, searchQuery)" />
 
-                        <Column header="Actions" style="width: 80px">
-                            <template #body="slotProps">
-                                <Button icon="pi pi-chevron-right" text rounded
-                                    :severity="selectedQuote?.no === slotProps.data.no ? 'primary' : 'secondary'"
-                                    @click.stop="selectQuote(slotProps.data)" />
-                            </template>
-                        </Column>
+                                <div class="flex items-center gap-1 mx-2">
+                                    <Button v-for="page in totalPages" :key="page" :label="page.toString()" size="small"
+                                        class="page-num-btn"
+                                        :class="{ 'active-page': compareStore.currentPage === page - 1 }"
+                                        @click="compareStore.fetchCompareQuotes(page - 1, searchQuery)" />
+                                </div>
 
-                        <template #empty>
-                            <div style="text-align: center; padding: 3rem;">
-                                <i class="pi pi-inbox" style="font-size: 3rem; color: var(--text-muted);"></i>
-                                <p style="margin-top: 1rem; color: var(--text-muted);">Aucune comparaison trouvée</p>
-                            </div>
-                        </template>
-                    </DataTable>
-
-                    <!-- Custom Pagination Bar - CENTERED -->
-                    <div class="custom-pagination-bar justify-center gap-6">
-                        <div class="flex items-center gap-2">
-                            <Button icon="pi pi-angle-double-left" text rounded size="small"
-                                :disabled="compareStore.currentPage === 0"
-                                @click="compareStore.fetchCompareQuotes(0, searchQuery)" />
-                            <Button icon="pi pi-angle-left" text rounded size="small"
-                                :disabled="compareStore.currentPage === 0"
-                                @click="compareStore.fetchCompareQuotes(compareStore.currentPage - 1, searchQuery)" />
-
-                            <div class="flex items-center gap-1 mx-2">
-                                <Button v-for="page in totalPages" :key="page" :label="page.toString()" size="small"
-                                    class="page-num-btn"
-                                    :class="{ 'active-page': compareStore.currentPage === page - 1 }"
-                                    @click="compareStore.fetchCompareQuotes(page - 1, searchQuery)" />
+                                <Button icon="pi pi-angle-right" text rounded size="small"
+                                    :disabled="compareStore.currentPage >= totalPages - 1"
+                                    @click="compareStore.fetchCompareQuotes(compareStore.currentPage + 1, searchQuery)" />
+                                <Button icon="pi pi-angle-double-right" text rounded size="small"
+                                    :disabled="compareStore.currentPage >= totalPages - 1"
+                                    @click="compareStore.fetchCompareQuotes(totalPages - 1, searchQuery)" />
                             </div>
 
-                            <Button icon="pi pi-angle-right" text rounded size="small"
-                                :disabled="compareStore.currentPage >= totalPages - 1"
-                                @click="compareStore.fetchCompareQuotes(compareStore.currentPage + 1, searchQuery)" />
-                            <Button icon="pi pi-angle-double-right" text rounded size="small"
-                                :disabled="compareStore.currentPage >= totalPages - 1"
-                                @click="compareStore.fetchCompareQuotes(totalPages - 1, searchQuery)" />
+                            <div class="flex items-center gap-3">
+                                <Dropdown v-model="compareStore.pageSize" :options="[10, 20, 50, 100]" class="rows-dropdown"
+                                    @change="handleSearch" />
+                            </div>
                         </div>
+                    </div>
 
-                        <div class="flex items-center gap-3">
-                            <Dropdown v-model="compareStore.pageSize" :options="[10, 20, 50, 100]" class="rows-dropdown"
-                                @change="handleSearch" />
+                    <!-- Right Panel: Details (1/3 width) -->
+                    <div class="w-1/3 animate-slide-in-right">
+                        <div class="glass-card h-full overflow-hidden p-0 flex flex-col">
+                            <div v-if="!selectedQuote"
+                                class="h-full flex flex-col items-center justify-center text-gray-400">
+                                <i class="pi pi-arrow-left text-4xl mb-4"></i>
+                                <p>Sélectionnez une comparaison pour voir les détails</p>
+                            </div>
+                            <CompareQuoteLines v-else :compareQuoteNo="selectedQuote.no" :search="linesSearchQuery"
+                                @close="selectedQuote = null" @line-selected="handleLineSelected" />
                         </div>
                     </div>
                 </div>
+            </template>
 
-                <!-- Right Panel: Details (1/3 width) -->
-                <div class="w-1/3 animate-slide-in-right">
-                    <div class="glass-card h-full overflow-hidden p-0 flex flex-col">
-                        <div v-if="!selectedQuote"
-                            class="h-full flex flex-col items-center justify-center text-gray-400">
-                            <i class="pi pi-arrow-left text-4xl mb-4"></i>
-                            <p>Sélectionnez une comparaison pour voir les détails</p>
-                        </div>
-                        <CompareQuoteLines v-else :compareQuoteNo="selectedQuote.no" :search="linesSearchQuery"
-                            @close="selectedQuote = null" />
-                    </div>
-                </div>
-            </div>
+            <!-- Line Detail View -->
+            <CompareQuoteLineDetail v-else :line="selectedLine" :totalElements="compareStore.totalLinesElements"
+                @back="selectedLine = null" />
         </main>
     </div>
 </template>
@@ -139,6 +145,7 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useCompareQuoteStore } from '../stores/compareQuote'
 import TheNavbar from '../components/TheNavbar.vue'
 import CompareQuoteLines from '../components/CompareQuoteLines.vue'
+import CompareQuoteLineDetail from '../components/CompareQuoteLineDetail.vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -151,6 +158,7 @@ const compareStore = useCompareQuoteStore()
 const searchQuery = ref('')
 const linesSearchQuery = ref('')
 const selectedQuote = ref(null)
+const selectedLine = ref(null)
 
 const totalPages = computed(() => {
     const total = compareStore.totalElements || 0
@@ -183,6 +191,11 @@ const onRowUnselect = () => {
 
 const selectQuote = (quote) => {
     selectedQuote.value = quote
+    selectedLine.value = null // Reset selected line when changing quote
+}
+
+const handleLineSelected = (line) => {
+    selectedLine.value = line
 }
 
 const formatDate = (dateString) => {

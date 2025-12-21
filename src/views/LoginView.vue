@@ -14,28 +14,14 @@
         <form @submit.prevent="handleLogin" class="login-form">
           <div class="form-group">
             <label for="email">Email</label>
-            <InputText 
-              id="email" 
-              v-model="form.email" 
-              type="email" 
-              placeholder="admin@reapro.tn" 
-              class="w-full"
-              :class="{ 'p-invalid': authStore.error }" 
-            />
+            <InputText id="email" v-model="form.email" type="email" placeholder="admin@reapro.tn" class="w-full"
+              :class="{ 'p-invalid': authStore.error }" />
           </div>
 
           <div class="form-group">
             <label for="password">Mot de passe</label>
-            <Password 
-              id="password" 
-              v-model="form.password" 
-              :feedback="false" 
-              toggleMask 
-              placeholder="••••••••"
-              inputClass="w-full" 
-              class="w-full" 
-              :class="{ 'p-invalid': authStore.error }" 
-            />
+            <Password id="password" v-model="form.password" :feedback="false" toggleMask placeholder="••••••••"
+              inputClass="w-full" class="w-full" :class="{ 'p-invalid': authStore.error }" />
           </div>
 
           <div class="form-actions">
@@ -51,19 +37,10 @@
             <span>{{ authStore.error }}</span>
           </div>
 
-          <Button 
-            type="submit" 
-            label="Se connecter" 
-            :loading="authStore.isLoading" 
-            class="w-full login-button" 
-          />
+          <Button type="submit" label="Se connecter" :loading="authStore.isLoading" class="w-full login-button" />
 
           <div class="register-link">
-            <Button 
-              label="S'inscrire" 
-              class="p-button-outlined w-full mt-3" 
-              @click="router.push('/register')" 
-            />
+            <Button label="S'inscrire" class="p-button-outlined w-full mt-3" @click="router.push('/register')" />
           </div>
         </form>
       </div>
@@ -101,7 +78,7 @@ const handleLogin = async () => {
       email: form.email,
       password: form.password
     })
-    router.push('/dashboard')
+    router.push('/comparateur')
   } catch (error) {
     console.error('Login failed', error)
   }

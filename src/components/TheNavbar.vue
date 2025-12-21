@@ -37,11 +37,6 @@ const toggleMenu = (event) => {
 
 const items = ref([
   {
-    label: 'Dashboard',
-    icon: 'pi pi-home',
-    command: () => router.push('/dashboard')
-  },
-  {
     label: 'Comparateur Achat',
     icon: 'pi pi-search-plus',
     command: () => router.push('/comparateur')

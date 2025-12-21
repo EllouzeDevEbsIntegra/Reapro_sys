@@ -8,7 +8,8 @@
 
         <!-- Table Only -->
         <DataTable :value="compareStore.selectedQuoteLines" scrollable scrollHeight="flex" :rowHover="true"
-            class="p-datatable-sm p-datatable-hover flex-1 midone-table">
+            @row-click="onRowClick"
+            class="p-datatable-sm p-datatable-hover flex-1 midone-table cursor-pointer">
 
             <Column field="compareQuoteNo" header="Comp. No" style="min-width: 100px">
                 <template #body="slotProps">
@@ -81,7 +82,7 @@ const props = defineProps({
     }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'line-selected'])
 const compareStore = useCompareQuoteStore()
 
 const filters = ref({
@@ -117,6 +118,10 @@ const onPage = (event) => {
     filters.value.page = event.page
     pageSize.value = event.rows
     loadLines()
+}
+
+const onRowClick = (event) => {
+    emit('line-selected', event.data)
 }
 </script>
 

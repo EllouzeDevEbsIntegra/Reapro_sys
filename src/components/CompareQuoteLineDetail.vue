@@ -30,7 +30,7 @@
                         <span class="stock-label-mini">STE</span>
                         <span class="stock-value-main company">COPIM</span>
                     </div>
-                    <div class="stock-part stock">
+                    <div class="stock-part stock clickable" @click="openHistory('COPIM')">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main green">1</span>
                     </div>
@@ -44,7 +44,7 @@
                         <span class="stock-label-mini">STE</span>
                         <span class="stock-value-main company">3S</span>
                     </div>
-                    <div class="stock-part stock">
+                    <div class="stock-part stock clickable" @click="openHistory('3S')">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main red">0</span>
                     </div>
@@ -58,7 +58,7 @@
                         <span class="stock-label-mini">STE</span>
                         <span class="stock-value-main company">MPAA</span>
                     </div>
-                    <div class="stock-part stock">
+                    <div class="stock-part stock clickable" @click="openHistory('MPAA')">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main green">2</span>
                     </div>
@@ -263,11 +263,83 @@
             </div>
         </div>
     </div>
+
+    <!-- Stock History Dialog -->
+    <Dialog 
+        v-model:visible="showHistoryDialog" 
+        modal 
+        :style="{ width: '50vw' }"
+        class="history-dialog"
+        :showHeader="false"
+    >
+        <div class="dialog-content-wrapper">
+            <div class="sidebar-header dialog-header">
+                <div class="header-actions">
+                    <Button 
+                        icon="pi pi-chevron-left" 
+                        text 
+                        rounded 
+                        @click="showHistoryDialog = false" 
+                        class="toggle-sidebar-btn" 
+                    />
+                    <button class="history-btn">Historique</button>
+                    <div class="item-title-inline">
+                        {{ line.itemNo }} • {{ line.description || 'Temoins de freins' }}
+                    </div>
+                    <div class="year-selector">
+                        <span class="arrow">&lt;</span>
+                        <span class="year">2025</span>
+                        <span class="arrow">&gt;</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-bar dialog-stats-bar">
+                <div class="stats-column">Stk : 2</div>
+                <div class="stats-column">Vente : 18</div>
+                <div class="stats-column">Achat : 16</div>
+                <div class="stats-column">Rupt : 1268</div>
+            </div>
+
+            <div class="table-container dialog-history-container">
+                <div class="table-wrapper">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%">Date</th>
+                                <th style="width: 45%">Client</th>
+                                <th style="width: 15%">Qte</th>
+                                <th style="width: 20%">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="i in 12" :key="i">
+                                <td>12/12/2025</td>
+                                <td>Client {{ selectedCompany }} {{ i }}</td>
+                                <td>{{ Math.floor(Math.random() * 10) + 1 }}</td>
+                                <td>
+                                    <Button icon="pi pi-eye" text rounded size="small" />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-footer centered-footer">
+                    <div class="pagination-controls centered">
+                        <button class="p-btn"><i class="pi pi-angle-left"></i></button>
+                        <span class="p-current">1</span>
+                        <button class="p-btn"><i class="pi pi-angle-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Dialog>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
 
 const props = defineProps({
     line: {
@@ -283,6 +355,13 @@ const props = defineProps({
 defineEmits(['back'])
 
 const isSidebarExpanded = ref(false)
+const showHistoryDialog = ref(false)
+const selectedCompany = ref('')
+
+const openHistory = (company) => {
+    selectedCompany.value = company
+    showHistoryDialog.value = true
+}
 </script>
 
 <style scoped>
@@ -433,6 +512,15 @@ const isSidebarExpanded = ref(false)
     position: relative;
 }
 
+.stock-part.stock.clickable {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.stock-part.stock.clickable:hover {
+    background-color: #f1f5f9;
+}
+
 .stock-part.ste { width: 20%; }
 .stock-part.stock { width: 40%; }
 .stock-part.purchase { width: 40%; }
@@ -525,10 +613,10 @@ const isSidebarExpanded = ref(false)
     width: 30%;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 15px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 15px;
     background: white;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -655,6 +743,13 @@ const isSidebarExpanded = ref(false)
 }
 
 /* Sidebar Specific Styles */
+.sidebar-header {
+    padding-bottom: 5px;
+    min-height: 45px;
+    display: flex;
+    align-items: center;
+}
+
 .header-actions {
     display: flex;
     align-items: center;
@@ -675,7 +770,7 @@ const isSidebarExpanded = ref(false)
     font-size: 0.9rem;
     color: #1e293b;
     background: #f1f5f9;
-    padding: 6px 12px;
+    padding: 8px 15px;
     border-radius: 8px;
     border-left: 4px solid #3b82f6;
     white-space: nowrap;
@@ -705,7 +800,7 @@ const isSidebarExpanded = ref(false)
     width: 20%;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 6px 12px;
+    padding: 8px 15px;
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -720,7 +815,7 @@ const isSidebarExpanded = ref(false)
     align-items: center;
     border: 1px solid #fdba74;
     border-radius: 8px;
-    height: 40px;
+    height: 46px;
     overflow: hidden;
     background-color: #fff7ed;
 }
@@ -749,5 +844,52 @@ const isSidebarExpanded = ref(false)
 
 .history-container {
     flex-grow: 1;
+}
+
+/* Dialog Specific Styles */
+.history-dialog :deep(.p-dialog-content) {
+    padding: 40px;
+    background-color: #f8fafc;
+    border-radius: 12px;
+}
+
+.dialog-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.dialog-header {
+    background: transparent;
+    padding: 0 15px 10px 15px;
+    border: none;
+    min-height: 55px;
+}
+
+.dialog-stats-bar {
+    margin-bottom: 5px;
+}
+
+.dialog-history-container {
+    border: 1px solid #e2e8f0;
+    background: white;
+}
+
+.centered-footer {
+    justify-content: center !important;
+}
+
+.pagination-controls.centered {
+    gap: 15px;
+}
+
+.status-badge {
+    background-color: #dcfce7;
+    color: #166534;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 </style>

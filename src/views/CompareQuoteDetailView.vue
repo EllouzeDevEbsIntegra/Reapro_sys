@@ -1,12 +1,13 @@
 <template>
     <div class="page-layout">
         <TheNavbar />
+        <ConfirmDialog />
 
         <main class="main-content">
             <!-- Header -->
             <div class="header-bar">
                 <div class="flex items-center gap-4">
-                    <Button icon="pi pi-arrow-left" text rounded @click="router.push('/comparateur')"
+                    <Button icon="pi pi-arrow-left" text rounded @click="handleBack"
                         v-tooltip="'Retour'" />
                     <h1>Comparaison {{ compareQuoteNo }}</h1>
                 </div>
@@ -141,6 +142,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCompareQuoteStore } from '../stores/compareQuote'
+import { useConfirm } from 'primevue/useconfirm'
 import TheNavbar from '../components/TheNavbar.vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -149,9 +151,11 @@ import InputText from 'primevue/inputtext'
 import ProgressSpinner from 'primevue/progressspinner'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
+import ConfirmDialog from 'primevue/confirmdialog'
 
 const route = useRoute()
 const router = useRouter()
+const confirm = useConfirm()
 const compareStore = useCompareQuoteStore()
 
 const compareQuoteNo = ref(route.params.compareQuoteNo)
@@ -174,6 +178,25 @@ onMounted(() => {
     }
     loadLines()
 })
+
+const handleBack = () => {
+    console.log('handleBack called')
+    console.log('confirm object:', confirm)
+    confirm.require({
+        message: 'Voulez-vous vraiment quitter cette page ?',
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Oui',
+        rejectLabel: 'Non',
+        accept: () => {
+            console.log('Accepted')
+            router.push('/comparateur')
+        },
+        reject: () => {
+            console.log('Rejected')
+        }
+    })
+}
 
 const loadLines = () => {
     const apiFilters = {

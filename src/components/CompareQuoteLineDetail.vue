@@ -2,25 +2,31 @@
     <div class="line-detail-container">
         <!-- Section 1: Full-width Header -->
         <div class="top-header">
-            <div class="header-left">
-                <Button icon="pi pi-arrow-left" text rounded @click="$emit('back')" class="back-btn" />
-                <div class="item-info">
+            <!-- 3% -->
+            <Button icon="pi pi-arrow-left" text rounded @click="$emit('back')" class="back-btn" />
+
+            <!-- 10% -->
+            <div class="item-info">
+                <div class="info-left">
                     <h1 class="item-no">{{ line.itemNo }}</h1>
-                    <div class="page-indicator-wrapper">
-                        <span class="status-dot"></span>
-                        <div class="page-indicator">
-                            {{ line.pageNumber }} / {{ totalElements }}
-                        </div>
+                    <span class="item-desc">{{ line.structuredDescription || line.description || 'Description' }}</span>
+                </div>
+                <div class="info-right">
+                    <span class="status-dot"></span>
+                    <div class="page-indicator">
+                        {{ line.pageNumber }} / {{ totalElements }}
                     </div>
                 </div>
             </div>
 
+            <!-- 7% -->
             <div class="header-middle">
                 <div class="count-badge">
-                    Count : 584
+                    Count : {{ line.countItemManual || 0 }}
                 </div>
             </div>
 
+            <!-- 60% -->
             <div class="header-stocks">
                 <div class="stock-column">
                     <div class="stocks-label">Stocks</div>
@@ -69,11 +75,19 @@
                 </div>
             </div>
 
-            <div class="header-right">
-                <button class="cart-btn">
-                    <i class="pi pi-shopping-cart"></i>
-                </button>
+            <!-- 15% -->
+            <div class="order-total">
+                <i class="pi pi-wallet"></i>
+                <span class="amount">4870,25 $</span>
             </div>
+
+            <!-- 5% -->
+            <button class="cart-btn">
+                <div class="cart-icon-wrapper">
+                    <i class="pi pi-shopping-cart"></i>
+                    <span class="cart-badge">1</span>
+                </div>
+            </button>
         </div>
 
         <!-- Navigation Arrows -->
@@ -97,19 +111,127 @@
                         <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 10%">Frs</th>
-                                    <th style="width: 25%">Réf / Desig</th>
-                                    <th style="width: 8%">stk</th>
-                                    <th style="width: 12%">Prix</th>
-                                    <th style="width: 12%">Cost</th>
-                                    <th style="width: 8%">Délai</th>
-                                    <th style="width: 10%">Min</th>
-                                    <th style="width: 15%">Action</th>
+                                    <th style="width: 6%">Frs</th>
+                                    <th style="width: 17%">Réf / Desig</th>
+                                    <th style="width: 6%">Stocks</th>
+                                    <th style="width: 10%">Appro</th>
+                                    <th style="width: 10%">Cout Directe</th>
+                                    <th style="width: 10%">Prix Revient</th>
+                                    <th style="width: 10%">Prix de Vente</th>
+                                    <th style="width: 6%">Dernier Achat</th>
+                                    <th style="width: 6%">Ecart</th>
+                                    <th style="width: 8%">Qte à confirmer</th>
+                                    <th style="width: 8%">Raison</th>
+                                    <th style="width: 3%">Info</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="i in 4" :key="i">
-                                    <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                                <tr v-if="isLoadingDetails">
+                                    <td colspan="12" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="quoteLineDetails.length === 0">
+                                    <td colspan="12" class="text-center p-4">Aucune donnée disponible</td>
+                                </tr>
+                                <tr v-else v-for="detail in quoteLineDetails" :key="detail.id"
+                                    @click="selectLine(detail)"
+                                    class="cursor-pointer transition-colors hover:bg-blue-50"
+                                    :class="{ 'bg-blue-100': isItemSelected(detail) }">
+                                    <td>
+                                        <div class="cell-reference">{{ detail.buyFromVendorNo }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ detail.no }}</div>
+                                        <div class="cell-description">{{ detail.descriptionStructured }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference" :class="getStyleClass(detail.styleInvNoImport)">{{
+                                            detail.inventoryWithoutImport }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-col gap-1">
+                                            <span class="stock-tag tag-import">Import : {{ detail.importInventory
+                                                }}</span>
+                                            <span class="stock-tag tag-cmd">Qte Cmd : {{ detail.qtyOnPurchOrder
+                                                }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(detail.directUnitCost, 2) }}</div>
+                                        <div class="cell-description">
+                                            {{ formatNumber(detail.LastDirectCost, 2) }}
+                                            <span v-if="getPercentageChange(detail, 'directUnitCost', 'LastDirectCost')"
+                                                :class="getPercentageClass(getPercentageChange(detail, 'directUnitCost', 'LastDirectCost'))"
+                                                class="percentage-indicator">
+                                                {{ getPercentageChange(detail, 'directUnitCost',
+                                                    'LastDirectCost') }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(detail.prixDeRevientCalcule, 3) }}
+                                        </div>
+                                        <div class="cell-description">
+                                            {{ formatNumber(detail.lastDirectUnitCostCalculated, 3) }}
+                                            <span
+                                                v-if="getPercentageChange(detail, 'prixDeRevientCalcule', 'lastDirectUnitCostCalculated')"
+                                                :class="getPercentageClass(getPercentageChange(detail, 'prixDeRevientCalcule', 'lastDirectUnitCostCalculated'))"
+                                                class="percentage-indicator">
+                                                {{ getPercentageChange(detail, 'prixDeRevientCalcule',
+                                                    'lastDirectUnitCostCalculated') }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(detail.calcAncienPrixDeVente, 3) }}
+                                        </div>
+                                        <div class="cell-description">
+                                            {{ formatNumber(detail.unitPriceLCY, 3) }}
+                                            <span
+                                                v-if="getPercentageChange(detail, 'calcAncienPrixDeVente', 'unitPriceLCY')"
+                                                :class="getPercentageClass(getPercentageChange(detail, 'calcAncienPrixDeVente', 'unitPriceLCY'))"
+                                                class="percentage-indicator">
+                                                {{ getPercentageChange(detail,
+                                                    'calcAncienPrixDeVente', 'unitPriceLCY') }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference" :class="getStyleClass(detail.styleDate)">{{
+                                            formatDate(detail.dateDernierAchat) }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ detail.gapUnitCost }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="qty-input-wrapper">
+                                            <input type="number" v-model.number="detail.quantity" class="qty-input"
+                                                min="0" />
+                                            <button class="validate-line-btn" title="Valider la ligne">
+                                                <i class="pi pi-check"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="reason-select-container">
+                                            <select v-model="detail.quoteLineReason" class="reason-select">
+                                                <option value=""></option>
+                                                <option v-for="reason in orderReasons" :key="reason.value"
+                                                    :value="reason.value">
+                                                    {{ reason.label }}
+                                                </option>
+                                            </select>
+                                            <button v-if="detail.quoteLineReason" class="clear-reason-btn"
+                                                @click="detail.quoteLineReason = ''" title="Effacer">
+                                                <i class="pi pi-times"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center h-full">
+                                            <i class="pi pi-info-circle info-icon cursor-pointer"
+                                                @click.stop="openInfoDialog(detail)"></i>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -135,29 +257,116 @@
                         <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 10%">Frs</th>
-                                    <th style="width: 25%">Réf / Desig</th>
-                                    <th style="width: 8%">stk</th>
-                                    <th style="width: 12%">Prix</th>
-                                    <th style="width: 12%">Cost</th>
-                                    <th style="width: 33%">Note</th>
+                                    <th style="width: 6%">Frs</th>
+                                    <th style="width: 17%">Réf / Desig</th>
+                                    <th style="width: 6%">Stocks</th>
+                                    <th style="width: 10%">Appro</th>
+                                    <th style="width: 10%">Prix / Date Devise</th>
+                                    <th style="width: 10%">Cout Calculé / Date</th>
+                                    <th style="width: 10%">Prix de vente</th>
+                                    <th style="width: 6%">Vente</th>
+                                    <th style="width: 6%">Achat</th>
+                                    <th style="width: 8%">Panier à Cmd</th>
+                                    <th style="width: 8%">Raison</th>
+                                    <th style="width: 3%">Info</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="i in 4" :key="i">
-                                    <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td>
+                                <tr v-if="isLoadingEquivalence">
+                                    <td colspan="12" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="equivalenceItems.length === 0">
+                                    <td colspan="12" class="text-center p-4">Aucune donnée disponible</td>
+                                </tr>
+                                <tr v-else v-for="item in equivalenceItems" :key="item.id"
+                                    @click="selectEquivalenceItem(item)"
+                                    class="cursor-pointer transition-colors hover:bg-blue-50"
+                                    :class="{ 'bg-blue-100': isItemSelected(item) }">
+                                    <td>
+                                        <div class="cell-reference">{{ item.vendorNo }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ item.no }}</div>
+                                        <div class="cell-description">{{ item.descriptionStructured }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ item.qtyStock }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-col gap-1">
+                                            <span class="stock-tag tag-import">Import : {{ item.qtyImport }}</span>
+                                            <span class="stock-tag tag-cmd">Qte Cmd : {{ item.qtyOnPurchOrder }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(item.lastCurrPrice, 2) }}</div>
+                                        <div class="cell-description">{{ formatDate(item.lastDate) }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 2) }}</div>
+                                        <div class="cell-description">{{ formatDate(item.lastPurshDate) }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 2) }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ item.totalVendu }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ item.totalAchete }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="qty-input-wrapper">
+                                            <input type="number" v-model.number="item.quantityToOrder" class="qty-input"
+                                                min="0" />
+                                            <button class="validate-line-btn" title="Valider la ligne">
+                                                <i class="pi pi-check"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="reason-select-container">
+                                            <select v-model="item.orderReason" class="reason-select">
+                                                <option value=""></option>
+                                                <option v-for="reason in orderReasons" :key="reason.value"
+                                                    :value="reason.value">
+                                                    {{ reason.label }}
+                                                </option>
+                                            </select>
+                                            <button v-if="item.orderReason" class="clear-reason-btn"
+                                                @click="item.orderReason = ''" title="Effacer">
+                                                <i class="pi pi-times"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center h-full">
+                                            <i class="pi pi-info-circle info-icon cursor-pointer"
+                                                @click.stop="openInfoDialog(item)"></i>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="table-footer">
-                        <div class="pagination-info">Affichage 1-4 sur 5</div>
+                        <div class="pagination-info" v-if="equivalenceItems.length > 0">
+                            {{ equivalencePagination.page * equivalencePagination.size + 1 }}-{{
+                                Math.min((equivalencePagination.page + 1) *
+                                    equivalencePagination.size, equivalencePagination.totalElements) }} sur {{
+                                equivalencePagination.totalElements }}
+                        </div>
                         <div class="pagination-controls">
-                            <button class="p-btn"><i class="pi pi-angle-double-left"></i></button>
-                            <button class="p-btn"><i class="pi pi-angle-left"></i></button>
-                            <span class="p-current">1</span>
-                            <button class="p-btn"><i class="pi pi-angle-right"></i></button>
-                            <button class="p-btn"><i class="pi pi-angle-double-right"></i></button>
+                            <button class="p-btn" :disabled="equivalencePagination.page === 0"
+                                @click="fetchEquivalenceItems(selectedDetail, equivalencePagination.page - 1)">
+                                <i class="pi pi-angle-left"></i>
+                            </button>
+                            <span class="p-current">{{ equivalencePagination.page + 1 }}</span>
+                            <button class="p-btn"
+                                :disabled="equivalencePagination.page >= equivalencePagination.totalPages - 1"
+                                @click="fetchEquivalenceItems(selectedDetail, equivalencePagination.page + 1)">
+                                <i class="pi pi-angle-right"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -180,8 +389,16 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="i in 4" :key="i">
-                                    <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td>
+                                <tr v-for="i in 4" :key="i"
+                                    @click="selectKitItem({ no: 'KIT-' + i, descriptionStructured: 'Composant Kit ' + i })"
+                                    class="cursor-pointer transition-colors hover:bg-blue-50"
+                                    :class="{ 'bg-blue-100': isItemSelected({ no: 'KIT-' + i }) }">
+                                    <td>KIT-{{ i }}</td>
+                                    <td>Composant Kit {{ i }}</td>
+                                    <td>1</td>
+                                    <td>10.00</td>
+                                    <td>10.00</td>
+                                    <td>Dispo</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -203,30 +420,56 @@
             <div class="right-column" :class="{ 'expanded': isSidebarExpanded }">
                 <div class="sidebar-header">
                     <div class="header-actions">
-                        <Button 
-                            :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" 
-                            text 
-                            rounded 
-                            @click="isSidebarExpanded = !isSidebarExpanded" 
-                            class="toggle-sidebar-btn" 
-                        />
+                        <Button :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text rounded
+                            @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
                         <button class="history-btn">Historique</button>
-                        <div class="item-title-inline">
-                            21174 • Temoins de freins
+                        <div class="item-title-inline" v-if="selectedHistoryItem">
+                            {{ selectedHistoryItem.no }} • {{ selectedHistoryItem.descriptionStructured }}
+                        </div>
+                        <div class="item-title-inline" v-else-if="selectedDetail">
+                            {{ selectedDetail.no }} • {{ selectedDetail.descriptionStructured }}
+                        </div>
+                        <div class="item-title-inline" v-else>
+                            {{ line.itemNo }} • {{ line.structuredDescription || line.description || 'Temoins de freins'
+                            }}
                         </div>
                         <div class="year-selector">
-                            <span class="arrow">&lt;</span>
-                            <span class="year">2025</span>
-                            <span class="arrow">&gt;</span>
+                            <button class="year-arrow" @click="changeYear(-1)">
+                                <i class="pi pi-chevron-left"></i>
+                            </button>
+                            <span class="year-display">{{ selectedYear }}</span>
+                            <button class="year-arrow" @click="changeYear(1)">
+                                <i class="pi pi-chevron-right"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 <div class="stats-bar">
-                    <div class="stats-column">Stk : 2</div>
-                    <div class="stats-column">Vente : 18</div>
-                    <div class="stats-column">Achat : 16</div>
-                    <div class="stats-column">Rupt : 1268</div>
+                    <div class="stats-column">Stock : {{ historyKpis.stock }}</div>
+                    <div class="stats-column">Vente : {{ Math.abs(historyKpis.vente) }}</div>
+                    <div class="stats-column">Achat : {{ historyKpis.achat }}</div>
+                    <div class="stats-column">Rupt : {{ historyKpis.rupt }}</div>
+                </div>
+
+                <div class="table-footer top-pagination">
+                    <div class="pagination-info" v-if="historyEntries.length > 0">
+                        {{ historyPagination.page * historyPagination.size + 1 }}-{{
+                            Math.min((historyPagination.page + 1) *
+                                historyPagination.size, historyPagination.totalElements) }} sur {{
+                            historyPagination.totalElements }}
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="p-btn" :disabled="historyPagination.page === 0"
+                            @click="fetchHistory(historyPagination.page - 1)">
+                            <i class="pi pi-angle-left"></i>
+                        </button>
+                        <span class="p-current">{{ historyPagination.page + 1 }}</span>
+                        <button class="p-btn" :disabled="historyPagination.page >= historyPagination.totalPages - 1"
+                            @click="fetchHistory(historyPagination.page + 1)">
+                            <i class="pi pi-angle-right"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-container history-container">
@@ -235,36 +478,155 @@
                             <thead>
                                 <tr>
                                     <th style="width: 15%">Date</th>
-                                    <th :style="{ width: isSidebarExpanded ? '20%' : '40%' }">Client</th>
+                                    <th style="width: 5%">T</th>
+                                    <template v-if="isSidebarExpanded">
+                                        <th style="width: 10%">Type</th>
+                                        <th style="width: 15%">N° Document</th>
+                                    </template>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '35%' }">Client / Frs</th>
                                     <th style="width: 10%">Qte</th>
                                     <template v-if="isSidebarExpanded">
-                                        <th style="width: 10%">Prix</th>
-                                        <th style="width: 15%">Total</th>
-                                        <th style="width: 15%">Statut</th>
+                                        <th style="width: 10%">Magasin</th>
                                     </template>
-                                    <th style="width: 15%">Action</th>
+                                    <th style="width: 15%">PU</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="i in 15" :key="i">
-                                    <td>&nbsp;</td>
-                                    <td></td>
-                                    <td></td>
+                                <tr v-if="isLoadingHistory">
+                                    <td :colspan="isSidebarExpanded ? 7 : 4" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="historyEntries.length === 0">
+                                    <td :colspan="isSidebarExpanded ? 7 : 4" class="text-center p-4">Aucune donnée
+                                        disponible</td>
+                                </tr>
+                                <tr v-else v-for="(entry, index) in historyEntries" :key="index">
+                                    <td>{{ formatDate(entry.postingDate) }}</td>
+                                    <td>
+                                        <div class="type-indicator-circle" :class="getEntryTypeClass(entry.entryType)">
+                                            {{ getEntryTypeLetter(entry.entryType) }}
+                                        </div>
+                                    </td>
                                     <template v-if="isSidebarExpanded">
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
+                                        <td>{{ entry.documentType }}</td>
+                                        <td>{{ entry.documentNo }}</td>
                                     </template>
-                                    <td></td>
+                                    <td>{{ entry.sourceNo }}</td>
+                                    <td>{{ entry.quantity }}</td>
+                                    <template v-if="isSidebarExpanded">
+                                        <td>{{ entry.locationCode }}</td>
+                                    </template>
+                                    <td>{{ formatNumber(calculatePU(entry), 2) }}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <div class="table-footer">
-                        <div class="pagination-controls">
-                            <button class="p-btn"><i class="pi pi-angle-left"></i></button>
-                            <span class="p-current">1</span>
-                            <button class="p-btn"><i class="pi pi-angle-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Article Info Dialog -->
+    <div v-if="showInfoDialog" class="info-dialog-overlay" @click.self="showInfoDialog = false">
+        <div class="info-dialog-container">
+            <!-- Header -->
+            <div class="info-dialog-header">
+                <div class="header-title">
+                    Informations Article . {{ selectedInfoItem?.no }} . {{ selectedInfoItem?.descriptionStructured }}
+                </div>
+                <div class="header-right">
+                    <img src="/images/articles/tecalliance_partner.png" alt="TecAlliance" class="tecalliance-logo">
+                    <button class="close-info-btn" @click="showInfoDialog = false">
+                        <i class="pi pi-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="info-dialog-body">
+                <div class="info-top-section">
+                    <!-- Image Gallery -->
+                    <div class="info-gallery">
+                        <div class="thumbnail-list">
+                            <button class="thumb-nav-btn up" @click="prevImage"><i
+                                    class="pi pi-chevron-up"></i></button>
+                            <div v-for="(thumb, index) in selectedInfoItem?.thumbnails" :key="index" class="thumb-item"
+                                :class="{ active: index === currentImageIndex }" @click="currentImageIndex = index">
+                                <img :src="thumb" alt="thumbnail">
+                            </div>
+                            <button class="thumb-nav-btn down" @click="nextImage"><i
+                                    class="pi pi-chevron-down"></i></button>
+                        </div>
+                        <div class="main-image-container">
+                            <img :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
+                                class="main-article-image">
+                        </div>
+                    </div>
+
+                    <!-- Technical Specs -->
+                    <div class="info-specs-container">
+                        <div class="brand-header">
+                            <img :src="selectedInfoItem?.brandLogo" alt="Brand" class="brand-logo">
+                            <div class="brand-info">
+                                <div class="brand-ref">N° de référence: {{ selectedInfoItem?.no }}</div>
+                                <div class="brand-desc">{{ selectedInfoItem?.descriptionStructured }}</div>
+                            </div>
+                        </div>
+                        <div class="specs-table">
+                            <div v-for="(spec, index) in selectedInfoItem?.specs" :key="index" class="spec-row">
+                                <div class="spec-label">{{ spec.label }}</div>
+                                <div class="spec-value">{{ spec.value }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stacked Sections -->
+                <div class="info-sections-container">
+                    <!-- OEM Numbers Section -->
+                    <div class="info-section">
+                        <div class="info-section-header">
+                            <i class="pi pi-list"></i>
+                            <span>Numéros OEM</span>
+                        </div>
+                        <div class="info-section-content">
+                            <div class="oe-numbers-list">
+                                <div v-for="(num, index) in selectedInfoItem?.oemNumbers" :key="index"
+                                    class="oe-number-item">
+                                    {{ num }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vehicles Section -->
+                    <div class="info-section">
+                        <div class="info-section-header">
+                            <i class="pi pi-car"></i>
+                            <span>Véhicules concernés</span>
+                        </div>
+                        <div class="info-section-content">
+                            <div class="vehicles-list-container">
+                                <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
+                                    <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
+                                        class="brand-group">
+                                        <div class="brand-toggle-row" @click="toggleBrand(brandGroup.brand)">
+                                            <i class="pi"
+                                                :class="expandedBrands.has(brandGroup.brand) ? 'pi-minus' : 'pi-plus'"></i>
+                                            <span class="brand-name">{{ brandGroup.brand }}</span>
+                                        </div>
+                                        <div v-if="expandedBrands.has(brandGroup.brand)" class="models-list">
+                                            <div v-for="(model, mIndex) in brandGroup.models" :key="mIndex"
+                                                class="model-item">
+                                                <i class="pi pi-plus model-plus-icon"></i>
+                                                <span class="model-text">{{ model }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="no-data-message">
+                                    Aucune donnée de véhicule disponible pour cet article.
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -273,40 +635,55 @@
     </div>
 
     <!-- Stock History Dialog -->
-    <Dialog 
-        v-model:visible="showHistoryDialog" 
-        modal 
-        :style="{ width: '50vw' }"
-        class="history-dialog"
-        :showHeader="false"
-    >
+    <Dialog v-model:visible="showHistoryDialog" modal :style="{ width: '50vw' }" class="history-dialog"
+        :showHeader="false">
         <div class="dialog-content-wrapper">
             <div class="sidebar-header dialog-header">
                 <div class="header-actions">
                     <button class="history-btn">Historique</button>
                     <div class="item-title-inline">
-                        {{ line.itemNo }} • {{ line.description || 'Temoins de freins' }}
+                        {{ line.itemNo }} • {{ line.structuredDescription || line.description || 'Temoins de freins' }}
                     </div>
                     <div class="year-selector">
-                        <span class="arrow">&lt;</span>
-                        <span class="year">2025</span>
-                        <span class="arrow">&gt;</span>
+                        <button class="year-arrow" @click="changeYear(-1)">
+                            <i class="pi pi-chevron-left"></i>
+                        </button>
+                        <span class="year-display">{{ selectedYear }}</span>
+                        <button class="year-arrow" @click="changeYear(1)">
+                            <i class="pi pi-chevron-right"></i>
+                        </button>
                     </div>
-                    <Button 
-                        icon="pi pi-times" 
-                        text 
-                        rounded 
-                        @click="showHistoryDialog = false" 
-                        class="close-dialog-btn" 
-                    />
+                    <Button icon="pi pi-times" text rounded @click="showHistoryDialog = false"
+                        class="close-dialog-btn" />
                 </div>
             </div>
 
             <div class="stats-bar dialog-stats-bar">
-                <div class="stats-column">Stk : 2</div>
-                <div class="stats-column">Vente : 18</div>
-                <div class="stats-column">Achat : 16</div>
-                <div class="stats-column">Rupt : 1268</div>
+                <div class="stats-column">Stock : {{ historyKpis.stock }}</div>
+                <div class="stats-column">Vente : {{ Math.abs(historyKpis.vente) }}</div>
+                <div class="stats-column">Achat : {{ historyKpis.achat }}</div>
+                <div class="stats-column">Rupt : {{ historyKpis.rupt }}</div>
+            </div>
+
+            <div class="table-footer centered-footer top-pagination">
+                <div class="pagination-info" v-if="historyEntries.length > 0">
+                    {{ historyPagination.page * historyPagination.size + 1 }}-{{ Math.min((historyPagination.page +
+                        1) *
+                        historyPagination.size, historyPagination.totalElements) }} sur {{
+                        historyPagination.totalElements
+                    }}
+                </div>
+                <div class="pagination-controls centered">
+                    <button class="p-btn" :disabled="historyPagination.page === 0"
+                        @click="fetchHistory(historyPagination.page - 1)">
+                        <i class="pi pi-angle-left"></i>
+                    </button>
+                    <span class="p-current">{{ historyPagination.page + 1 }}</span>
+                    <button class="p-btn" :disabled="historyPagination.page >= historyPagination.totalPages - 1"
+                        @click="fetchHistory(historyPagination.page + 1)">
+                        <i class="pi pi-angle-right"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="table-container dialog-history-container">
@@ -315,35 +692,38 @@
                         <thead>
                             <tr>
                                 <th style="width: 15%">Date</th>
-                                <th style="width: 20%">Client</th>
+                                <th style="width: 5%">T</th>
+                                <th style="width: 10%">Type</th>
+                                <th style="width: 15%">N° Document</th>
+                                <th style="width: 20%">Client / Frs</th>
                                 <th style="width: 10%">Qte</th>
-                                <th style="width: 10%">Prix</th>
-                                <th style="width: 15%">Total</th>
-                                <th style="width: 15%">Statut</th>
-                                <th style="width: 15%">Action</th>
+                                <th style="width: 10%">Magasin</th>
+                                <th style="width: 15%">PU</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="i in 12" :key="i">
-                                <td>12/12/2025</td>
-                                <td>Client {{ selectedCompany }} {{ i }}</td>
-                                <td>{{ Math.floor(Math.random() * 10) + 1 }}</td>
-                                <td>{{ (Math.random() * 100).toFixed(2) }} €</td>
-                                <td>{{ (Math.random() * 1000).toFixed(2) }} €</td>
-                                <td><span class="status-badge">Livré</span></td>
+                            <tr v-if="isLoadingHistory">
+                                <td colspan="8" class="text-center p-4">Chargement...</td>
+                            </tr>
+                            <tr v-else-if="historyEntries.length === 0">
+                                <td colspan="8" class="text-center p-4">Aucune donnée disponible</td>
+                            </tr>
+                            <tr v-else v-for="(entry, index) in historyEntries" :key="index">
+                                <td>{{ formatDate(entry.postingDate) }}</td>
                                 <td>
-                                    <Button icon="pi pi-eye" text rounded size="small" />
+                                    <div class="type-indicator-circle" :class="getEntryTypeClass(entry.entryType)">
+                                        {{ getEntryTypeLetter(entry.entryType) }}
+                                    </div>
                                 </td>
+                                <td>{{ entry.documentType }}</td>
+                                <td>{{ entry.documentNo }}</td>
+                                <td>{{ entry.sourceNo }}</td>
+                                <td>{{ entry.quantity }}</td>
+                                <td>{{ entry.locationCode }}</td>
+                                <td>{{ formatNumber(calculatePU(entry), 2) }}</td>
                             </tr>
                         </tbody>
                     </table>
-                </div>
-                <div class="table-footer centered-footer">
-                    <div class="pagination-controls centered">
-                        <button class="p-btn"><i class="pi pi-angle-left"></i></button>
-                        <span class="p-current">1</span>
-                        <button class="p-btn"><i class="pi pi-angle-right"></i></button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -351,9 +731,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+
+import { useCompareQuoteStore } from '../stores/compareQuote'
 
 const props = defineProps({
     line: {
@@ -366,11 +748,380 @@ const props = defineProps({
     }
 })
 
-defineEmits(['back', 'prev', 'next'])
+const emit = defineEmits(['back', 'prev', 'next'])
 
+const store = useCompareQuoteStore()
 const isSidebarExpanded = ref(false)
 const showHistoryDialog = ref(false)
 const selectedCompany = ref('')
+const quoteLineDetails = ref([])
+const isLoadingDetails = ref(false)
+const selectedDetail = ref(null)
+const selectedHistoryItem = ref(null)
+const equivalenceItems = ref([])
+const isLoadingEquivalence = ref(false)
+const equivalencePagination = ref({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0
+})
+
+// History State
+const selectedYear = ref(new Date().getFullYear())
+const historyEntries = ref([])
+const isLoadingHistory = ref(false)
+const historyPagination = ref({
+    page: 0,
+    size: 20,
+    totalElements: 0,
+    totalPages: 0
+})
+const historyKpis = ref({
+    stock: 0,
+    vente: 0,
+    achat: 0,
+    rupt: 0
+})
+
+// Article Info Dialog State
+const showInfoDialog = ref(false)
+const selectedInfoItem = ref(null)
+const currentImageIndex = ref(0)
+const expandedBrands = ref(new Set())
+
+const toggleBrand = (brand) => {
+    if (expandedBrands.value.has(brand)) {
+        expandedBrands.value.delete(brand)
+    } else {
+        expandedBrands.value.add(brand)
+    }
+}
+
+const nextImage = () => {
+    if (!selectedInfoItem.value) return
+    currentImageIndex.value = (currentImageIndex.value + 1) % selectedInfoItem.value.thumbnails.length
+}
+
+const prevImage = () => {
+    if (!selectedInfoItem.value) return
+    currentImageIndex.value = (currentImageIndex.value - 1 + selectedInfoItem.value.thumbnails.length) % selectedInfoItem.value.thumbnails.length
+}
+
+const orderReasons = [
+    { value: 'Price', label: 'Prix augmenté' },
+    { value: 'Replaced', label: 'Remplacé autre fabricant' },
+    { value: 'History', label: 'Mouvement lent' },
+    { value: 'New', label: 'Nouveau article' },
+    { value: 'Waiting', label: 'En attente devis autre fabricant' },
+    { value: 'SurStock', label: 'Sur Stockage' }
+]
+
+const handleKeyDown = (event) => {
+    if (event.key === 'F8') {
+        event.preventDefault()
+        emit('prev')
+    } else if (event.key === 'F9') {
+        event.preventDefault()
+        emit('next')
+    }
+}
+
+const formatNumber = (value, decimals) => {
+    if (value === null || value === undefined) return ''
+    return Number(value).toFixed(decimals)
+}
+
+const formatDate = (dateString) => {
+    if (!dateString || dateString === '0001-01-01') return '-'
+    return dateString
+}
+
+const getStyleClass = (styleValue) => {
+    if (styleValue === 'Favorable') return 'status-favorable'
+    if (styleValue === 'Unfavorable') return 'status-unfavorable'
+    if (styleValue === 'Attention') return 'status-attention'
+    return ''
+}
+
+const openInfoDialog = (item) => {
+    selectedInfoItem.value = {
+        ...item,
+        brand: 'febi bilstein',
+        brandLogo: '/images/articles/febi_logo.png',
+        mainImage: '/images/articles/rotule_1.jpg',
+        thumbnails: [
+            '/images/articles/rotule_1.jpg',
+            '/images/articles/rotule_2.jpg',
+            '/images/articles/rotule_3.jpg'
+        ],
+        specs: [
+            { label: "Côté d'assemblage", value: "Essieu avant gauche, inférieur, Essieu avant droit" },
+            { label: "Dimension du cône [mm]", value: "18" },
+            { label: "Poids [kg]", value: "0,470" },
+            { label: "Type de bras oscillant", value: "pour bras oscillant transversal" },
+            { label: "Tenir compte des informations service", value: "" }
+        ],
+        oemNumbers: [
+            "MERCEDES-BENZ 124 333 01 27",
+            "MERCEDES-BENZ 124 333 03 27",
+            "MERCEDES-BENZ A124 333 01 27",
+            "MERCEDES-BENZ A124 333 03 27",
+            "MERCEDES-BENZ 124 333 01 27",
+            "MERCEDES-BENZ 124 333 03 27",
+            "MERCEDES-BENZ A124 333 01 27",
+            "MERCEDES-BENZ A124 333 03 27"
+        ],
+        vehicles: [
+            {
+                brand: 'MERCEDES-BENZ',
+                models: [
+                    'MERCEDES-BENZ W124 Coupé (C124) ( 03.1987 - 07.1993 , 118 - 231 CH)',
+                    'MERCEDES-BENZ W124 Berline (W124) ( 12.1984 - 08.1993 , 72 - 326 CH)',
+                    'MERCEDES-BENZ W124 Break (S124) ( 09.1985 - 07.1993 , 72 - 197 CH)',
+                    'MERCEDES-BENZ SL Cabriolet (R129) ( 03.1989 - 10.2001 , 190 - 381 CH)',
+                    'MERCEDES-BENZ 190 (W201) ( 10.1982 - 08.1993 , 72 - 235 CH)',
+                    'MERCEDES-BENZ Classe E Berline (W124) ( 06.1993 - 06.1995 , 75 - 381 CH)',
+                    'MERCEDES-BENZ Classe E Break (S124) ( 06.1993 - 06.1996 , 113 - 197 CH)',
+                    'MERCEDES-BENZ SL Cabriolet (R107) ( 09.1985 - 08.1989 , 180 - 245 CH)',
+                    'MERCEDES-BENZ Classe E Coupé (C124) ( 06.1993 - 06.1997 , 136 - 272 CH)',
+                    'MERCEDES-BENZ Classe E Cabriolet (A124) ( 06.1993 - 03.1998 , 136 - 272 CH)'
+                ]
+            }
+        ]
+    }
+    currentImageIndex.value = 0
+    showInfoDialog.value = true
+}
+
+const selectLine = (detail) => {
+    // Reset year to current year on selection
+    selectedYear.value = new Date().getFullYear()
+    // Always update history selection
+    selectedHistoryItem.value = detail
+
+    // Check if it's already the active detail to avoid redundant equivalence fetching
+    const isAlreadySelectedDetail = selectedDetail.value &&
+        ((detail.id !== undefined && selectedDetail.value.id === detail.id) ||
+            (detail.id === undefined && selectedDetail.value.no === detail.no));
+
+    if (isAlreadySelectedDetail) return
+
+    selectedDetail.value = detail
+    historyKpis.value.stock = detail.inventoryWithoutImport || 0
+    fetchEquivalenceItems(detail)
+}
+
+const selectEquivalenceItem = (item) => {
+    selectedYear.value = new Date().getFullYear()
+    selectedHistoryItem.value = item
+    historyKpis.value.stock = item.qtyStock || 0
+}
+
+const selectKitItem = (item) => {
+    selectedYear.value = new Date().getFullYear()
+    selectedHistoryItem.value = item
+    // For kits, we might need a specific logic if stock is not numeric
+    historyKpis.value.stock = item.qtyStock || 0
+}
+
+const fetchHistory = async (page = 0) => {
+    if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+
+    isLoadingHistory.value = true
+    try {
+        const data = await store.fetchItemLedgerEntries(
+            selectedHistoryItem.value.no,
+            selectedYear.value,
+            page,
+            historyPagination.value.size
+        )
+
+        if (data && data.content) {
+            historyEntries.value = data.content
+            // Support new API structure where pagination is at root
+            // page, totalElements, totalPages
+            historyPagination.value = {
+                ...historyPagination.value,
+                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements : 0,
+                totalPages: data.totalPages !== undefined ? data.totalPages : 1
+            }
+
+            // Extract KPIs from quantityByEntryType
+            if (data.quantityByEntryType) {
+                historyKpis.value = {
+                    ...historyKpis.value,
+                    vente: data.quantityByEntryType.Sale || 0,
+                    achat: data.quantityByEntryType.Purchase || 0,
+                    rupt: data.quantityByEntryType.Rupture || 0
+                }
+            }
+        } else {
+            historyEntries.value = Array.isArray(data) ? data : []
+            historyPagination.value.totalElements = historyEntries.value.length
+            historyPagination.value.page = 0
+            historyPagination.value.totalPages = 1
+        }
+    } catch (error) {
+        console.error('Error fetching history:', error)
+        historyEntries.value = []
+    } finally {
+        isLoadingHistory.value = false
+    }
+}
+
+const changeYear = (delta) => {
+    selectedYear.value += delta
+}
+
+// Watch for selection or year changes to refresh history
+watch([selectedHistoryItem, selectedYear], () => {
+    if (selectedHistoryItem.value) {
+        fetchHistory(0)
+    }
+}, { immediate: true })
+
+const calculatePU = (entry) => {
+    if (!entry) return 0
+    const qty = Math.abs(entry.quantity) || 1
+
+    if (entry.entryType === 'Sale') {
+        const amount = entry.salesAmountActual || entry.salesAmountExpected || 0
+        return amount / qty
+    } else if (entry.entryType === 'Purchase') {
+        const amount = entry.costAmountActual || entry.costAmountExpected || 0
+        return amount / qty
+    }
+    return 0
+}
+
+const getEntryTypeLetter = (entryType) => {
+    if (!entryType) return ''
+    if (entryType === 'Sale') return 'S'
+    if (entryType === 'Purchase') return 'P'
+    if (entryType === 'Transfer') return 'T'
+    if (entryType === 'Rupture') return 'R'
+    return entryType.charAt(0).toUpperCase()
+}
+
+const getEntryTypeClass = (entryType) => {
+    if (!entryType) return ''
+    if (entryType === 'Sale') return 'type-s'
+    if (entryType === 'Purchase') return 'type-p'
+    if (entryType === 'Transfer') return 'type-t'
+    if (entryType === 'Rupture') return 'type-r'
+    return 'type-t'
+}
+
+const isItemSelected = (item) => {
+    if (!selectedHistoryItem.value) return false
+    // If both have IDs, compare IDs
+    if (item.id !== undefined && selectedHistoryItem.value.id !== undefined) {
+        return item.id === selectedHistoryItem.value.id
+    }
+    // Otherwise fallback to comparing item numbers
+    return item.no === selectedHistoryItem.value.no
+}
+
+const getPercentageChange = (detail, field1, field2) => {
+    const value1 = detail[field1]
+    const value2 = detail[field2]
+
+    if (value2 === null || value2 === undefined || value2 === 0) return null
+    if (value1 === null || value1 === undefined) return null
+
+    const percentageChange = ((value1 - value2) / value2) * 100
+
+    if (Math.abs(percentageChange) < 0.01) return null // Don't show if ~0%
+
+    const arrow = percentageChange > 0 ? '↑' : percentageChange < 0 ? '↓' : ''
+    const sign = percentageChange > 0 ? '+' : ''
+
+    return `${arrow} ${sign}${percentageChange.toFixed(1)}%`
+}
+
+const getPercentageClass = (percentageText) => {
+    if (!percentageText) return ''
+    if (percentageText.includes('↑')) return 'percentage-increase'
+    if (percentageText.includes('↓')) return 'percentage-decrease'
+    return 'percentage-neutral'
+}
+
+const fetchDetails = async () => {
+    if (!props.line || !props.line.compareQuoteNo || !props.line.itemNo) return
+
+    isLoadingDetails.value = true
+    try {
+        const data = await store.fetchQuoteLineDetails(props.line.compareQuoteNo, props.line.itemNo)
+        quoteLineDetails.value = Array.isArray(data) ? data : [data]
+        if (quoteLineDetails.value.length > 0) {
+            selectedDetail.value = quoteLineDetails.value[0]
+            selectedHistoryItem.value = quoteLineDetails.value[0]
+            // Auto-load equivalence items for the first line
+            fetchEquivalenceItems(quoteLineDetails.value[0])
+        }
+    } catch (error) {
+        console.error('Error fetching details:', error)
+    } finally {
+        isLoadingDetails.value = false
+    }
+}
+
+const fetchEquivalenceItems = async (detail, page = 0) => {
+    if (!detail || !detail.ReferenceMaster || !detail.no) return
+
+    isLoadingEquivalence.value = true
+    try {
+        const data = await store.fetchEquivalenceItems(
+            detail.ReferenceMaster,
+            detail.no,
+            page,
+            equivalencePagination.value.size
+        )
+
+        if (data && data.content) {
+            equivalenceItems.value = data.content.map(item => ({
+                ...item,
+                quantityToOrder: 1
+            }))
+            equivalencePagination.value = {
+                ...equivalencePagination.value,
+                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements : 0,
+                totalPages: data.totalPages !== undefined ? data.totalPages : 1
+            }
+        } else {
+            const items = Array.isArray(data) ? data : [data]
+            equivalenceItems.value = items.map(item => ({
+                ...item,
+                quantityToOrder: 1
+            }))
+            equivalencePagination.value.totalElements = equivalenceItems.value.length
+            equivalencePagination.value.page = 0
+            equivalencePagination.value.totalPages = 1
+        }
+    } catch (error) {
+        console.error('Error fetching equivalence items:', error)
+        equivalenceItems.value = []
+    } finally {
+        isLoadingEquivalence.value = false
+    }
+}
+
+// Watch for line changes to refetch data
+watch(() => props.line, () => {
+    fetchDetails()
+}, { deep: true })
+
+onMounted(() => {
+    window.addEventListener('keydown', handleKeyDown)
+    fetchDetails()
+})
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeyDown)
+})
 
 const openHistory = (company) => {
     selectedCompany.value = company
@@ -396,84 +1147,113 @@ const openHistory = (company) => {
     align-items: center;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 10px 20px;
-    gap: 20px;
+    padding: 10px 10px;
+    gap: 0;
     width: 100%;
     background: white;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .back-btn {
+    width: 2%;
     color: #3b82f6 !important;
+    padding: 0 !important;
 }
 
 .item-info {
+    width: 15%;
+    display: flex;
+    justify-content: space-between;
+    padding-left: 5px;
+    height: 54px;
+}
+
+.info-left {
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    padding-right: 5px;
+    height: 100%;
 }
 
 .item-no {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     font-weight: 800;
     margin: 0;
     color: #1e293b;
     line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.page-indicator-wrapper {
+.item-desc {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 8px;
+}
+
+.info-right {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 2px;
-    width: 100%;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    min-width: fit-content;
+    padding: 0;
+    height: 100%;
 }
 
 .status-dot {
-    width: 10px;
-    height: 10px;
-    background-color: #22c55e;
+    width: 12px;
+    height: 12px;
+    background-color: #65a30d;
     border-radius: 50%;
-    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+    margin-top: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .page-indicator {
-    background-color: #64748b;
-    color: #fff;
-    padding: 2px 12px;
+    background: #e2e8f0;
+    color: #1e293b;
+    padding: 2px 8px;
     border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    min-width: 80px;
-    text-align: center;
-    margin-left: auto;
+    font-size: 0.85rem;
+    font-weight: 800;
+    white-space: nowrap;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    margin-bottom: 4px;
 }
 
 .header-middle {
-    flex-shrink: 0;
+    width: 8%;
+    display: flex;
+    justify-content: center;
 }
 
 .count-badge {
     background-color: #fbbf24;
     color: #92400e;
-    padding: 0 20px;
-    border-radius: 10px;
+    padding: 0 8px;
+    border-radius: 8px;
     font-weight: 800;
-    font-size: 1rem;
+    font-size: 1.1rem;
     box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
     height: 54px;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 90%;
+    border: 1px solid #3b82f6;
 }
 
 .header-stocks {
-    flex-grow: 1;
+    width: 65%;
     display: flex;
     align-items: center;
     border: 1px solid #3b82f6;
@@ -491,11 +1271,11 @@ const openHistory = (company) => {
 }
 
 .stock-column:first-child {
-    width: 10%;
+    width: 8%;
 }
 
 .stock-column:not(:first-child) {
-    width: 30%;
+    width: 30.6%;
 }
 
 .stock-column:not(:last-child)::after {
@@ -512,9 +1292,11 @@ const openHistory = (company) => {
 .stocks-label {
     color: #3b82f6;
     font-weight: 800;
-    font-size: 1rem;
+    font-size: 1.1rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    width: 100%;
+    text-align: center;
 }
 
 .stock-part {
@@ -522,7 +1304,7 @@ const openHistory = (company) => {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0 8px;
+    padding: 0 5px;
     position: relative;
 }
 
@@ -535,9 +1317,17 @@ const openHistory = (company) => {
     background-color: #f1f5f9;
 }
 
-.stock-part.ste { width: 20%; }
-.stock-part.stock { width: 40%; }
-.stock-part.purchase { width: 40%; }
+.stock-part.ste {
+    width: 20%;
+}
+
+.stock-part.stock {
+    width: 40%;
+}
+
+.stock-part.purchase {
+    width: 40%;
+}
 
 .stock-part:not(:last-child)::after {
     content: "";
@@ -550,7 +1340,7 @@ const openHistory = (company) => {
 }
 
 .stock-label-mini {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: #64748b;
     font-weight: 700;
     text-transform: uppercase;
@@ -559,7 +1349,7 @@ const openHistory = (company) => {
 }
 
 .stock-value-main {
-    font-size: 0.9rem;
+    font-size: 1.0rem;
     font-weight: 800;
     color: #1e293b;
     line-height: 1.1;
@@ -567,24 +1357,50 @@ const openHistory = (company) => {
 
 .stock-value-main.company {
     color: #3b82f6;
+    font-size: 0.9rem;
+}
+
+.stock-value-main.green {
+    color: #16a34a;
+}
+
+.stock-value-main.red {
+    color: #dc2626;
+}
+
+.stock-value-main.date {
     font-size: 0.85rem;
 }
 
-.stock-value-main.green { color: #16a34a; }
-.stock-value-main.red { color: #dc2626; }
-
-.stock-value-main.date {
-    font-size: 0.8rem;
+.order-total {
+    width: 7%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid #3b82f6;
+    padding: 0 4px;
+    height: 54px;
+    border-radius: 8px;
+    color: #1e293b;
+    font-weight: 700;
+    font-size: 1.0rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    margin: 0 3px;
 }
 
-.header-right {
-    flex-shrink: 0;
+.order-total i {
+    color: #3b82f6;
+    font-size: 1rem;
 }
 
 .cart-btn {
-    border: 1px solid #e2e8f0;
+    width: 3%;
+    border: 1px solid #3b82f6;
     border-radius: 10px;
-    padding: 5px 15px;
+    padding: 0;
     background: #fff;
     cursor: pointer;
     height: 54px;
@@ -592,6 +1408,31 @@ const openHistory = (company) => {
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+}
+
+.cart-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 2px solid white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .cart-btn:hover {
@@ -604,6 +1445,241 @@ const openHistory = (company) => {
     color: #f59e0b;
 }
 
+/* Quantity Input Styles */
+.qty-input-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.qty-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.qty-input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    color: #1e293b;
+    background-color: #f8fafc;
+    transition: all 0.2s ease;
+    outline: none;
+    text-align: right;
+    -moz-appearance: textfield;
+}
+
+.info-icon {
+    color: #3b82f6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.info-icon:hover {
+    color: #2563eb;
+    transform: scale(1.2);
+}
+
+.validate-line-btn {
+    background: none;
+    border: none;
+    color: #16a34a;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.validate-line-btn:hover {
+    color: #16a34a;
+    background-color: #f0fdf4;
+}
+
+.validate-line-btn i {
+    font-size: 1rem;
+}
+
+.qty-input:hover {
+    border-color: #cbd5e1;
+    background-color: #fff;
+}
+
+.qty-input:focus {
+    border-color: #3b82f6;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Hide Spinners */
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.reason-select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    background-color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 28px;
+}
+
+.reason-select:hover {
+    border-color: #cbd5e1;
+    background-color: #fff;
+}
+
+.reason-select:focus {
+    border-color: #3b82f6;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.reason-select-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.clear-reason-btn {
+    position: absolute;
+    right: 32px;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    z-index: 1;
+}
+
+.clear-reason-btn:hover {
+    color: #ef4444;
+}
+
+.clear-reason-btn i {
+    font-size: 0.75rem;
+}
+
+/* Table Cell Styles */
+.cell-reference {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0f172a;
+    /* Slate 900 */
+    line-height: 1.2;
+    margin-bottom: 4px;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-favorable {
+    color: #16a34a !important;
+    /* Green 600 */
+}
+
+.status-unfavorable {
+    color: #dc2626 !important;
+    /* Red 600 */
+}
+
+.status-attention {
+    color: #f97316 !important;
+    /* Orange 500 */
+}
+
+/* Percentage Indicator Styles */
+.percentage-indicator {
+    display: inline-block;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.percentage-increase {
+    color: #ef4444 !important;
+    background-color: #fee2e2 !important;
+}
+
+.percentage-decrease {
+    color: #10b981 !important;
+    background-color: #d1fae5 !important;
+}
+
+.percentage-neutral {
+    color: #1e293b !important;
+    background-color: #f1f5f9 !important;
+}
+
+.cell-description {
+    font-size: 0.85rem;
+    color: #64748b;
+    /* Slate 500 */
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stock-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    width: fit-content;
+}
+
+.tag-import {
+    background-color: #dbeafe;
+    /* Blue 100 */
+    color: #1e40af;
+    /* Blue 800 */
+    border: 1px solid #bfdbfe;
+}
+
+.tag-cmd {
+    background-color: #ffedd5;
+    /* Orange 100 */
+    color: #9a3412;
+    /* Orange 800 */
+    border: 1px solid #fed7aa;
+}
+
 /* Main Layout Styles */
 .main-layout {
     display: flex;
@@ -614,7 +1690,7 @@ const openHistory = (company) => {
 }
 
 .left-column {
-    width: 70%;
+    width: 75%;
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -624,7 +1700,7 @@ const openHistory = (company) => {
 }
 
 .right-column {
-    width: 30%;
+    width: 25%;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 15px;
@@ -633,14 +1709,14 @@ const openHistory = (company) => {
     gap: 12px;
     background: white;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .right-column.expanded {
     width: 50%;
 }
 
-.right-column.expanded ~ .left-column,
+.right-column.expanded~.left-column,
 .main-layout:has(.right-column.expanded) .left-column {
     width: 50%;
 }
@@ -653,7 +1729,7 @@ const openHistory = (company) => {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .table-header-row {
@@ -678,6 +1754,7 @@ const openHistory = (company) => {
 .modern-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .modern-table th {
@@ -697,6 +1774,8 @@ const openHistory = (company) => {
     color: #334155;
     border-bottom: 1px solid #f1f5f9;
     height: 40px;
+    vertical-align: middle;
+    overflow: hidden;
 }
 
 .modern-table tbody tr:nth-child(even) {
@@ -707,6 +1786,44 @@ const openHistory = (company) => {
     background-color: #f1f5f9;
 }
 
+/* Type Indicator Circles */
+.type-indicator-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: white;
+    margin: 0 auto;
+}
+
+.type-s {
+    background-color: #10b981;
+    /* Green 500 */
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.type-p {
+    background-color: #3b82f6;
+    /* Blue 500 */
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.type-t {
+    background-color: #f97316;
+    /* Orange 500 */
+    box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
+}
+
+.type-r {
+    background-color: #ef4444;
+    /* Red 500 */
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
 /* Table Footer & Pagination */
 .table-footer {
     background-color: #f8fafc;
@@ -715,6 +1832,13 @@ const openHistory = (company) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.top-pagination {
+    border-top: none;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 0;
+    border-radius: 0;
 }
 
 .pagination-info {
@@ -757,6 +1881,12 @@ const openHistory = (company) => {
 }
 
 /* Sidebar Specific Styles */
+.sidebar-header {
+    background-color: #f8fafc;
+    padding: 15px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
 .header-actions {
     display: flex;
     align-items: center;
@@ -805,16 +1935,46 @@ const openHistory = (company) => {
 
 .year-selector {
     width: 20%;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 10px 12px;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    padding: 4px 8px;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
-    font-weight: 700;
-    font-size: 0.85rem;
+    justify-content: space-between;
     background: #f8fafc;
+    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.05);
+}
+
+.year-arrow {
+    background: transparent;
+    border: none;
+    color: #3b82f6;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 6px;
+}
+
+.year-arrow:hover {
+    background-color: #eff6ff;
+    transform: scale(1.1);
+}
+
+.year-arrow i {
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.year-display {
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: #1e40af;
+    /* Blue 800 */
+    min-width: 45px;
+    text-align: center;
 }
 
 .stats-bar {
@@ -941,5 +2101,371 @@ const openHistory = (company) => {
 
 .nav-arrow i {
     font-size: 1.2rem;
+}
+
+/* Article Info Dialog Styles */
+.info-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.info-dialog-container {
+    background: white;
+    width: 1200px;
+    max-width: 95vw;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e2e8f0;
+}
+
+.info-dialog-header {
+    padding: 15px 20px;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-title {
+    color: #1e293b;
+    /* Noir / Slate 900 */
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.tecalliance-logo {
+    height: 50px;
+}
+
+.close-info-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    transition: color 0.2s;
+}
+
+.close-info-btn:hover {
+    color: #ef4444;
+}
+
+.info-dialog-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.info-top-section {
+    display: flex;
+    gap: 20px;
+    height: 500px;
+}
+
+.info-gallery {
+    flex: 1;
+    display: flex;
+    gap: 15px;
+    border: 1px solid #f59e0b;
+    /* Orange border */
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.thumbnail-list {
+    width: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.thumb-item {
+    width: 70px;
+    height: 70px;
+    border: 1px solid #e2e8f0;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.thumb-item.active {
+    border-color: #f59e0b;
+}
+
+.thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.thumb-nav-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px;
+}
+
+.main-image-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+.main-article-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.info-specs-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    border: 1px solid #16a34a;
+    /* Green border */
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.brand-header {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #16a34a;
+}
+
+.brand-logo {
+    height: 40px;
+}
+
+.brand-ref {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #1e293b;
+}
+
+.brand-desc {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.specs-table {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.spec-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    padding: 4px 0;
+}
+
+.spec-label {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.spec-value {
+    color: #1e293b;
+    font-weight: 700;
+    text-align: right;
+    max-width: 60%;
+}
+
+.info-sections-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.info-section {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.info-section-header {
+    background: #f8fafc;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.95rem;
+}
+
+.info-section-header i {
+    color: #16a34a;
+}
+
+.info-section-content {
+    padding: 15px;
+}
+
+.content-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #334155;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+}
+
+.oe-numbers-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.oe-number-item {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #475569;
+    text-align: left;
+    padding: 2px 0;
+}
+
+.vehicles-list-container {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.vehicle-header {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #1e293b;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 15px;
+}
+
+.brand-group {
+    margin-bottom: 10px;
+}
+
+.brand-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    border-radius: 4px;
+}
+
+.brand-toggle-row:hover {
+    background: #f8fafc;
+}
+
+.brand-toggle-row i {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.brand-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #334155;
+    text-transform: uppercase;
+}
+
+.models-list {
+    padding-left: 35px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 5px;
+}
+
+.model-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+}
+
+.model-plus-icon {
+    font-size: 0.8rem;
+    color: #16a34a;
+    font-weight: 900;
+}
+
+.model-text {
+    font-size: 0.95rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+.no-data-message {
+    color: #94a3b8;
+    font-style: italic;
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 20px;
+}
+
+.info-dialog-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+/* Active Row Indicator */
+.bg-blue-100 {
+    background-color: #dbeafe !important;
+}
+
+.bg-blue-100 td:first-child {
+    position: relative;
+}
+
+.bg-blue-100 td:first-child::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #3b82f6;
+    box-shadow: 2px 0 4px rgba(59, 130, 246, 0.2);
 }
 </style>

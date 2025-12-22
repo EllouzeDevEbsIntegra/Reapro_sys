@@ -42,9 +42,7 @@
                     @click="onPage({ page: filters.page - 1, rows: pageSize })" />
 
                 <div class="flex items-center gap-1 mx-1">
-                    <Button v-for="page in totalPages" :key="page" :label="page.toString()" size="small"
-                        class="page-num-btn" :class="{ 'active-page': filters.page === page - 1 }"
-                        @click="onPage({ page: page - 1, rows: pageSize })" />
+                    <Button :label="(filters.page + 1).toString()" size="small" class="page-num-btn active-page" />
                 </div>
 
                 <Button icon="pi pi-angle-right" text rounded size="small" :disabled="filters.page >= totalPages - 1"
@@ -60,6 +58,7 @@
             </div>
         </div>
     </div>
+
 </template>
 
 <script setup>

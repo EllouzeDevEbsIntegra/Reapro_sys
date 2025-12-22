@@ -61,8 +61,14 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 // Handle both paginated and non-paginated responses
                 if (response.data.content) {
                     this.selectedQuoteLines = response.data.content
-                    this.totalLinesElements = response.data.totalElements
-                    this.currentLinesPage = response.data.number
+                    // Check for nested page object (new API structure) or root level (old structure)
+                    if (response.data.page) {
+                        this.totalLinesElements = response.data.page.totalElements
+                        this.currentLinesPage = response.data.page.number
+                    } else {
+                        this.totalLinesElements = response.data.totalElements
+                        this.currentLinesPage = response.data.number
+                    }
                 } else {
                     this.selectedQuoteLines = response.data
                     this.totalLinesElements = response.data.length
@@ -77,6 +83,63 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
 
         clearSelectedLines() {
             this.selectedQuoteLines = []
+        },
+
+        async fetchQuoteLineDetails(compareQuoteNo, referenceMaster) {
+            this.isLoading = true
+            this.error = null
+            try {
+                const response = await axios.get('/api/bc/quote-lines', {
+                    params: {
+                        compareQuoteNo,
+                        referenceMaster
+                    }
+                })
+                return response.data
+            } catch (err) {
+                console.error('Fetch line details error:', err)
+                throw err
+            } finally {
+                this.isLoading = false
+            }
+        },
+
+        // Fetch item ledger entries (history)
+        async fetchItemLedgerEntries(itemNo, year, page = 0, size = 20) {
+            this.error = null
+            try {
+                const response = await axios.get('/api/bc/item-ledger-entries', {
+                    params: {
+                        itemNo,
+                        year,
+                        page,
+                        size
+                    }
+                })
+                return response.data
+            } catch (err) {
+                console.error('Fetch item ledger entries error:', err)
+                throw err
+            }
+        },
+
+        // Fetch equivalence items from BC API
+        async fetchEquivalenceItems(referenceMaster, no, page = 0, size = 10) {
+            this.error = null
+            try {
+                const response = await axios.get('/api/bc/items', {
+                    params: {
+                        referenceMaster,
+                        no,
+                        page,
+                        size
+                    }
+                })
+                return response.data
+            } catch (err) {
+                console.error('Fetch equivalence items error:', err)
+                throw err
+            }
         }
     }
 })

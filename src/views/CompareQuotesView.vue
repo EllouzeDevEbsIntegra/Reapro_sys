@@ -1,6 +1,7 @@
 <template>
     <div class="page-layout">
         <TheNavbar />
+        <ConfirmDialog />
 
         <main class="main-content">
             <template v-if="!selectedLine">
@@ -40,7 +41,8 @@
                         <DataTable :value="compareStore.quotes" :loading="compareStore.isLoading"
                             v-model:selection="selectedQuote" selectionMode="single" @row-select="onRowSelect"
                             @row-unselect="onRowUnselect" responsiveLayout="scroll"
-                            class="p-datatable-hover flex-1 midone-table" :rowHover="true" scrollable scrollHeight="flex">
+                            class="p-datatable-hover flex-1 midone-table" :rowHover="true" scrollable
+                            scrollHeight="flex">
 
                             <Column field="no" header="N°" sortable style="min-width: 150px">
                                 <template #body="slotProps">
@@ -81,7 +83,8 @@
                             <template #empty>
                                 <div style="text-align: center; padding: 3rem;">
                                     <i class="pi pi-inbox" style="font-size: 3rem; color: var(--text-muted);"></i>
-                                    <p style="margin-top: 1rem; color: var(--text-muted);">Aucune comparaison trouvée</p>
+                                    <p style="margin-top: 1rem; color: var(--text-muted);">Aucune comparaison trouvée
+                                    </p>
                                 </div>
                             </template>
                         </DataTable>
@@ -97,10 +100,8 @@
                                     @click="compareStore.fetchCompareQuotes(compareStore.currentPage - 1, searchQuery)" />
 
                                 <div class="flex items-center gap-1 mx-2">
-                                    <Button v-for="page in totalPages" :key="page" :label="page.toString()" size="small"
-                                        class="page-num-btn"
-                                        :class="{ 'active-page': compareStore.currentPage === page - 1 }"
-                                        @click="compareStore.fetchCompareQuotes(page - 1, searchQuery)" />
+                                    <Button :label="(compareStore.currentPage + 1).toString()" size="small"
+                                        class="page-num-btn active-page" />
                                 </div>
 
                                 <Button icon="pi pi-angle-right" text rounded size="small"
@@ -112,8 +113,8 @@
                             </div>
 
                             <div class="flex items-center gap-3">
-                                <Dropdown v-model="compareStore.pageSize" :options="[10, 20, 50, 100]" class="rows-dropdown"
-                                    @change="handleSearch" />
+                                <Dropdown v-model="compareStore.pageSize" :options="[10, 20, 50, 100]"
+                                    class="rows-dropdown" @change="handleSearch" />
                             </div>
                         </div>
                     </div>
@@ -135,7 +136,7 @@
 
             <!-- Line Detail View -->
             <CompareQuoteLineDetail v-else :line="selectedLine" :totalElements="compareStore.totalLinesElements"
-                @back="selectedLine = null" @prev="handlePrevLine" @next="handleNextLine" />
+                @back="handleBackFromDetail" @prev="handlePrevLine" @next="handleNextLine" />
         </main>
     </div>
 </template>
@@ -143,6 +144,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { useCompareQuoteStore } from '../stores/compareQuote'
+import { useConfirm } from 'primevue/useconfirm'
 import TheNavbar from '../components/TheNavbar.vue'
 import CompareQuoteLines from '../components/CompareQuoteLines.vue'
 import CompareQuoteLineDetail from '../components/CompareQuoteLineDetail.vue'
@@ -153,8 +155,10 @@ import Button from 'primevue/button'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Dropdown from 'primevue/dropdown'
+import ConfirmDialog from 'primevue/confirmdialog'
 
 const compareStore = useCompareQuoteStore()
+const confirm = useConfirm()
 const searchQuery = ref('')
 const linesSearchQuery = ref('')
 const selectedQuote = ref(null)
@@ -198,11 +202,29 @@ const handleLineSelected = (line) => {
     selectedLine.value = line
 }
 
+const handleBackFromDetail = () => {
+    confirm.require({
+        message: 'Voulez-vous vraiment quitter cette page ?',
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Oui',
+        rejectLabel: 'Non',
+        acceptClass: 'p-button-danger',
+        rejectClass: 'p-button-success',
+        accept: () => {
+            selectedLine.value = null
+        },
+        reject: () => {
+            // Stay on page
+        }
+    })
+}
+
 const handlePrevLine = () => {
     if (!selectedLine.value) return
     const lines = compareStore.selectedQuoteLines
     const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
-    
+
     if (currentIndex > 0) {
         selectedLine.value = lines[currentIndex - 1]
     }
@@ -212,7 +234,7 @@ const handleNextLine = () => {
     if (!selectedLine.value) return
     const lines = compareStore.selectedQuoteLines
     const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
-    
+
     if (currentIndex < lines.length - 1) {
         selectedLine.value = lines[currentIndex + 1]
     }

@@ -431,3 +431,81 @@ body {
   top: 50% !important;
   transform: translateY(-50%) !important;
 }
+
+/* ConfirmDialog Styling - Match SAV_sys Reference */
+.p-confirmdialog {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+.p-confirmdialog .p-dialog-header {
+  padding: 1.25rem 1.5rem !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+
+.p-confirmdialog .p-dialog-title {
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
+
+.p-confirmdialog .p-dialog-content {
+  padding: 1.5rem !important;
+}
+
+.p-confirmdialog .p-confirm-dialog-message {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+}
+
+.p-confirmdialog .p-confirm-dialog-icon {
+  font-size: 2rem !important;
+  color: #6b7280 !important;
+  flex-shrink: 0 !important;
+}
+
+.p-confirmdialog .p-confirm-dialog-message .p-confirm-dialog-message-text {
+  color: #374151 !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.5 !important;
+}
+
+.p-confirmdialog .p-dialog-footer {
+  padding: 1rem 1.5rem !important;
+  border-top: 1px solid #f3f4f6 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 0.75rem !important;
+}
+
+/* ConfirmDialog Button Colors - Red Accept (Oui), Green Reject (Non) */
+.p-confirmdialog .p-dialog-footer .p-button {
+  min-width: 80px !important;
+  padding: 0.5rem 1.25rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+}
+
+.p-confirmdialog .p-dialog-footer .p-button.p-button-danger {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: white !important;
+}
+
+.p-confirmdialog .p-dialog-footer .p-button.p-button-danger:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.p-confirmdialog .p-dialog-footer .p-button.p-button-success {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+  color: white !important;
+}
+
+.p-confirmdialog .p-dialog-footer .p-button.p-button-success:hover {
+  background-color: #059669 !important;
+  border-color: #059669 !important;
+}

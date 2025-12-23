@@ -12,7 +12,8 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
         currentPage: 0,
         pageSize: 20,
         currentLinesPage: 0,
-        linesPageSize: 20
+        linesPageSize: 20,
+        currentLineGlobalIndex: null // Global index (0-based) of currently viewed line
     }),
 
     actions: {
@@ -65,9 +66,11 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                     if (response.data.page) {
                         this.totalLinesElements = response.data.page.totalElements
                         this.currentLinesPage = response.data.page.number
+                        this.linesPageSize = response.data.page.size || params.size
                     } else {
                         this.totalLinesElements = response.data.totalElements
                         this.currentLinesPage = response.data.number
+                        this.linesPageSize = params.size
                     }
                 } else {
                     this.selectedQuoteLines = response.data
@@ -140,6 +143,16 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 console.error('Fetch equivalence items error:', err)
                 throw err
             }
+        },
+
+        // Calculate which page contains a specific line index
+        getPageForLineIndex(globalIndex, pageSize) {
+            return Math.floor(globalIndex / pageSize)
+        },
+
+        // Set current line global index
+        setCurrentLineGlobalIndex(index) {
+            this.currentLineGlobalIndex = index
         }
     }
 })

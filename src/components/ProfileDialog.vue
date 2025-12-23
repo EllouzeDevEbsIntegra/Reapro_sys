@@ -21,6 +21,9 @@
                             <div class="user-meta">
                                 <i class="pi pi-envelope"></i> {{ profileForm.email }}
                             </div>
+                            <div class="user-meta" v-if="authStore.user?.bcCompanyName">
+                                <i class="pi pi-building"></i> {{ authStore.user.bcCompanyName }}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -56,10 +59,16 @@
                                 <label>Email</label>
                                 <InputText v-model="profileForm.email" placeholder="votre@email.com" />
                             </div>
-                            <div class="form-group full-width">
+                            <div class="form-group">
                                 <label>Rôle</label>
                                 <InputText :value="profileForm.role === 'ROLE_ADMIN' ? 'Administrateur' : 'Utilisateur'"
                                     disabled class="bg-gray-50" />
+                            </div>
+                            <div class="form-group">
+                                <label>Société</label>
+                                <Dropdown v-model="profileForm.bcCompanyId" :options="authStore.companies"
+                                    optionLabel="displayName" optionValue="id" placeholder="Sélectionner une société"
+                                    class="w-full" />
                             </div>
                         </div>
 
@@ -127,6 +136,7 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Divider from 'primevue/divider';
 import Avatar from 'primevue/avatar';
+import Dropdown from 'primevue/dropdown';
 
 const props = defineProps({
     visible: {
@@ -145,7 +155,8 @@ const profileForm = ref({
     firstname: '',
     lastname: '',
     email: '',
-    role: ''
+    role: '',
+    bcCompanyId: ''
 });
 
 const passwordForm = ref({
@@ -166,8 +177,16 @@ watch(() => props.visible, async (newVal) => {
                 firstname: authStore.user.firstname || '',
                 lastname: authStore.user.lastname || '',
                 email: authStore.user.email || '',
-                role: authStore.user.role || ''
+                role: authStore.user.role || '',
+                bcCompanyId: authStore.user.bcCompanyId || ''
             };
+        }
+
+        // Fetch companies
+        try {
+            await authStore.fetchCompanies();
+        } catch (error) {
+            console.error('Failed to fetch companies:', error);
         }
 
         // 2. Try to refresh from API
@@ -178,7 +197,8 @@ watch(() => props.visible, async (newVal) => {
                     firstname: userData.firstname || '',
                     lastname: userData.lastname || '',
                     email: userData.email || '',
-                    role: userData.role || ''
+                    role: userData.role || '',
+                    bcCompanyId: userData.bcCompanyId || ''
                 };
             }
         } catch (error) {
@@ -198,7 +218,18 @@ watch(() => props.visible, async (newVal) => {
 const handleUpdateProfile = async () => {
     loadingProfile.value = true;
     try {
-        await authStore.updateProfile(profileForm.value);
+        // 1. Update basic profile
+        await authStore.updateProfile({
+            firstname: profileForm.value.firstname,
+            lastname: profileForm.value.lastname,
+            email: profileForm.value.email
+        });
+
+        // 2. Update company if changed
+        if (profileForm.value.bcCompanyId !== authStore.user.bcCompanyId) {
+            await authStore.updateCompany(profileForm.value.bcCompanyId);
+        }
+
         toast.add({ severity: 'success', summary: 'Succès', detail: 'Profil mis à jour avec succès', life: 3000 });
     } catch (err) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour du profil', life: 3000 });
@@ -424,11 +455,24 @@ const handleChangePassword = async () => {
 }
 
 .form-group input,
-.form-group :deep(.p-inputtext) {
+.form-group :deep(.p-inputtext),
+.form-group :deep(.p-dropdown) {
     border-radius: 8px;
     padding: 0.75rem 1rem;
     border: 1px solid #ced4da;
     background-color: white;
+    height: 48px;
+    /* Fixed height for consistency */
+    display: flex;
+    align-items: center;
+}
+
+.form-group :deep(.p-dropdown-label) {
+    padding: 0;
+}
+
+.form-group :deep(.p-dropdown-trigger) {
+    width: 3rem;
 }
 
 .form-group input:focus,

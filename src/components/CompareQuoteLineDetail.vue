@@ -14,7 +14,7 @@
                 <div class="info-right">
                     <span class="status-dot"></span>
                     <div class="page-indicator">
-                        {{ line.pageNumber }} / {{ totalElements }}
+                        Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                     </div>
                 </div>
             </div>
@@ -237,13 +237,18 @@
                         </table>
                     </div>
                     <div class="table-footer">
-                        <div class="pagination-info">Affichage 1-4 sur 5</div>
+                        <div class="pagination-info" v-if="quoteLineDetails.length > 0">
+                            1-{{ quoteLineDetails.length }} sur {{ quoteLineDetails.length }}
+                        </div>
+                        <div class="pagination-info" v-else>
+                            Aucune ligne
+                        </div>
                         <div class="pagination-controls">
-                            <button class="p-btn"><i class="pi pi-angle-double-left"></i></button>
-                            <button class="p-btn"><i class="pi pi-angle-left"></i></button>
+                            <button class="p-btn" disabled><i class="pi pi-angle-double-left"></i></button>
+                            <button class="p-btn" disabled><i class="pi pi-angle-left"></i></button>
                             <span class="p-current">1</span>
-                            <button class="p-btn"><i class="pi pi-angle-right"></i></button>
-                            <button class="p-btn"><i class="pi pi-angle-double-right"></i></button>
+                            <button class="p-btn" disabled><i class="pi pi-angle-right"></i></button>
+                            <button class="p-btn" disabled><i class="pi pi-angle-double-right"></i></button>
                         </div>
                     </div>
                 </div>
@@ -404,13 +409,13 @@
                         </table>
                     </div>
                     <div class="table-footer">
-                        <div class="pagination-info">Affichage 1-4 sur 5</div>
+                        <div class="pagination-info">1-4 sur 4</div>
                         <div class="pagination-controls">
-                            <button class="p-btn"><i class="pi pi-angle-double-left"></i></button>
-                            <button class="p-btn"><i class="pi pi-angle-left"></i></button>
+                            <button class="p-btn" disabled><i class="pi pi-angle-double-left"></i></button>
+                            <button class="p-btn" disabled><i class="pi pi-angle-left"></i></button>
                             <span class="p-current">1</span>
-                            <button class="p-btn"><i class="pi pi-angle-right"></i></button>
-                            <button class="p-btn"><i class="pi pi-angle-double-right"></i></button>
+                            <button class="p-btn" disabled><i class="pi pi-angle-right"></i></button>
+                            <button class="p-btn" disabled><i class="pi pi-angle-double-right"></i></button>
                         </div>
                     </div>
                 </div>
@@ -477,26 +482,27 @@
                         <table class="modern-table history-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 15%">Date</th>
-                                    <th style="width: 5%">T</th>
+                                    <th :style="{ width: isSidebarExpanded ? '10%' : '15%' }">Date</th>
+                                    <th :style="{ width: isSidebarExpanded ? '7%' : '8%' }">Type</th>
                                     <template v-if="isSidebarExpanded">
-                                        <th style="width: 10%">Type</th>
-                                        <th style="width: 15%">N° Document</th>
+                                        <th style="width: 10%">Type Doc</th>
+                                        <th style="width: 12%">N° Document</th>
                                     </template>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '35%' }">Client / Frs</th>
-                                    <th style="width: 10%">Qte</th>
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '15%' }">Client / Frs</th>
+                                    <th :style="{ width: isSidebarExpanded ? '17%' : '42%' }">Nom</th>
+                                    <th style="width: 8%">Qte</th>
                                     <template v-if="isSidebarExpanded">
                                         <th style="width: 10%">Magasin</th>
                                     </template>
-                                    <th style="width: 15%">PU</th>
+                                    <th :style="{ width: isSidebarExpanded ? '14%' : '12%' }">PU</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-if="isLoadingHistory">
-                                    <td :colspan="isSidebarExpanded ? 7 : 4" class="text-center p-4">Chargement...</td>
+                                    <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Chargement...</td>
                                 </tr>
                                 <tr v-else-if="historyEntries.length === 0">
-                                    <td :colspan="isSidebarExpanded ? 7 : 4" class="text-center p-4">Aucune donnée
+                                    <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Aucune donnée
                                         disponible</td>
                                 </tr>
                                 <tr v-else v-for="(entry, index) in historyEntries" :key="index">
@@ -511,6 +517,7 @@
                                         <td>{{ entry.documentNo }}</td>
                                     </template>
                                     <td>{{ entry.sourceNo }}</td>
+                                    <td>{{ entry.sourceName }}</td>
                                     <td>{{ entry.quantity }}</td>
                                     <template v-if="isSidebarExpanded">
                                         <td>{{ entry.locationCode }}</td>
@@ -691,22 +698,23 @@
                     <table class="modern-table">
                         <thead>
                             <tr>
-                                <th style="width: 15%">Date</th>
-                                <th style="width: 5%">T</th>
-                                <th style="width: 10%">Type</th>
-                                <th style="width: 15%">N° Document</th>
-                                <th style="width: 20%">Client / Frs</th>
-                                <th style="width: 10%">Qte</th>
+                                <th style="width: 10%">Date</th>
+                                <th style="width: 5%">Type</th>
+                                <th style="width: 10%">Type Doc</th>
+                                <th style="width: 12%">N° Document</th>
+                                <th style="width: 15%">Client / Frs</th>
+                                <th style="width: 18%">Nom</th>
+                                <th style="width: 8%">Qte</th>
                                 <th style="width: 10%">Magasin</th>
-                                <th style="width: 15%">PU</th>
+                                <th style="width: 12%">PU</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="isLoadingHistory">
-                                <td colspan="8" class="text-center p-4">Chargement...</td>
+                                <td colspan="9" class="text-center p-4">Chargement...</td>
                             </tr>
                             <tr v-else-if="historyEntries.length === 0">
-                                <td colspan="8" class="text-center p-4">Aucune donnée disponible</td>
+                                <td colspan="9" class="text-center p-4">Aucune donnée disponible</td>
                             </tr>
                             <tr v-else v-for="(entry, index) in historyEntries" :key="index">
                                 <td>{{ formatDate(entry.postingDate) }}</td>
@@ -718,6 +726,7 @@
                                 <td>{{ entry.documentType }}</td>
                                 <td>{{ entry.documentNo }}</td>
                                 <td>{{ entry.sourceNo }}</td>
+                                <td>{{ entry.sourceName }}</td>
                                 <td>{{ entry.quantity }}</td>
                                 <td>{{ entry.locationCode }}</td>
                                 <td>{{ formatNumber(calculatePU(entry), 2) }}</td>
@@ -743,6 +752,10 @@ const props = defineProps({
         required: true
     },
     totalElements: {
+        type: Number,
+        default: 0
+    },
+    currentIndex: {
         type: Number,
         default: 0
     }
@@ -834,7 +847,14 @@ const formatNumber = (value, decimals) => {
 
 const formatDate = (dateString) => {
     if (!dateString || dateString === '0001-01-01') return '-'
-    return dateString
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return dateString
+    
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = String(date.getFullYear()).slice(-2)
+    
+    return `${day}/${month}/${year}`
 }
 
 const getStyleClass = (styleValue) => {
@@ -1690,7 +1710,7 @@ const openHistory = (company) => {
 }
 
 .left-column {
-    width: 75%;
+    width: 73%;
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -1700,7 +1720,7 @@ const openHistory = (company) => {
 }
 
 .right-column {
-    width: 25%;
+    width: 27%;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 15px;

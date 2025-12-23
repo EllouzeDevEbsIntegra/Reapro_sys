@@ -136,7 +136,8 @@
 
             <!-- Line Detail View -->
             <CompareQuoteLineDetail v-else :line="selectedLine" :totalElements="compareStore.totalLinesElements"
-                @back="handleBackFromDetail" @prev="handlePrevLine" @next="handleNextLine" />
+                :currentIndex="compareStore.currentLineGlobalIndex" @back="handleBackFromDetail" @prev="handlePrevLine"
+                @next="handleNextLine" />
         </main>
     </div>
 </template>
@@ -199,6 +200,17 @@ const selectQuote = (quote) => {
 }
 
 const handleLineSelected = (line) => {
+    // Calculate global index based on current page
+    const currentPageLines = compareStore.selectedQuoteLines
+    const indexInPage = currentPageLines.findIndex(l => l.itemNo === line.itemNo)
+    
+    if (indexInPage !== -1) {
+        // Get current lines page from filters in CompareQuoteLines component
+        // We'll use the store's currentLinesPage which is updated by fetchCompareQuoteLines
+        const globalIndex = (compareStore.currentLinesPage * compareStore.linesPageSize) + indexInPage
+        compareStore.setCurrentLineGlobalIndex(globalIndex)
+    }
+    
     selectedLine.value = line
 }
 
@@ -220,23 +232,103 @@ const handleBackFromDetail = () => {
     })
 }
 
-const handlePrevLine = () => {
-    if (!selectedLine.value) return
-    const lines = compareStore.selectedQuoteLines
-    const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
-
-    if (currentIndex > 0) {
-        selectedLine.value = lines[currentIndex - 1]
+const handlePrevLine = async () => {
+    if (!selectedLine.value || compareStore.currentLineGlobalIndex === null) return
+    
+    // Calculate target global index
+    const targetGlobalIndex = compareStore.currentLineGlobalIndex - 1
+    
+    // Check if we're at the first line
+    if (targetGlobalIndex < 0) {
+        console.log('Already at first line')
+        return
+    }
+    
+    // Calculate which page the target line is on
+    const currentPageSize = compareStore.linesPageSize
+    const targetPage = compareStore.getPageForLineIndex(targetGlobalIndex, currentPageSize)
+    const currentPage = compareStore.currentLinesPage
+    
+    // Check if we need to load a different page
+    if (targetPage !== currentPage) {
+        // Load the previous page
+        try {
+            const apiFilters = {
+                page: targetPage,
+                size: currentPageSize,
+                search: linesSearchQuery.value
+            }
+            await compareStore.fetchCompareQuoteLines(selectedQuote.value.no, apiFilters)
+            
+            // After loading, select the last line of the newly loaded page
+            const lines = compareStore.selectedQuoteLines
+            if (lines && lines.length > 0) {
+                const indexInPage = targetGlobalIndex % currentPageSize
+                selectedLine.value = lines[indexInPage]
+                compareStore.setCurrentLineGlobalIndex(targetGlobalIndex)
+            }
+        } catch (error) {
+            console.error('Error loading previous page:', error)
+        }
+    } else {
+        // Same page, just navigate to previous line
+        const lines = compareStore.selectedQuoteLines
+        const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
+        
+        if (currentIndex > 0) {
+            selectedLine.value = lines[currentIndex - 1]
+            compareStore.setCurrentLineGlobalIndex(targetGlobalIndex)
+        }
     }
 }
 
-const handleNextLine = () => {
-    if (!selectedLine.value) return
-    const lines = compareStore.selectedQuoteLines
-    const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
-
-    if (currentIndex < lines.length - 1) {
-        selectedLine.value = lines[currentIndex + 1]
+const handleNextLine = async () => {
+    if (!selectedLine.value || compareStore.currentLineGlobalIndex === null) return
+    
+    // Calculate target global index
+    const targetGlobalIndex = compareStore.currentLineGlobalIndex + 1
+    
+    // Check if we're at the last line
+    if (targetGlobalIndex >= compareStore.totalLinesElements) {
+        console.log('Already at last line')
+        return
+    }
+    
+    // Calculate which page the target line is on
+    const currentPageSize = compareStore.linesPageSize
+    const targetPage = compareStore.getPageForLineIndex(targetGlobalIndex, currentPageSize)
+    const currentPage = compareStore.currentLinesPage
+    
+    // Check if we need to load a different page
+    if (targetPage !== currentPage) {
+        // Load the next page
+        try {
+            const apiFilters = {
+                page: targetPage,
+                size: currentPageSize,
+                search: linesSearchQuery.value
+            }
+            await compareStore.fetchCompareQuoteLines(selectedQuote.value.no, apiFilters)
+            
+            // After loading, select the first line of the newly loaded page
+            const lines = compareStore.selectedQuoteLines
+            if (lines && lines.length > 0) {
+                const indexInPage = targetGlobalIndex % currentPageSize
+                selectedLine.value = lines[indexInPage]
+                compareStore.setCurrentLineGlobalIndex(targetGlobalIndex)
+            }
+        } catch (error) {
+            console.error('Error loading next page:', error)
+        }
+    } else {
+        // Same page, just navigate to next line
+        const lines = compareStore.selectedQuoteLines
+        const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
+        
+        if (currentIndex < lines.length - 1) {
+            selectedLine.value = lines[currentIndex + 1]
+            compareStore.setCurrentLineGlobalIndex(targetGlobalIndex)
+        }
     }
 }
 

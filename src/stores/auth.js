@@ -6,6 +6,7 @@ export const useAuthStore = defineStore('auth', {
         user: JSON.parse(localStorage.getItem('user')) || null,
         accessToken: localStorage.getItem('accessToken') || null,
         refreshToken: localStorage.getItem('refreshToken') || null,
+        companies: [],
         isLoading: false,
         error: null
     }),
@@ -62,6 +63,29 @@ export const useAuthStore = defineStore('auth', {
                 return this.user
             } catch (error) {
                 console.error('Failed to update profile', error)
+                throw error
+            }
+        },
+
+        async fetchCompanies() {
+            try {
+                const response = await apiClient.get('/api/bc/companies')
+                this.companies = response.data
+                return this.companies
+            } catch (error) {
+                console.error('Failed to fetch companies', error)
+                throw error
+            }
+        },
+
+        async updateCompany(bcCompanyId) {
+            try {
+                const response = await apiClient.put('/api/admins/me/company', { bcCompanyId })
+                this.user = response.data
+                localStorage.setItem('user', JSON.stringify(this.user))
+                return this.user
+            } catch (error) {
+                console.error('Failed to update company', error)
                 throw error
             }
         },

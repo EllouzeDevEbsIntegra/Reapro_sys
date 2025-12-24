@@ -31,6 +31,13 @@
                         </IconField>
 
                         <div class="spacer"></div>
+
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-medium text-slate-700">
+                                {{ linesTreatedFilter === false ? 'Non Traité' : 'Tous' }}
+                            </span>
+                            <InputSwitch v-model="linesTreatedFilter" :true-value="false" :false-value="null" />
+                        </div>
                     </div>
                 </div>
 
@@ -52,7 +59,8 @@
                                 </template>
                             </Column>
 
-                            <Column field="description" header="Description" sortable style="min-width: 250px"></Column>
+                            <Column field="description" header="Description" sortable style="min-width: 250px">
+                            </Column>
 
                             <Column field="creationDate" header="Date Création" sortable style="min-width: 150px">
                                 <template #body="slotProps">
@@ -83,7 +91,8 @@
                             <template #empty>
                                 <div style="text-align: center; padding: 3rem;">
                                     <i class="pi pi-inbox" style="font-size: 3rem; color: var(--text-muted);"></i>
-                                    <p style="margin-top: 1rem; color: var(--text-muted);">Aucune comparaison trouvée
+                                    <p style="margin-top: 1rem; color: var(--text-muted);">Aucune comparaison
+                                        trouvée
                                     </p>
                                 </div>
                             </template>
@@ -128,7 +137,8 @@
                                 <p>Sélectionnez une comparaison pour voir les détails</p>
                             </div>
                             <CompareQuoteLines v-else :compareQuoteNo="selectedQuote.no" :search="linesSearchQuery"
-                                @close="selectedQuote = null" @line-selected="handleLineSelected" />
+                                :treatedFilter="linesTreatedFilter" @close="selectedQuote = null"
+                                @line-selected="handleLineSelected" />
                         </div>
                     </div>
                 </div>
@@ -155,6 +165,7 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
+import InputSwitch from 'primevue/inputswitch'
 import Dropdown from 'primevue/dropdown'
 import ConfirmDialog from 'primevue/confirmdialog'
 
@@ -162,6 +173,7 @@ const compareStore = useCompareQuoteStore()
 const confirm = useConfirm()
 const searchQuery = ref('')
 const linesSearchQuery = ref('')
+const linesTreatedFilter = ref(null)  // null = all, false = only non-treated
 const selectedQuote = ref(null)
 const selectedLine = ref(null)
 
@@ -203,14 +215,14 @@ const handleLineSelected = (line) => {
     // Calculate global index based on current page
     const currentPageLines = compareStore.selectedQuoteLines
     const indexInPage = currentPageLines.findIndex(l => l.itemNo === line.itemNo)
-    
+
     if (indexInPage !== -1) {
         // Get current lines page from filters in CompareQuoteLines component
         // We'll use the store's currentLinesPage which is updated by fetchCompareQuoteLines
         const globalIndex = (compareStore.currentLinesPage * compareStore.linesPageSize) + indexInPage
         compareStore.setCurrentLineGlobalIndex(globalIndex)
     }
-    
+
     selectedLine.value = line
 }
 
@@ -234,21 +246,21 @@ const handleBackFromDetail = () => {
 
 const handlePrevLine = async () => {
     if (!selectedLine.value || compareStore.currentLineGlobalIndex === null) return
-    
+
     // Calculate target global index
     const targetGlobalIndex = compareStore.currentLineGlobalIndex - 1
-    
+
     // Check if we're at the first line
     if (targetGlobalIndex < 0) {
         console.log('Already at first line')
         return
     }
-    
+
     // Calculate which page the target line is on
     const currentPageSize = compareStore.linesPageSize
     const targetPage = compareStore.getPageForLineIndex(targetGlobalIndex, currentPageSize)
     const currentPage = compareStore.currentLinesPage
-    
+
     // Check if we need to load a different page
     if (targetPage !== currentPage) {
         // Load the previous page
@@ -259,7 +271,7 @@ const handlePrevLine = async () => {
                 search: linesSearchQuery.value
             }
             await compareStore.fetchCompareQuoteLines(selectedQuote.value.no, apiFilters)
-            
+
             // After loading, select the last line of the newly loaded page
             const lines = compareStore.selectedQuoteLines
             if (lines && lines.length > 0) {
@@ -274,7 +286,7 @@ const handlePrevLine = async () => {
         // Same page, just navigate to previous line
         const lines = compareStore.selectedQuoteLines
         const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
-        
+
         if (currentIndex > 0) {
             selectedLine.value = lines[currentIndex - 1]
             compareStore.setCurrentLineGlobalIndex(targetGlobalIndex)
@@ -284,21 +296,21 @@ const handlePrevLine = async () => {
 
 const handleNextLine = async () => {
     if (!selectedLine.value || compareStore.currentLineGlobalIndex === null) return
-    
+
     // Calculate target global index
     const targetGlobalIndex = compareStore.currentLineGlobalIndex + 1
-    
+
     // Check if we're at the last line
     if (targetGlobalIndex >= compareStore.totalLinesElements) {
         console.log('Already at last line')
         return
     }
-    
+
     // Calculate which page the target line is on
     const currentPageSize = compareStore.linesPageSize
     const targetPage = compareStore.getPageForLineIndex(targetGlobalIndex, currentPageSize)
     const currentPage = compareStore.currentLinesPage
-    
+
     // Check if we need to load a different page
     if (targetPage !== currentPage) {
         // Load the next page
@@ -309,7 +321,7 @@ const handleNextLine = async () => {
                 search: linesSearchQuery.value
             }
             await compareStore.fetchCompareQuoteLines(selectedQuote.value.no, apiFilters)
-            
+
             // After loading, select the first line of the newly loaded page
             const lines = compareStore.selectedQuoteLines
             if (lines && lines.length > 0) {
@@ -324,7 +336,7 @@ const handleNextLine = async () => {
         // Same page, just navigate to next line
         const lines = compareStore.selectedQuoteLines
         const currentIndex = lines.findIndex(l => l.itemNo === selectedLine.value.itemNo)
-        
+
         if (currentIndex < lines.length - 1) {
             selectedLine.value = lines[currentIndex + 1]
             compareStore.setCurrentLineGlobalIndex(targetGlobalIndex)
@@ -445,5 +457,16 @@ const getStatusClass = (status) => {
         opacity: 1;
         transform: translateX(0);
     }
+}
+
+/* Toggle Switch Customization - Better vertical centering */
+:deep(.p-inputswitch) {
+    vertical-align: middle;
+}
+
+:deep(.p-inputswitch .p-inputswitch-slider::before) {
+    margin-top: 0 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
 }
 </style>

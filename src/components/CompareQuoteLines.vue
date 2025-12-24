@@ -8,8 +8,7 @@
 
         <!-- Table Only -->
         <DataTable :value="compareStore.selectedQuoteLines" scrollable scrollHeight="flex" :rowHover="true"
-            @row-click="onRowClick"
-            class="p-datatable-sm p-datatable-hover flex-1 midone-table cursor-pointer">
+            @row-click="onRowClick" class="p-datatable-sm p-datatable-hover flex-1 midone-table cursor-pointer">
 
             <Column field="compareQuoteNo" header="Comp. No" style="min-width: 100px">
                 <template #body="slotProps">
@@ -22,6 +21,16 @@
                     <span class="font-semibold text-blue-600">
                         {{ slotProps.data.itemNo }}
                     </span>
+                </template>
+            </Column>
+
+            <Column field="nbLineNotThreated" header="Non Traité" style="min-width: 100px">
+                <template #body="slotProps">
+                    <span v-if="slotProps.data.nbLineNotThreated > 0"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300">
+                        {{ slotProps.data.nbLineNotThreated }}
+                    </span>
+                    <span v-else class="text-gray-400 text-xs">—</span>
                 </template>
             </Column>
 
@@ -78,6 +87,10 @@ const props = defineProps({
     search: {
         type: String,
         default: ''
+    },
+    treatedFilter: {
+        type: [Boolean, null],
+        default: null
     }
 })
 
@@ -87,7 +100,8 @@ const compareStore = useCompareQuoteStore()
 const filters = ref({
     itemNo: '',
     pageNumber: '',
-    page: 0
+    page: 0,
+    treated: null  // null = all, false = only non-treated
 })
 
 const pageSize = ref(20)
@@ -104,10 +118,16 @@ const loadLines = () => {
         size: pageSize.value,
         search: props.search
     }
+
+    // Add treated filter if it's specifically set to false (non-treated only)
+    if (props.treatedFilter === false) {
+        apiFilters.treated = false
+    }
+
     compareStore.fetchCompareQuoteLines(props.compareQuoteNo, apiFilters)
 }
 
-watch([() => props.compareQuoteNo, () => props.search], ([newNo, newSearch]) => {
+watch([() => props.compareQuoteNo, () => props.search, () => props.treatedFilter], ([newNo, newSearch]) => {
     if (newNo) {
         loadLines()
     }

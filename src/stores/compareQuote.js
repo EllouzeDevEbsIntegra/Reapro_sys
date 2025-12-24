@@ -57,6 +57,10 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                     params.pageNumber = filters.pageNumber
                 }
 
+                if (filters.treated !== undefined && filters.treated !== null) {
+                    params.treated = filters.treated
+                }
+
                 const response = await axios.get(`/api/compare-quotes/${compareQuoteNo}/lines`, { params })
 
                 // Handle both paginated and non-paginated responses
@@ -108,16 +112,20 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
         },
 
         // Fetch item ledger entries (history)
-        async fetchItemLedgerEntries(itemNo, year, page = 0, size = 20) {
+        async fetchItemLedgerEntries(itemNo, year, page = 0, size = 20, companyId = null) {
             this.error = null
             try {
+                const params = {
+                    itemNo,
+                    year,
+                    page,
+                    size
+                }
+                if (companyId) {
+                    params.companyId = companyId
+                }
                 const response = await axios.get('/api/bc/item-ledger-entries', {
-                    params: {
-                        itemNo,
-                        year,
-                        page,
-                        size
-                    }
+                    params
                 })
                 return response.data
             } catch (err) {
@@ -153,6 +161,42 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
         // Set current line global index
         setCurrentLineGlobalIndex(index) {
             this.currentLineGlobalIndex = index
+        },
+
+        async fetchIntercompanyStock(itemNo) {
+            try {
+                const response = await axios.get('/api/bc/items/intercompany-stock', {
+                    params: { no: itemNo }
+                })
+                return response.data
+            } catch (err) {
+                console.error('Fetch intercompany stock error:', err)
+                throw err
+            }
+        },
+
+        async fetchPurchasePrices(vendorNo, itemNo) {
+            try {
+                const response = await axios.get('/api/purchase-prices', {
+                    params: { vendorNo, itemNo }
+                })
+                return response.data
+            } catch (err) {
+                console.error('Fetch purchase prices error:', err)
+                throw err
+            }
+        },
+
+        async fetchLastInvoicedCost(itemNo) {
+            try {
+                const response = await axios.get('/api/last-invoiced-cost', {
+                    params: { itemNo }
+                })
+                return response.data
+            } catch (err) {
+                console.error('Fetch last invoiced cost error:', err)
+                throw err
+            }
         }
     }
 })

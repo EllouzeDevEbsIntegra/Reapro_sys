@@ -7,8 +7,7 @@
             <!-- Header -->
             <div class="header-bar">
                 <div class="flex items-center gap-4">
-                    <Button icon="pi pi-arrow-left" text rounded @click="handleBack"
-                        v-tooltip="'Retour'" />
+                    <Button icon="pi pi-arrow-left" text rounded @click="handleBack" v-tooltip="'Retour'" />
                     <h1>Comparaison {{ compareQuoteNo }}</h1>
                 </div>
 
@@ -74,6 +73,11 @@
                             <InputText v-model="filters.pageNumber" placeholder="Page" type="number"
                                 @input="applyFilters" class="p-inputtext-sm" />
                         </IconField>
+                        <Button :label="filters.treated === false ? 'Non Traité' : 'Tous'"
+                            :icon="filters.treated === false ? 'pi pi-filter' : 'pi pi-list'"
+                            :severity="filters.treated === false ? 'danger' : 'secondary'" outlined size="small"
+                            @click="toggleTreatedFilter"
+                            v-tooltip="filters.treated === false ? 'Afficher tous les articles' : 'Afficher uniquement les non traités'" />
                         <Button icon="pi pi-filter-slash" text rounded @click="clearFilters"
                             v-tooltip="'Réinitialiser'" />
                     </div>
@@ -163,7 +167,8 @@ const compareQuoteNo = ref(route.params.compareQuoteNo)
 const filters = ref({
     itemNo: '',
     pageNumber: '',
-    page: 0
+    page: 0,
+    treated: null  // null = all, false = only non-treated
 })
 
 const pageSize = ref(10)
@@ -212,6 +217,11 @@ const loadLines = () => {
         apiFilters.pageNumber = parseInt(filters.value.pageNumber)
     }
 
+    // Add treated filter if it's specifically set to false (non-treated only)
+    if (filters.value.treated === false) {
+        apiFilters.treated = false
+    }
+
     compareStore.fetchCompareQuoteLines(compareQuoteNo.value, apiFilters)
 }
 
@@ -224,8 +234,16 @@ const clearFilters = () => {
     filters.value = {
         itemNo: '',
         pageNumber: '',
-        page: 0
+        page: 0,
+        treated: null
     }
+    loadLines()
+}
+
+const toggleTreatedFilter = () => {
+    // Toggle between null (all) and false (non-treated only)
+    filters.value.treated = filters.value.treated === false ? null : false
+    filters.value.page = 0  // Reset to first page when toggling filter
     loadLines()
 }
 

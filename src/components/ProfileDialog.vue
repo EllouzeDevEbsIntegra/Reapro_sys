@@ -461,14 +461,17 @@ const handleChangePassword = async () => {
     padding: 0.75rem 1rem;
     border: 1px solid #ced4da;
     background-color: white;
-    height: 48px;
-    /* Fixed height for consistency */
+    height: 48px !important;
+    /* Force height for consistency */
     display: flex;
     align-items: center;
 }
 
 .form-group :deep(.p-dropdown-label) {
     padding: 0;
+    display: flex;
+    align-items: center;
+    height: 100%;
 }
 
 .form-group :deep(.p-dropdown-trigger) {

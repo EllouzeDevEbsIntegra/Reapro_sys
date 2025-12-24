@@ -28,49 +28,23 @@
 
             <!-- 60% -->
             <div class="header-stocks">
-                <div class="stock-column">
-                    <div class="stocks-label">Stocks</div>
+                <div class="stock-column label-column">
+                    <div class="stocks-label">STOCKS</div>
                 </div>
-                <div class="stock-column">
+                <div v-for="stock in intercompanyStocks" :key="stock.companyId" class="stock-column dynamic-column">
                     <div class="stock-part ste">
                         <span class="stock-label-mini">STE</span>
-                        <span class="stock-value-main company">COPIM</span>
+                        <span class="stock-value-main company">{{ stock.company }}</span>
                     </div>
-                    <div class="stock-part stock clickable" @click="openHistory('COPIM')">
+                    <div class="stock-part stock clickable"
+                        @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
-                        <span class="stock-value-main green">1</span>
+                        <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
+                            }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
-                        <span class="stock-value-main date">11/12/2025</span>
-                    </div>
-                </div>
-                <div class="stock-column">
-                    <div class="stock-part ste">
-                        <span class="stock-label-mini">STE</span>
-                        <span class="stock-value-main company">3S</span>
-                    </div>
-                    <div class="stock-part stock clickable" @click="openHistory('3S')">
-                        <span class="stock-label-mini">Stock</span>
-                        <span class="stock-value-main red">0</span>
-                    </div>
-                    <div class="stock-part purchase">
-                        <span class="stock-label-mini">Dernier Achat</span>
-                        <span class="stock-value-main date">--</span>
-                    </div>
-                </div>
-                <div class="stock-column">
-                    <div class="stock-part ste">
-                        <span class="stock-label-mini">STE</span>
-                        <span class="stock-value-main company">MPAA</span>
-                    </div>
-                    <div class="stock-part stock clickable" @click="openHistory('MPAA')">
-                        <span class="stock-label-mini">Stock</span>
-                        <span class="stock-value-main green">2</span>
-                    </div>
-                    <div class="stock-part purchase">
-                        <span class="stock-label-mini">Dernier Achat</span>
-                        <span class="stock-value-main date">30/10/2025</span>
+                        <span class="stock-value-main date">23/12/2025</span>
                     </div>
                 </div>
             </div>
@@ -114,11 +88,11 @@
                                     <th style="width: 6%">Frs</th>
                                     <th style="width: 17%">Réf / Desig</th>
                                     <th style="width: 6%">Stocks</th>
-                                    <th style="width: 10%">Appro</th>
+                                    <th style="width: 8%">Appro</th>
+                                    <th style="width: 6%">Dernier Achat</th>
                                     <th style="width: 10%">Cout Directe</th>
                                     <th style="width: 10%">Prix Revient</th>
                                     <th style="width: 10%">Prix de Vente</th>
-                                    <th style="width: 6%">Dernier Achat</th>
                                     <th style="width: 6%">Ecart</th>
                                     <th style="width: 8%">Qte à confirmer</th>
                                     <th style="width: 8%">Raison</th>
@@ -149,21 +123,46 @@
                                     </td>
                                     <td>
                                         <div class="flex flex-col gap-1">
-                                            <span class="stock-tag tag-import">Import : {{ detail.importInventory
-                                                }}</span>
-                                            <span class="stock-tag tag-cmd">Qte Cmd : {{ detail.qtyOnPurchOrder
-                                                }}</span>
+                                            <span class="stock-tag tag-import"
+                                                :class="getImportStyleClass(detail.importInventory)">
+                                                <span>Import :</span>
+                                                <span>{{ detail.importInventory }}</span>
+                                            </span>
+                                            <span class="stock-tag tag-cmd"
+                                                :class="getQteCmdStyleClass(detail.qtyOnPurchOrder)">
+                                                <span>Qte Cmd :</span>
+                                                <span>{{ detail.qtyOnPurchOrder }}</span>
+                                            </span>
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(detail.directUnitCost, 2) }}</div>
+                                        <div class="cell-reference" :class="getStyleClass(detail.styleDate)">{{
+                                            formatNumber(getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost,
+                                                2)
+                                        }}</div>
                                         <div class="cell-description">
-                                            {{ formatNumber(detail.LastDirectCost, 2) }}
-                                            <span v-if="getPercentageChange(detail, 'directUnitCost', 'LastDirectCost')"
-                                                :class="getPercentageClass(getPercentageChange(detail, 'directUnitCost', 'LastDirectCost'))"
+                                            {{
+                                                formatDate(getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedCostDate)
+                                            }}
+                                            <span v-if="getLastInvoicedData(detail.buyFromVendorNo)?.qty"
+                                                class="qty-tag">
+                                                Qte: {{ getLastInvoicedData(detail.buyFromVendorNo)?.qty }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference clickable-cell"
+                                            @click.stop="openPurchasePriceDialog(detail.buyFromVendorNo, detail.no, detail.descriptionStructured)"
+                                            title="Voir l'historique des prix">
+                                            {{ formatNumber(detail.directUnitCost, 2) }}
+                                        </div>
+                                        <div class="cell-description">
+                                            <span
+                                                v-if="calculatePercentageChange(detail.directUnitCost, getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost)"
+                                                :class="getPercentageClass(calculatePercentageChange(detail.directUnitCost, getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost))"
                                                 class="percentage-indicator">
-                                                {{ getPercentageChange(detail, 'directUnitCost',
-                                                    'LastDirectCost') }}
+                                                {{ calculatePercentageChange(detail.directUnitCost,
+                                                    getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost) }}
                                             </span>
                                         </div>
                                     </td>
@@ -194,10 +193,6 @@
                                                     'calcAncienPrixDeVente', 'unitPriceLCY') }}
                                             </span>
                                         </div>
-                                    </td>
-                                    <td>
-                                        <div class="cell-reference" :class="getStyleClass(detail.styleDate)">{{
-                                            formatDate(detail.dateDernierAchat) }}</div>
                                     </td>
                                     <td>
                                         <div class="cell-reference">{{ detail.gapUnitCost }}</div>
@@ -265,12 +260,13 @@
                                     <th style="width: 6%">Frs</th>
                                     <th style="width: 17%">Réf / Desig</th>
                                     <th style="width: 6%">Stocks</th>
-                                    <th style="width: 10%">Appro</th>
+                                    <th style="width: 8%">Appro</th>
+                                    <th style="width: 6%">Dernier Achat</th>
                                     <th style="width: 10%">Prix / Date Devise</th>
                                     <th style="width: 10%">Cout Calculé / Date</th>
                                     <th style="width: 10%">Prix de vente</th>
-                                    <th style="width: 6%">Vente</th>
-                                    <th style="width: 6%">Achat</th>
+                                    <th style="width: 4%">Vente</th>
+                                    <th style="width: 4%">Achat</th>
                                     <th style="width: 8%">Panier à Cmd</th>
                                     <th style="width: 8%">Raison</th>
                                     <th style="width: 3%">Info</th>
@@ -295,16 +291,45 @@
                                         <div class="cell-description">{{ item.descriptionStructured }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ item.qtyStock }}</div>
+                                        <div class="cell-reference" :class="getStyleClass(item.styleQty)">{{
+                                            item.qtyStock }}</div>
                                     </td>
                                     <td>
                                         <div class="flex flex-col gap-1">
-                                            <span class="stock-tag tag-import">Import : {{ item.qtyImport }}</span>
-                                            <span class="stock-tag tag-cmd">Qte Cmd : {{ item.qtyOnPurchOrder }}</span>
+                                            <span class="stock-tag tag-import"
+                                                :class="getImportStyleClass(item.qtyImport)">
+                                                <span>Import :</span>
+                                                <span>{{ item.qtyImport }}</span>
+                                            </span>
+                                            <span class="stock-tag tag-cmd"
+                                                :class="getQteCmdStyleClass(item.qtyOnPurchOrder)">
+                                                <span>Qte Cmd :</span>
+                                                <span>{{ item.qtyOnPurchOrder }}</span>
+                                            </span>
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(item.lastCurrPrice, 2) }}</div>
+                                        <div class="cell-reference" :class="getStyleClass(item.styleDate)">{{
+                                            formatNumber(getEquivalenceLastInvoicedData(item.no,
+                                                item.vendorNo)?.lastInvoicedDirectCost, 2)
+                                        }}</div>
+                                        <div class="cell-description">
+                                            {{
+                                                formatDate(getEquivalenceLastInvoicedData(item.no,
+                                                    item.vendorNo)?.lastInvoicedCostDate)
+                                            }}
+                                            <span v-if="getEquivalenceLastInvoicedData(item.no, item.vendorNo)?.qty"
+                                                class="qty-tag">
+                                                Qte: {{ getEquivalenceLastInvoicedData(item.no, item.vendorNo)?.qty }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference clickable-cell"
+                                            @click.stop="openPurchasePriceDialog(item.vendorNo, item.no, item.descriptionStructured)"
+                                            title="Voir l'historique des prix">
+                                            {{ formatNumber(item.lastCurrPrice, 2) }}
+                                        </div>
                                         <div class="cell-description">{{ formatDate(item.lastDate) }}</div>
                                     </td>
                                     <td>
@@ -395,13 +420,32 @@
                             </thead>
                             <tbody>
                                 <tr v-for="i in 4" :key="i"
-                                    @click="selectKitItem({ no: 'KIT-' + i, descriptionStructured: 'Composant Kit ' + i })"
+                                    @click="selectKitItem({ no: 'KIT-' + i, descriptionStructured: 'Composant Kit ' + i, vendorNo: 'MOCK-VENDOR' })"
                                     class="cursor-pointer transition-colors hover:bg-blue-50"
                                     :class="{ 'bg-blue-100': isItemSelected({ no: 'KIT-' + i }) }">
                                     <td>KIT-{{ i }}</td>
                                     <td>Composant Kit {{ i }}</td>
                                     <td>1</td>
-                                    <td>10.00</td>
+                                    <td>
+                                        <div class="cell-reference" :class="getStyleClass('Attention')">{{
+                                            formatNumber(getKitLastInvoicedData('KIT-' + i,
+                                                'MOCK-VENDOR')?.lastInvoicedDirectCost, 2)
+                                        }}</div>
+                                        <div class="cell-description">
+                                            {{
+                                                formatDate(getKitLastInvoicedData('KIT-' + i,
+                                                    'MOCK-VENDOR')?.lastInvoicedCostDate)
+                                            }}
+                                            <span v-if="getKitLastInvoicedData('KIT-' + i, 'MOCK-VENDOR')?.qty"
+                                                class="qty-tag">
+                                                Qte: {{ getKitLastInvoicedData('KIT-' + i, 'MOCK-VENDOR')?.qty }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>1</td>
+                                    <td class="clickable-cell"
+                                        @click.stop="openPurchasePriceDialog('MOCK-VENDOR', 'KIT-' + i, 'Composant Kit ' + i)">
+                                        10.00</td>
                                     <td>10.00</td>
                                     <td>Dispo</td>
                                 </tr>
@@ -429,10 +473,9 @@
                             @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
                         <button class="history-btn">Historique</button>
                         <div class="item-title-inline" v-if="selectedHistoryItem">
-                            {{ selectedHistoryItem.no }} • {{ selectedHistoryItem.descriptionStructured }}
-                        </div>
-                        <div class="item-title-inline" v-else-if="selectedDetail">
-                            {{ selectedDetail.no }} • {{ selectedDetail.descriptionStructured }}
+                            {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
+                                selectedHistoryItem.descriptionStructured || selectedHistoryItem.structuredDescription ||
+                                selectedHistoryItem.description || 'Temoins de freins' }}
                         </div>
                         <div class="item-title-inline" v-else>
                             {{ line.itemNo }} • {{ line.structuredDescription || line.description || 'Temoins de freins'
@@ -452,8 +495,8 @@
 
                 <div class="stats-bar">
                     <div class="stats-column">Stock : {{ historyKpis.stock }}</div>
-                    <div class="stats-column">Vente : {{ Math.abs(historyKpis.vente) }}</div>
                     <div class="stats-column">Achat : {{ historyKpis.achat }}</div>
+                    <div class="stats-column">Vente : {{ Math.abs(historyKpis.vente) }}</div>
                     <div class="stats-column">Rupt : {{ historyKpis.rupt }}</div>
                 </div>
 
@@ -490,11 +533,11 @@
                                     </template>
                                     <th :style="{ width: isSidebarExpanded ? '12%' : '15%' }">Client / Frs</th>
                                     <th :style="{ width: isSidebarExpanded ? '17%' : '42%' }">Nom</th>
-                                    <th style="width: 8%">Qte</th>
+                                    <th style="width: 8%" class="text-right">Qte</th>
                                     <template v-if="isSidebarExpanded">
                                         <th style="width: 10%">Magasin</th>
                                     </template>
-                                    <th :style="{ width: isSidebarExpanded ? '14%' : '12%' }">PU</th>
+                                    <th :style="{ width: isSidebarExpanded ? '14%' : '12%' }" class="text-right">PU</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -518,11 +561,11 @@
                                     </template>
                                     <td>{{ entry.sourceNo }}</td>
                                     <td>{{ entry.sourceName }}</td>
-                                    <td>{{ entry.quantity }}</td>
+                                    <td class="text-right">{{ entry.quantity }}</td>
                                     <template v-if="isSidebarExpanded">
                                         <td>{{ entry.locationCode }}</td>
                                     </template>
-                                    <td>{{ formatNumber(calculatePU(entry), 2) }}</td>
+                                    <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -648,15 +691,18 @@
             <div class="sidebar-header dialog-header">
                 <div class="header-actions">
                     <button class="history-btn">Historique</button>
-                    <div class="item-title-inline">
-                        {{ line.itemNo }} • {{ line.structuredDescription || line.description || 'Temoins de freins' }}
+                    <div class="item-title-inline" v-if="selectedHistoryItem">
+                        {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
+                            selectedHistoryItem.descriptionStructured || selectedHistoryItem.structuredDescription ||
+                            selectedHistoryItem.description || 'Temoins de freins' }}
+                        <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany }})</span>
                     </div>
                     <div class="year-selector">
-                        <button class="year-arrow" @click="changeYear(-1)">
+                        <button class="year-arrow" @click="changeDialogYear(-1)">
                             <i class="pi pi-chevron-left"></i>
                         </button>
-                        <span class="year-display">{{ selectedYear }}</span>
-                        <button class="year-arrow" @click="changeYear(1)">
+                        <span class="year-display">{{ dialogSelectedYear }}</span>
+                        <button class="year-arrow" @click="changeDialogYear(1)">
                             <i class="pi pi-chevron-right"></i>
                         </button>
                     </div>
@@ -666,28 +712,30 @@
             </div>
 
             <div class="stats-bar dialog-stats-bar">
-                <div class="stats-column">Stock : {{ historyKpis.stock }}</div>
-                <div class="stats-column">Vente : {{ Math.abs(historyKpis.vente) }}</div>
-                <div class="stats-column">Achat : {{ historyKpis.achat }}</div>
-                <div class="stats-column">Rupt : {{ historyKpis.rupt }}</div>
+                <div class="stats-column">Stock : {{ dialogHistoryKpis.stock }}</div>
+                <div class="stats-column">Achat : {{ dialogHistoryKpis.achat }}</div>
+                <div class="stats-column">Vente : {{ Math.abs(dialogHistoryKpis.vente) }}</div>
+                <div class="stats-column">Rupt : {{ dialogHistoryKpis.rupt }}</div>
             </div>
 
             <div class="table-footer centered-footer top-pagination">
-                <div class="pagination-info" v-if="historyEntries.length > 0">
-                    {{ historyPagination.page * historyPagination.size + 1 }}-{{ Math.min((historyPagination.page +
-                        1) *
-                        historyPagination.size, historyPagination.totalElements) }} sur {{
-                        historyPagination.totalElements
+                <div class="pagination-info" v-if="dialogHistoryEntries.length > 0">
+                    {{ dialogHistoryPagination.page * dialogHistoryPagination.size + 1 }}-{{
+                        Math.min((dialogHistoryPagination.page +
+                            1) *
+                            dialogHistoryPagination.size, dialogHistoryPagination.totalElements) }} sur {{
+                        dialogHistoryPagination.totalElements
                     }}
                 </div>
                 <div class="pagination-controls centered">
-                    <button class="p-btn" :disabled="historyPagination.page === 0"
-                        @click="fetchHistory(historyPagination.page - 1)">
+                    <button class="p-btn" :disabled="dialogHistoryPagination.page === 0"
+                        @click="fetchDialogHistory(dialogHistoryPagination.page - 1)">
                         <i class="pi pi-angle-left"></i>
                     </button>
-                    <span class="p-current">{{ historyPagination.page + 1 }}</span>
-                    <button class="p-btn" :disabled="historyPagination.page >= historyPagination.totalPages - 1"
-                        @click="fetchHistory(historyPagination.page + 1)">
+                    <span class="p-current">{{ dialogHistoryPagination.page + 1 }}</span>
+                    <button class="p-btn"
+                        :disabled="dialogHistoryPagination.page >= dialogHistoryPagination.totalPages - 1"
+                        @click="fetchDialogHistory(dialogHistoryPagination.page + 1)">
                         <i class="pi pi-angle-right"></i>
                     </button>
                 </div>
@@ -704,19 +752,19 @@
                                 <th style="width: 12%">N° Document</th>
                                 <th style="width: 15%">Client / Frs</th>
                                 <th style="width: 18%">Nom</th>
-                                <th style="width: 8%">Qte</th>
+                                <th style="width: 8%" class="text-right">Qte</th>
                                 <th style="width: 10%">Magasin</th>
-                                <th style="width: 12%">PU</th>
+                                <th style="width: 12%" class="text-right">PU</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-if="isLoadingHistory">
+                            <tr v-if="isLoadingDialogHistory">
                                 <td colspan="9" class="text-center p-4">Chargement...</td>
                             </tr>
-                            <tr v-else-if="historyEntries.length === 0">
+                            <tr v-else-if="dialogHistoryEntries.length === 0">
                                 <td colspan="9" class="text-center p-4">Aucune donnée disponible</td>
                             </tr>
-                            <tr v-else v-for="(entry, index) in historyEntries" :key="index">
+                            <tr v-else v-for="(entry, index) in dialogHistoryEntries" :key="index">
                                 <td>{{ formatDate(entry.postingDate) }}</td>
                                 <td>
                                     <div class="type-indicator-circle" :class="getEntryTypeClass(entry.entryType)">
@@ -727,9 +775,56 @@
                                 <td>{{ entry.documentNo }}</td>
                                 <td>{{ entry.sourceNo }}</td>
                                 <td>{{ entry.sourceName }}</td>
-                                <td>{{ entry.quantity }}</td>
+                                <td class="text-right">{{ entry.quantity }}</td>
                                 <td>{{ entry.locationCode }}</td>
-                                <td>{{ formatNumber(calculatePU(entry), 2) }}</td>
+                                <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </Dialog>
+
+    <!-- Purchase Price History Dialog -->
+    <Dialog v-model:visible="showPurchasePriceDialog" modal :style="{ width: '50vw' }" class="history-dialog"
+        :showHeader="false">
+        <div class="dialog-content-wrapper">
+            <div class="sidebar-header dialog-header">
+                <div class="header-actions">
+                    <button class="history-btn">Historique Prix Achat</button>
+                    <div class="item-title-inline" v-if="selectedPurchasePriceItem">
+                        {{ selectedPurchasePriceItem.vendorNo }} • {{ selectedPurchasePriceItem.itemNo }} • {{
+                            selectedPurchasePriceItem.description }}
+                    </div>
+                    <Button icon="pi pi-times" text rounded @click="showPurchasePriceDialog = false"
+                        class="close-dialog-btn" style="margin-left: auto;" />
+                </div>
+            </div>
+
+            <div class="table-container dialog-history-container" style="margin-top: 20px;">
+                <div class="table-wrapper">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%">Date Début</th>
+                                <th style="width: 20%">Date Fin</th>
+                                <th style="width: 15%">Devise</th>
+                                <th style="width: 20%" class="text-right">Coût Unitaire Direct</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="isLoadingPurchasePrices">
+                                <td colspan="4" class="text-center p-4">Chargement...</td>
+                            </tr>
+                            <tr v-else-if="purchasePrices.length === 0">
+                                <td colspan="4" class="text-center p-4">Aucun historique de prix disponible</td>
+                            </tr>
+                            <tr v-else v-for="(price, index) in purchasePrices" :key="index">
+                                <td>{{ formatDate(price.startingDate) }}</td>
+                                <td>{{ formatDate(price.endingDate) }}</td>
+                                <td>{{ price.currencyCode }}</td>
+                                <td class="text-right">{{ formatNumber(price.directUnitCost, 2) }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -767,6 +862,7 @@ const store = useCompareQuoteStore()
 const isSidebarExpanded = ref(false)
 const showHistoryDialog = ref(false)
 const selectedCompany = ref('')
+const selectedCompanyId = ref(null)
 const quoteLineDetails = ref([])
 const isLoadingDetails = ref(false)
 const selectedDetail = ref(null)
@@ -780,7 +876,7 @@ const equivalencePagination = ref({
     totalPages: 0
 })
 
-// History State
+// Sidebar History State
 const selectedYear = ref(new Date().getFullYear())
 const historyEntries = ref([])
 const isLoadingHistory = ref(false)
@@ -797,8 +893,140 @@ const historyKpis = ref({
     rupt: 0
 })
 
+// Dialog History State
+const dialogSelectedYear = ref(new Date().getFullYear())
+const dialogHistoryEntries = ref([])
+const isLoadingDialogHistory = ref(false)
+const dialogHistoryPagination = ref({
+    page: 0,
+    size: 20,
+    totalElements: 0,
+    totalPages: 0
+})
+const dialogHistoryKpis = ref({
+    stock: 0,
+    vente: 0,
+    achat: 0,
+    rupt: 0
+})
+const intercompanyStocks = ref([])
+const isLoadingIntercompanyStock = ref(false)
+
 // Article Info Dialog State
 const showInfoDialog = ref(false)
+
+// Purchase Price Dialog State
+const showPurchasePriceDialog = ref(false)
+const purchasePrices = ref([])
+const isLoadingPurchasePrices = ref(false)
+const selectedPurchasePriceItem = ref(null)
+
+const openPurchasePriceDialog = async (vendorNo, itemNo, description) => {
+    if (!vendorNo || !itemNo) return
+
+    selectedPurchasePriceItem.value = { vendorNo, itemNo, description }
+    showPurchasePriceDialog.value = true
+    isLoadingPurchasePrices.value = true
+    purchasePrices.value = []
+
+    try {
+        const data = await store.fetchPurchasePrices(vendorNo, itemNo)
+        purchasePrices.value = data || []
+    } catch (error) {
+        console.error('Error fetching purchase prices:', error)
+    } finally {
+        isLoadingPurchasePrices.value = false
+    }
+}
+
+// Last Invoiced Cost State
+// Last Invoiced Cost State
+const lastInvoicedCosts = ref(new Map())
+const equivalenceLastInvoicedCosts = ref(new Map())
+const kitLastInvoicedCosts = ref(new Map())
+
+const fetchLastInvoicedCosts = async () => {
+    if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+
+    try {
+        const data = await store.fetchLastInvoicedCost(selectedHistoryItem.value.no)
+        if (Array.isArray(data)) {
+            const costMap = new Map()
+            data.forEach(item => {
+                if (item.frs) {
+                    costMap.set(item.frs, item)
+                }
+            })
+            lastInvoicedCosts.value = costMap
+        }
+    } catch (error) {
+        console.error('Error fetching last invoiced costs:', error)
+    }
+}
+
+const getLastInvoicedData = (vendorNo) => {
+    if (!vendorNo) return null
+    return lastInvoicedCosts.value.get(vendorNo)
+}
+
+const getEquivalenceLastInvoicedData = (itemNo, vendorNo) => {
+    if (!itemNo || !vendorNo) return null
+    const itemMap = equivalenceLastInvoicedCosts.value.get(itemNo)
+    if (!itemMap) return null
+    return itemMap.get(vendorNo)
+}
+
+const getKitLastInvoicedData = (itemNo, vendorNo) => {
+    if (!itemNo || !vendorNo) return null
+    const itemMap = kitLastInvoicedCosts.value.get(itemNo)
+    if (!itemMap) return null
+    return itemMap.get(vendorNo)
+}
+
+const fetchEquivalenceLastInvoicedCosts = async (items) => {
+    if (!items || items.length === 0) return
+
+    for (const item of items) {
+        if (!item.no) continue
+        try {
+            const data = await store.fetchLastInvoicedCost(item.no)
+            if (Array.isArray(data)) {
+                const costMap = new Map()
+                data.forEach(d => {
+                    if (d.frs) {
+                        costMap.set(d.frs, d)
+                    }
+                })
+                equivalenceLastInvoicedCosts.value.set(item.no, costMap)
+            }
+        } catch (error) {
+            console.error(`Error fetching last invoiced cost for equivalence item ${item.no}:`, error)
+        }
+    }
+}
+
+const fetchKitLastInvoicedCosts = async () => {
+    // Mock kit items for now, as per template loop
+    const kitItems = [1, 2, 3, 4].map(i => ({ no: 'KIT-' + i, vendorNo: 'MOCK-VENDOR' }))
+
+    for (const item of kitItems) {
+        try {
+            const data = await store.fetchLastInvoicedCost(item.no)
+            if (Array.isArray(data)) {
+                const costMap = new Map()
+                data.forEach(d => {
+                    if (d.frs) {
+                        costMap.set(d.frs, d)
+                    }
+                })
+                kitLastInvoicedCosts.value.set(item.no, costMap)
+            }
+        } catch (error) {
+            console.error(`Error fetching last invoiced cost for kit item ${item.no}:`, error)
+        }
+    }
+}
+
 const selectedInfoItem = ref(null)
 const currentImageIndex = ref(0)
 const expandedBrands = ref(new Set())
@@ -837,6 +1065,21 @@ const handleKeyDown = (event) => {
     } else if (event.key === 'F9') {
         event.preventDefault()
         emit('next')
+    } else if (event.key === 'F7') {
+        event.preventDefault()
+        if (selectedHistoryItem.value) {
+            const item = selectedHistoryItem.value
+            // Handle different vendor field names (buyFromVendorNo for main table, vendorNo for equivalence/kits)
+            const vendor = item.buyFromVendorNo || item.vendorNo
+
+            if (vendor && item.no) {
+                openPurchasePriceDialog(
+                    vendor,
+                    item.no,
+                    item.descriptionStructured || item.description
+                )
+            }
+        }
     }
 }
 
@@ -849,11 +1092,11 @@ const formatDate = (dateString) => {
     if (!dateString || dateString === '0001-01-01') return '-'
     const date = new Date(dateString)
     if (isNaN(date.getTime())) return dateString
-    
+
     const day = String(date.getDate()).padStart(2, '0')
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const year = String(date.getFullYear()).slice(-2)
-    
+
     return `${day}/${month}/${year}`
 }
 
@@ -862,6 +1105,21 @@ const getStyleClass = (styleValue) => {
     if (styleValue === 'Unfavorable') return 'status-unfavorable'
     if (styleValue === 'Attention') return 'status-attention'
     return ''
+}
+
+const getImportStyleClass = (importQty) => {
+    // Import: 0 = blue border + black text, >0 = green background
+    return importQty > 0 ? 'import-available' : 'import-empty'
+}
+
+const getQteCmdStyleClass = (qteCmdValue) => {
+    // Qte Cmd: 0 = dark gray border + black text, >0 = green background
+    return qteCmdValue > 0 ? 'qtecmd-available' : 'qtecmd-empty'
+}
+
+const getQtyCmdStyleClass = (qtyValue) => {
+    // Legacy function for backward compatibility
+    return getQteCmdStyleClass(qtyValue)
 }
 
 const openInfoDialog = (item) => {
@@ -919,6 +1177,8 @@ const selectLine = (detail) => {
     selectedYear.value = new Date().getFullYear()
     // Always update history selection
     selectedHistoryItem.value = detail
+    // Always update history stock KPI
+    historyKpis.value.stock = detail.inventoryWithoutImport || 0
 
     // Check if it's already the active detail to avoid redundant equivalence fetching
     const isAlreadySelectedDetail = selectedDetail.value &&
@@ -928,7 +1188,6 @@ const selectLine = (detail) => {
     if (isAlreadySelectedDetail) return
 
     selectedDetail.value = detail
-    historyKpis.value.stock = detail.inventoryWithoutImport || 0
     fetchEquivalenceItems(detail)
 }
 
@@ -954,13 +1213,12 @@ const fetchHistory = async (page = 0) => {
             selectedHistoryItem.value.no,
             selectedYear.value,
             page,
-            historyPagination.value.size
+            historyPagination.value.size,
+            null // Global history for sidebar
         )
 
         if (data && data.content) {
             historyEntries.value = data.content
-            // Support new API structure where pagination is at root
-            // page, totalElements, totalPages
             historyPagination.value = {
                 ...historyPagination.value,
                 page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number : 0),
@@ -968,7 +1226,6 @@ const fetchHistory = async (page = 0) => {
                 totalPages: data.totalPages !== undefined ? data.totalPages : 1
             }
 
-            // Extract KPIs from quantityByEntryType
             if (data.quantityByEntryType) {
                 historyKpis.value = {
                     ...historyKpis.value,
@@ -984,10 +1241,54 @@ const fetchHistory = async (page = 0) => {
             historyPagination.value.totalPages = 1
         }
     } catch (error) {
-        console.error('Error fetching history:', error)
+        console.error('Error fetching sidebar history:', error)
         historyEntries.value = []
     } finally {
         isLoadingHistory.value = false
+    }
+}
+
+const fetchDialogHistory = async (page = 0) => {
+    if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+
+    isLoadingDialogHistory.value = true
+    try {
+        const data = await store.fetchItemLedgerEntries(
+            selectedHistoryItem.value.no,
+            dialogSelectedYear.value,
+            page,
+            dialogHistoryPagination.value.size,
+            selectedCompanyId.value
+        )
+
+        if (data && data.content) {
+            dialogHistoryEntries.value = data.content
+            dialogHistoryPagination.value = {
+                ...dialogHistoryPagination.value,
+                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements : 0,
+                totalPages: data.totalPages !== undefined ? data.totalPages : 1
+            }
+
+            if (data.quantityByEntryType) {
+                dialogHistoryKpis.value = {
+                    ...dialogHistoryKpis.value,
+                    vente: data.quantityByEntryType.Sale || 0,
+                    achat: data.quantityByEntryType.Purchase || 0,
+                    rupt: data.quantityByEntryType.Rupture || 0
+                }
+            }
+        } else {
+            dialogHistoryEntries.value = Array.isArray(data) ? data : []
+            dialogHistoryPagination.value.totalElements = dialogHistoryEntries.value.length
+            dialogHistoryPagination.value.page = 0
+            dialogHistoryPagination.value.totalPages = 1
+        }
+    } catch (error) {
+        console.error('Error fetching dialog history:', error)
+        dialogHistoryEntries.value = []
+    } finally {
+        isLoadingDialogHistory.value = false
     }
 }
 
@@ -995,12 +1296,39 @@ const changeYear = (delta) => {
     selectedYear.value += delta
 }
 
-// Watch for selection or year changes to refresh history
+const changeDialogYear = (delta) => {
+    dialogSelectedYear.value += delta
+}
+
+const fetchIntercompanyStock = async () => {
+    if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+
+    isLoadingIntercompanyStock.value = true
+    try {
+        const data = await store.fetchIntercompanyStock(selectedHistoryItem.value.no)
+        intercompanyStocks.value = data || []
+    } catch (error) {
+        console.error('Error fetching intercompany stock:', error)
+        intercompanyStocks.value = []
+    } finally {
+        isLoadingIntercompanyStock.value = false
+    }
+}
+
+// Watch for selection or year changes to refresh sidebar history
 watch([selectedHistoryItem, selectedYear], () => {
-    if (selectedHistoryItem.value) {
+    if (selectedHistoryItem.value && !showHistoryDialog.value) {
         fetchHistory(0)
+        fetchIntercompanyStock()
     }
 }, { immediate: true })
+
+// Watch for dialog opening, company or dialog year changes to refresh history in dialog
+watch([showHistoryDialog, selectedCompanyId, dialogSelectedYear], () => {
+    if (showHistoryDialog.value && selectedHistoryItem.value) {
+        fetchDialogHistory(0)
+    }
+})
 
 const calculatePU = (entry) => {
     if (!entry) return 0
@@ -1061,6 +1389,20 @@ const getPercentageChange = (detail, field1, field2) => {
     return `${arrow} ${sign}${percentageChange.toFixed(1)}%`
 }
 
+const calculatePercentageChange = (value1, value2) => {
+    if (value2 === null || value2 === undefined || value2 === 0) return null
+    if (value1 === null || value1 === undefined) return null
+
+    const percentageChange = ((value1 - value2) / value2) * 100
+
+    if (Math.abs(percentageChange) < 0.01) return null
+
+    const arrow = percentageChange > 0 ? '↑' : percentageChange < 0 ? '↓' : ''
+    const sign = percentageChange > 0 ? '+' : ''
+
+    return `${arrow} ${sign}${percentageChange.toFixed(1)}%`
+}
+
 const getPercentageClass = (percentageText) => {
     if (!percentageText) return ''
     if (percentageText.includes('↑')) return 'percentage-increase'
@@ -1076,10 +1418,16 @@ const fetchDetails = async () => {
         const data = await store.fetchQuoteLineDetails(props.line.compareQuoteNo, props.line.itemNo)
         quoteLineDetails.value = Array.isArray(data) ? data : [data]
         if (quoteLineDetails.value.length > 0) {
-            selectedDetail.value = quoteLineDetails.value[0]
-            selectedHistoryItem.value = quoteLineDetails.value[0]
+            const firstDetail = quoteLineDetails.value[0]
+            selectedDetail.value = firstDetail
+            selectedHistoryItem.value = firstDetail
+            historyKpis.value.stock = firstDetail.inventoryWithoutImport || 0
             // Auto-load equivalence items for the first line
-            fetchEquivalenceItems(quoteLineDetails.value[0])
+            fetchEquivalenceItems(firstDetail)
+            // Auto-load intercompany stock
+            fetchIntercompanyStock()
+            // Auto-load last invoiced costs
+            fetchLastInvoicedCosts()
         }
     } catch (error) {
         console.error('Error fetching details:', error)
@@ -1121,6 +1469,11 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
             equivalencePagination.value.page = 0
             equivalencePagination.value.totalPages = 1
         }
+
+        // Fetch last invoiced costs for the loaded equivalence items
+        if (equivalenceItems.value.length > 0) {
+            fetchEquivalenceLastInvoicedCosts(equivalenceItems.value)
+        }
     } catch (error) {
         console.error('Error fetching equivalence items:', error)
         equivalenceItems.value = []
@@ -1137,19 +1490,46 @@ watch(() => props.line, () => {
 onMounted(() => {
     window.addEventListener('keydown', handleKeyDown)
     fetchDetails()
+    // Fetch kit costs on mount as they are static for now
+    fetchKitLastInvoicedCosts()
 })
 
 onUnmounted(() => {
     window.removeEventListener('keydown', handleKeyDown)
 })
 
-const openHistory = (company) => {
+const openHistory = (company, companyId = null, stock = 0) => {
     selectedCompany.value = company
+    selectedCompanyId.value = companyId
+    dialogSelectedYear.value = new Date().getFullYear()
+    dialogHistoryKpis.value.stock = stock
     showHistoryDialog.value = true
+}
+
+const textRight = {
+    textAlign: 'right'
 }
 </script>
 
 <style scoped>
+.text-right {
+    text-align: right !important;
+}
+
+.clickable-cell {
+    cursor: pointer;
+    color: #2563eb;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    transition: all 0.2s;
+}
+
+.clickable-cell:hover {
+    color: #1d4ed8;
+    text-decoration-style: solid;
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
 .line-detail-container {
     padding: 15px;
     background-color: #f1f5f9;
@@ -1290,12 +1670,13 @@ const openHistory = (company) => {
     position: relative;
 }
 
-.stock-column:first-child {
-    width: 8%;
+.stock-column.label-column {
+    width: 10%;
+    justify-content: center;
 }
 
-.stock-column:not(:first-child) {
-    width: 30.6%;
+.stock-column.dynamic-column {
+    flex: 1;
 }
 
 .stock-column:not(:last-child)::after {
@@ -1390,6 +1771,11 @@ const openHistory = (company) => {
 
 .stock-value-main.date {
     font-size: 0.85rem;
+}
+
+.company-badge {
+    color: #3b82f6;
+    font-weight: 700;
 }
 
 .order-total {
@@ -1640,7 +2026,7 @@ const openHistory = (company) => {
 /* Percentage Indicator Styles */
 .percentage-indicator {
     display: inline-block;
-    margin-left: 0.5rem;
+    margin-left: 0;
     font-size: 0.75rem;
     font-weight: 600;
     padding: 0.125rem 0.375rem;
@@ -1675,29 +2061,102 @@ const openHistory = (company) => {
 }
 
 .stock-tag {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
     white-space: nowrap;
-    width: fit-content;
+    width: 100%;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    background-color: #f1f5f9;
+    color: #475569;
 }
 
-.tag-import {
-    background-color: #dbeafe;
-    /* Blue 100 */
-    color: #1e40af;
-    /* Blue 800 */
-    border: 1px solid #bfdbfe;
-}
-
+.tag-import,
 .tag-cmd {
-    background-color: #ffedd5;
-    /* Orange 100 */
-    color: #9a3412;
-    /* Orange 800 */
-    border: 1px solid #fed7aa;
+    /* Base styles handled by .stock-tag */
+}
+
+/* Favorable styles - Solid green background */
+.stock-tag.status-favorable {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46 !important;
+    border-color: #34d399;
+    font-weight: 800;
+}
+
+/* Unfavorable styles - Transparent with red border */
+.stock-tag.status-unfavorable {
+    background: transparent;
+    color: #dc2626 !important;
+    border-color: #dc2626;
+    border-width: 2px;
+    font-weight: 800;
+}
+
+/* Attention styles - Transparent with orange border */
+.stock-tag.status-attention {
+    background: transparent;
+    color: #ea580c !important;
+    border-color: #ea580c;
+    border-width: 2px;
+    font-weight: 800;
+}
+
+.stock-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Import-specific styles */
+.stock-tag.import-empty {
+    background: transparent;
+    color: #1e293b !important;
+    border-color: #3b82f6;
+    border-width: 2px;
+    font-weight: 700;
+}
+
+.stock-tag.import-available {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46 !important;
+    border-color: #34d399;
+    font-weight: 800;
+}
+
+/* Qte Cmd-specific styles */
+.stock-tag.qtecmd-empty {
+    background: transparent;
+    color: #1e293b !important;
+    border-color: #475569;
+    border-width: 2px;
+    font-weight: 700;
+}
+
+.stock-tag.qtecmd-available {
+    background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+    color: #7c2d12 !important;
+    border-color: #fb923c;
+    font-weight: 800;
+}
+
+.qty-tag {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    color: #475569;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border: 1px solid #e2e8f0;
+    margin-left: 6px;
+    vertical-align: middle;
 }
 
 /* Main Layout Styles */
@@ -2487,5 +2946,11 @@ const openHistory = (company) => {
     width: 4px;
     background-color: #3b82f6;
     box-shadow: 2px 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.cell-description {
+    font-size: 0.8rem;
+    color: #64748b;
+    text-align: left;
 }
 </style>

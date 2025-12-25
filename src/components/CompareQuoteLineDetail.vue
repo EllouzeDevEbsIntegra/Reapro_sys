@@ -86,25 +86,28 @@
                             <thead>
                                 <tr>
                                     <th style="width: 6%">Frs</th>
-                                    <th style="width: 17%">Réf / Desig</th>
-                                    <th style="width: 6%">Stocks</th>
-                                    <th style="width: 8%">Appro</th>
+                                    <th style="width: 12%">Réf / Desig</th>
+                                    <th style="width: 5%">Stocks</th>
+                                    <th style="width: 6%">Appro</th>
                                     <th style="width: 6%">Dernier Achat</th>
-                                    <th style="width: 10%">Cout Directe</th>
+                                    <th style="width: 7%">Cout Directe</th>
                                     <th style="width: 10%">Prix Revient</th>
                                     <th style="width: 10%">Prix de Vente</th>
-                                    <th style="width: 6%">Ecart</th>
-                                    <th style="width: 8%">Qte à confirmer</th>
+                                    <th style="width: 8%">Nég Prix</th>
+                                    <th style="width: 7%">Nég Qte</th>
+                                    <th style="width: 7%">Qte à confirmer</th>
                                     <th style="width: 8%">Raison</th>
                                     <th style="width: 3%">Info</th>
+                                    <th style="width: 2%"></th>
+                                    <th style="width: 3%"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-if="isLoadingDetails">
-                                    <td colspan="12" class="text-center p-4">Chargement...</td>
+                                    <td colspan="11" class="text-center p-4">Chargement...</td>
                                 </tr>
                                 <tr v-else-if="quoteLineDetails.length === 0">
-                                    <td colspan="12" class="text-center p-4">Aucune donnée disponible</td>
+                                    <td colspan="11" class="text-center p-4">Aucune donnée disponible</td>
                                 </tr>
                                 <tr v-else v-for="detail in quoteLineDetails" :key="detail.id"
                                     @click="selectLine(detail)"
@@ -125,36 +128,39 @@
                                         <div class="flex flex-col gap-1">
                                             <span class="stock-tag tag-import"
                                                 :class="getImportStyleClass(detail.importInventory)">
-                                                <span>Import :</span>
+                                                <span>Imp :</span>
                                                 <span>{{ detail.importInventory }}</span>
                                             </span>
                                             <span class="stock-tag tag-cmd"
                                                 :class="getQteCmdStyleClass(detail.qtyOnPurchOrder)">
-                                                <span>Qte Cmd :</span>
+                                                <span>Cmd :</span>
                                                 <span>{{ detail.qtyOnPurchOrder }}</span>
                                             </span>
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference" :class="getStyleClass(detail.styleDate)">{{
-                                            formatNumber(getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost,
-                                                2)
-                                        }}</div>
+                                        <div class="cell-reference" :class="getStyleClass(detail.styleDate)">
+                                            {{
+                                                formatNumber(getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost,
+                                                    2) }}
+                                            <span v-if="getLastInvoicedData(detail.buyFromVendorNo)?.quantity"
+                                                class="qty-badge">
+                                                {{ Math.round(getLastInvoicedData(detail.buyFromVendorNo)?.quantity) }}
+                                            </span>
+                                        </div>
                                         <div class="cell-description">
                                             {{
                                                 formatDate(getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedCostDate)
                                             }}
-                                            <span v-if="getLastInvoicedData(detail.buyFromVendorNo)?.qty"
-                                                class="qty-tag">
-                                                Qte: {{ getLastInvoicedData(detail.buyFromVendorNo)?.qty }}
-                                            </span>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="cell-reference clickable-cell"
-                                            @click.stop="openPurchasePriceDialog(detail.buyFromVendorNo, detail.no, detail.descriptionStructured)"
+                                            @click.stop="openPurchasePriceDialog(detail.buyFromVendorNo, detail.no, detail.descriptionStructured, true)"
                                             title="Voir l'historique des prix">
                                             {{ formatNumber(detail.directUnitCost, 2) }}
+                                            <i :class="detail.preferential ? 'pi pi-check-circle preferential-icon active' : 'pi pi-times-circle preferential-icon inactive'"
+                                                :title="detail.preferential ? 'Fournisseur préférentiel' : 'Non préférentiel'"></i>
                                         </div>
                                         <div class="cell-description">
                                             <span
@@ -195,15 +201,25 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ detail.gapUnitCost }}</div>
+                                        <div class="qty-input-wrapper mini">
+                                            <span class="initial-tag" title="Prix Initial">{{
+                                                formatNumber(detail.initialVendorPrice, 2) }}</span>
+                                            <input type="number" v-model.number="detail.askingPrice"
+                                                class="qty-input mini" placeholder="Prix Nég" />
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="qty-input-wrapper mini">
+                                            <span class="initial-tag" title="Quantité Initiale">{{
+                                                detail.initialQuantity }}</span>
+                                            <input type="number" v-model.number="detail.askingQty"
+                                                class="qty-input mini" placeholder="Qte Nég" />
+                                        </div>
                                     </td>
                                     <td>
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="detail.quantity" class="qty-input"
                                                 min="0" />
-                                            <button class="validate-line-btn" title="Valider la ligne">
-                                                <i class="pi pi-check"></i>
-                                            </button>
                                         </div>
                                     </td>
                                     <td>
@@ -225,6 +241,21 @@
                                         <div class="flex justify-center items-center h-full">
                                             <i class="pi pi-info-circle info-icon cursor-pointer"
                                                 @click.stop="openInfoDialog(detail)"></i>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center h-full">
+                                            <i class="pi pi-comment comment-icon cursor-pointer"
+                                                :class="{ 'has-comment': detail.comment }"
+                                                @click.stop="toggleCommentOverlay($event, detail)"
+                                                title="Ajouter un commentaire"></i>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center h-full">
+                                            <button class="validate-line-btn" title="Valider la ligne">
+                                                <i class="pi pi-check"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -258,26 +289,28 @@
                             <thead>
                                 <tr>
                                     <th style="width: 6%">Frs</th>
-                                    <th style="width: 17%">Réf / Desig</th>
-                                    <th style="width: 6%">Stocks</th>
-                                    <th style="width: 8%">Appro</th>
+                                    <th style="width: 12%">Réf / Desig</th>
+                                    <th style="width: 5%">Stocks</th>
+                                    <th style="width: 6%">Appro</th>
                                     <th style="width: 6%">Dernier Achat</th>
-                                    <th style="width: 10%">Prix / Date Devise</th>
+                                    <th style="width: 7%">Prix Devise</th>
                                     <th style="width: 10%">Cout Calculé / Date</th>
                                     <th style="width: 10%">Prix de vente</th>
-                                    <th style="width: 4%">Vente</th>
-                                    <th style="width: 4%">Achat</th>
-                                    <th style="width: 8%">Panier à Cmd</th>
+                                    <th style="width: 8%">Achat</th>
+                                    <th style="width: 7%">Vente</th>
+                                    <th style="width: 7%">Panier à Cmd</th>
                                     <th style="width: 8%">Raison</th>
                                     <th style="width: 3%">Info</th>
+                                    <th style="width: 2%"></th>
+                                    <th style="width: 3%"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-if="isLoadingEquivalence">
-                                    <td colspan="12" class="text-center p-4">Chargement...</td>
+                                    <td colspan="14" class="text-center p-4">Chargement...</td>
                                 </tr>
                                 <tr v-else-if="equivalenceItems.length === 0">
-                                    <td colspan="12" class="text-center p-4">Aucune donnée disponible</td>
+                                    <td colspan="14" class="text-center p-4">Aucune donnée disponible</td>
                                 </tr>
                                 <tr v-else v-for="item in equivalenceItems" :key="item.id"
                                     @click="selectEquivalenceItem(item)"
@@ -298,60 +331,56 @@
                                         <div class="flex flex-col gap-1">
                                             <span class="stock-tag tag-import"
                                                 :class="getImportStyleClass(item.qtyImport)">
-                                                <span>Import :</span>
+                                                <span>Imp :</span>
                                                 <span>{{ item.qtyImport }}</span>
                                             </span>
                                             <span class="stock-tag tag-cmd"
                                                 :class="getQteCmdStyleClass(item.qtyOnPurchOrder)">
-                                                <span>Qte Cmd :</span>
+                                                <span>Cmd :</span>
                                                 <span>{{ item.qtyOnPurchOrder }}</span>
                                             </span>
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference" :class="getStyleClass(item.styleDate)">{{
-                                            formatNumber(getEquivalenceLastInvoicedData(item.no,
-                                                item.vendorNo)?.lastInvoicedDirectCost, 2)
-                                        }}</div>
-                                        <div class="cell-description">
-                                            {{
-                                                formatDate(getEquivalenceLastInvoicedData(item.no,
-                                                    item.vendorNo)?.lastInvoicedCostDate)
-                                            }}
-                                            <span v-if="getEquivalenceLastInvoicedData(item.no, item.vendorNo)?.qty"
-                                                class="qty-tag">
-                                                Qte: {{ getEquivalenceLastInvoicedData(item.no, item.vendorNo)?.qty }}
+                                        <div class="cell-reference" :class="getStyleClass(item.styleDate)">
+                                            {{ formatNumber(item.lastInvoicedDirectCost, 2) }}
+                                            <span v-if="item.quantity" class="qty-badge">
+                                                {{ Math.round(item.quantity) }}
                                             </span>
+                                        </div>
+                                        <div class="cell-description">
+                                            {{ formatDate(item.lastInvoicedCostDate) }}
                                         </div>
                                     </td>
                                     <td>
                                         <div class="cell-reference clickable-cell"
-                                            @click.stop="openPurchasePriceDialog(item.vendorNo, item.no, item.descriptionStructured)"
+                                            @click.stop="openPurchasePriceDialog(item.vendorNo, item.no, item.descriptionStructured, false)"
                                             title="Voir l'historique des prix">
                                             {{ formatNumber(item.lastCurrPrice, 2) }}
+                                            <i :class="item.LastPreferential ? 'pi pi-check-circle preferential-icon active' : 'pi pi-times-circle preferential-icon inactive'"
+                                                :title="item.LastPreferential ? 'Fournisseur préférentiel' : 'Non préférentiel'"></i>
                                         </div>
                                         <div class="cell-description">{{ formatDate(item.lastDate) }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 2) }}</div>
+                                        <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3) }}</div>
                                         <div class="cell-description">{{ formatDate(item.lastPurshDate) }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 2) }}</div>
+                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ item.totalVendu }}</div>
+                                        <div class="cell-reference">{{ item.acheteCurrYear || 0 }}</div>
+                                        <div class="cell-description">{{ item.totalAchete || 0 }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ item.totalAchete }}</div>
+                                        <div class="cell-reference">{{ item.venduCurrYear || 0 }}</div>
+                                        <div class="cell-description">{{ item.totalVendu || 0 }}</div>
                                     </td>
                                     <td>
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="item.quantityToOrder" class="qty-input"
                                                 min="0" />
-                                            <button class="validate-line-btn" title="Valider la ligne">
-                                                <i class="pi pi-check"></i>
-                                            </button>
                                         </div>
                                     </td>
                                     <td>
@@ -373,6 +402,21 @@
                                         <div class="flex justify-center items-center h-full">
                                             <i class="pi pi-info-circle info-icon cursor-pointer"
                                                 @click.stop="openInfoDialog(item)"></i>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center h-full">
+                                            <i class="pi pi-comment comment-icon cursor-pointer"
+                                                :class="{ 'has-comment': item.comment }"
+                                                @click.stop="toggleCommentOverlay($event, item)"
+                                                title="Ajouter un commentaire"></i>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center h-full">
+                                            <button class="validate-line-btn" title="Valider la ligne">
+                                                <i class="pi pi-check"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -410,44 +454,123 @@
                         <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 15%">Composant</th>
-                                    <th style="width: 25%">Désignation</th>
-                                    <th style="width: 10%">Qte</th>
-                                    <th style="width: 15%">Prix Unitaire</th>
-                                    <th style="width: 15%">Total</th>
-                                    <th style="width: 20%">Dispo</th>
+                                    <th style="width: 6%">Composant</th>
+                                    <th style="width: 12%">Réf / Desig</th>
+                                    <th style="width: 5%">Stocks</th>
+                                    <th style="width: 6%">Appro</th>
+                                    <th style="width: 6%">Dernier Achat</th>
+                                    <th style="width: 7%">Prix Devise</th>
+                                    <th style="width: 10%">Cout Calculé / Date</th>
+                                    <th style="width: 10%">Prix de vente</th>
+                                    <th style="width: 8%">Achat</th>
+                                    <th style="width: 7%">Vente</th>
+                                    <th style="width: 7%">Panier à Cmd</th>
+                                    <th style="width: 8%">Raison</th>
+                                    <th style="width: 3%">Info</th>
+                                    <th style="width: 2%"></th>
+                                    <th style="width: 3%"></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="i in 4" :key="i"
-                                    @click="selectKitItem({ no: 'KIT-' + i, descriptionStructured: 'Composant Kit ' + i, vendorNo: 'MOCK-VENDOR' })"
+                                <tr v-for="item in kitItems" :key="item.no" @click="selectKitItem(item)"
                                     class="cursor-pointer transition-colors hover:bg-blue-50"
-                                    :class="{ 'bg-blue-100': isItemSelected({ no: 'KIT-' + i }) }">
-                                    <td>KIT-{{ i }}</td>
-                                    <td>Composant Kit {{ i }}</td>
-                                    <td>1</td>
+                                    :class="{ 'bg-blue-100': isItemSelected(item) }">
                                     <td>
-                                        <div class="cell-reference" :class="getStyleClass('Attention')">{{
-                                            formatNumber(getKitLastInvoicedData('KIT-' + i,
-                                                'MOCK-VENDOR')?.lastInvoicedDirectCost, 2)
-                                        }}</div>
-                                        <div class="cell-description">
-                                            {{
-                                                formatDate(getKitLastInvoicedData('KIT-' + i,
-                                                    'MOCK-VENDOR')?.lastInvoicedCostDate)
-                                            }}
-                                            <span v-if="getKitLastInvoicedData('KIT-' + i, 'MOCK-VENDOR')?.qty"
-                                                class="qty-tag">
-                                                Qte: {{ getKitLastInvoicedData('KIT-' + i, 'MOCK-VENDOR')?.qty }}
+                                        <div class="cell-reference">{{ item.no }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ item.no }}</div>
+                                        <div class="cell-description">{{ item.descriptionStructured }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ item.qtyStock || 0 }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-col gap-1">
+                                            <span class="stock-tag tag-import" :class="getImportStyleClass(0)">
+                                                <span>Imp :</span>
+                                                <span>0</span>
+                                            </span>
+                                            <span class="stock-tag tag-cmd" :class="getQteCmdStyleClass(0)">
+                                                <span>Cmd :</span>
+                                                <span>0</span>
                                             </span>
                                         </div>
                                     </td>
-                                    <td>1</td>
-                                    <td class="clickable-cell"
-                                        @click.stop="openPurchasePriceDialog('MOCK-VENDOR', 'KIT-' + i, 'Composant Kit ' + i)">
-                                        10.00</td>
-                                    <td>10.00</td>
-                                    <td>Dispo</td>
+                                    <td>
+                                        <div class="cell-reference">
+                                            {{ formatNumber(item.lastInvoicedDirectCost, 2) }}
+                                            <span v-if="item.quantity" class="qty-badge">
+                                                {{ Math.round(item.quantity) }}
+                                            </span>
+                                        </div>
+                                        <div class="cell-description">
+                                            {{ formatDate(item.lastInvoicedCostDate) }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference clickable-cell"
+                                            @click.stop="openPurchasePriceDialog(item.vendorNo, item.no, item.descriptionStructured, false)"
+                                            title="Voir l'historique des prix">
+                                            {{ formatNumber(item.lastInvoicedDirectCost, 2) }}
+                                        </div>
+                                        <div class="cell-description">-</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(item.lastInvoicedDirectCost, 3) }}
+                                        </div>
+                                        <div class="cell-description">-</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(item.lastInvoicedDirectCost, 3) }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ item.acheteCurrYear || 0 }}</div>
+                                        <div class="cell-description">{{ item.totalAchete || 0 }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ item.venduCurrYear || 0 }}</div>
+                                        <div class="cell-description">{{ item.totalVendu || 0 }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="qty-input-wrapper">
+                                            <input type="number" v-model.number="item.quantityToOrder" class="qty-input"
+                                                min="0" />
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="reason-select-container">
+                                            <select v-model="item.orderReason" class="reason-select">
+                                                <option value=""></option>
+                                                <option v-for="reason in orderReasons" :key="reason.value"
+                                                    :value="reason.value">
+                                                    {{ reason.label }}
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center h-full">
+                                            <i class="pi pi-info-circle info-icon cursor-pointer"
+                                                @click.stop="openInfoDialog(item)"></i>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center h-full">
+                                            <i class="pi pi-comment comment-icon cursor-pointer"
+                                                :class="{ 'has-comment': item.comment }"
+                                                @click.stop="toggleCommentOverlay($event, item)"
+                                                title="Ajouter un commentaire"></i>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center h-full">
+                                            <button class="validate-line-btn" title="Valider la ligne">
+                                                <i class="pi pi-check"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -573,108 +696,110 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Article Info Dialog -->
-    <div v-if="showInfoDialog" class="info-dialog-overlay" @click.self="showInfoDialog = false">
-        <div class="info-dialog-container">
-            <!-- Header -->
-            <div class="info-dialog-header">
-                <div class="header-title">
-                    Informations Article . {{ selectedInfoItem?.no }} . {{ selectedInfoItem?.descriptionStructured }}
-                </div>
-                <div class="header-right">
-                    <img src="/images/articles/tecalliance_partner.png" alt="TecAlliance" class="tecalliance-logo">
-                    <button class="close-info-btn" @click="showInfoDialog = false">
-                        <i class="pi pi-times"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Main Content -->
-            <div class="info-dialog-body">
-                <div class="info-top-section">
-                    <!-- Image Gallery -->
-                    <div class="info-gallery">
-                        <div class="thumbnail-list">
-                            <button class="thumb-nav-btn up" @click="prevImage"><i
-                                    class="pi pi-chevron-up"></i></button>
-                            <div v-for="(thumb, index) in selectedInfoItem?.thumbnails" :key="index" class="thumb-item"
-                                :class="{ active: index === currentImageIndex }" @click="currentImageIndex = index">
-                                <img :src="thumb" alt="thumbnail">
-                            </div>
-                            <button class="thumb-nav-btn down" @click="nextImage"><i
-                                    class="pi pi-chevron-down"></i></button>
-                        </div>
-                        <div class="main-image-container">
-                            <img :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
-                                class="main-article-image">
-                        </div>
+        <!-- Article Info Dialog -->
+        <div v-if="showInfoDialog" class="info-dialog-overlay" @click.self="showInfoDialog = false">
+            <div class="info-dialog-container">
+                <!-- Header -->
+                <div class="info-dialog-header">
+                    <div class="header-title">
+                        Informations Article . {{ selectedInfoItem?.no }} . {{ selectedInfoItem?.descriptionStructured
+                        }}
                     </div>
-
-                    <!-- Technical Specs -->
-                    <div class="info-specs-container">
-                        <div class="brand-header">
-                            <img :src="selectedInfoItem?.brandLogo" alt="Brand" class="brand-logo">
-                            <div class="brand-info">
-                                <div class="brand-ref">N° de référence: {{ selectedInfoItem?.no }}</div>
-                                <div class="brand-desc">{{ selectedInfoItem?.descriptionStructured }}</div>
-                            </div>
-                        </div>
-                        <div class="specs-table">
-                            <div v-for="(spec, index) in selectedInfoItem?.specs" :key="index" class="spec-row">
-                                <div class="spec-label">{{ spec.label }}</div>
-                                <div class="spec-value">{{ spec.value }}</div>
-                            </div>
-                        </div>
+                    <div class="header-right">
+                        <img src="/images/articles/tecalliance_partner.png" alt="TecAlliance" class="tecalliance-logo">
+                        <button class="close-info-btn" @click="showInfoDialog = false">
+                            <i class="pi pi-times"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Stacked Sections -->
-                <div class="info-sections-container">
-                    <!-- OEM Numbers Section -->
-                    <div class="info-section">
-                        <div class="info-section-header">
-                            <i class="pi pi-list"></i>
-                            <span>Numéros OEM</span>
+                <!-- Main Content -->
+                <div class="info-dialog-body">
+                    <div class="info-top-section">
+                        <!-- Image Gallery -->
+                        <div class="info-gallery">
+                            <div class="thumbnail-list">
+                                <button class="thumb-nav-btn up" @click="prevImage"><i
+                                        class="pi pi-chevron-up"></i></button>
+                                <div v-for="(thumb, index) in selectedInfoItem?.thumbnails" :key="index"
+                                    class="thumb-item" :class="{ active: index === currentImageIndex }"
+                                    @click="currentImageIndex = index">
+                                    <img :src="thumb" alt="thumbnail">
+                                </div>
+                                <button class="thumb-nav-btn down" @click="nextImage"><i
+                                        class="pi pi-chevron-down"></i></button>
+                            </div>
+                            <div class="main-image-container">
+                                <img :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
+                                    class="main-article-image">
+                            </div>
                         </div>
-                        <div class="info-section-content">
-                            <div class="oe-numbers-list">
-                                <div v-for="(num, index) in selectedInfoItem?.oemNumbers" :key="index"
-                                    class="oe-number-item">
-                                    {{ num }}
+
+                        <!-- Technical Specs -->
+                        <div class="info-specs-container">
+                            <div class="brand-header">
+                                <img :src="selectedInfoItem?.brandLogo" alt="Brand" class="brand-logo">
+                                <div class="brand-info">
+                                    <div class="brand-ref">N° de référence: {{ selectedInfoItem?.no }}</div>
+                                    <div class="brand-desc">{{ selectedInfoItem?.descriptionStructured }}</div>
+                                </div>
+                            </div>
+                            <div class="specs-table">
+                                <div v-for="(spec, index) in selectedInfoItem?.specs" :key="index" class="spec-row">
+                                    <div class="spec-label">{{ spec.label }}</div>
+                                    <div class="spec-value">{{ spec.value }}</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Vehicles Section -->
-                    <div class="info-section">
-                        <div class="info-section-header">
-                            <i class="pi pi-car"></i>
-                            <span>Véhicules concernés</span>
+                    <!-- Stacked Sections -->
+                    <div class="info-sections-container">
+                        <!-- OEM Numbers Section -->
+                        <div class="info-section">
+                            <div class="info-section-header">
+                                <i class="pi pi-list"></i>
+                                <span>Numéros OEM</span>
+                            </div>
+                            <div class="info-section-content">
+                                <div class="oe-numbers-list">
+                                    <div v-for="(num, index) in selectedInfoItem?.oemNumbers" :key="index"
+                                        class="oe-number-item">
+                                        {{ num }}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="info-section-content">
-                            <div class="vehicles-list-container">
-                                <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
-                                    <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
-                                        class="brand-group">
-                                        <div class="brand-toggle-row" @click="toggleBrand(brandGroup.brand)">
-                                            <i class="pi"
-                                                :class="expandedBrands.has(brandGroup.brand) ? 'pi-minus' : 'pi-plus'"></i>
-                                            <span class="brand-name">{{ brandGroup.brand }}</span>
-                                        </div>
-                                        <div v-if="expandedBrands.has(brandGroup.brand)" class="models-list">
-                                            <div v-for="(model, mIndex) in brandGroup.models" :key="mIndex"
-                                                class="model-item">
-                                                <i class="pi pi-plus model-plus-icon"></i>
-                                                <span class="model-text">{{ model }}</span>
+
+                        <!-- Vehicles Section -->
+                        <div class="info-section">
+                            <div class="info-section-header">
+                                <i class="pi pi-car"></i>
+                                <span>Véhicules concernés</span>
+                            </div>
+                            <div class="info-section-content">
+                                <div class="vehicles-list-container">
+                                    <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
+                                        <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
+                                            class="brand-group">
+                                            <div class="brand-toggle-row" @click="toggleBrand(brandGroup.brand)">
+                                                <i class="pi"
+                                                    :class="expandedBrands.has(brandGroup.brand) ? 'pi-minus' : 'pi-plus'"></i>
+                                                <span class="brand-name">{{ brandGroup.brand }}</span>
+                                            </div>
+                                            <div v-if="expandedBrands.has(brandGroup.brand)" class="models-list">
+                                                <div v-for="(model, mIndex) in brandGroup.models" :key="mIndex"
+                                                    class="model-item">
+                                                    <i class="pi pi-plus model-plus-icon"></i>
+                                                    <span class="model-text">{{ model }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div v-else class="no-data-message">
-                                    Aucune donnée de véhicule disponible pour cet article.
+                                    <div v-else class="no-data-message">
+                                        Aucune donnée de véhicule disponible pour cet article.
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -682,162 +807,188 @@
                 </div>
             </div>
         </div>
+
+        <!-- Stock History Dialog -->
+        <Dialog v-model:visible="showHistoryDialog" modal :style="{ width: '50vw' }" class="history-dialog"
+            :showHeader="false">
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Historique</button>
+                        <div class="item-title-inline" v-if="selectedHistoryItem">
+                            {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
+                                selectedHistoryItem.descriptionStructured || selectedHistoryItem.structuredDescription ||
+                                selectedHistoryItem.description || 'Temoins de freins' }}
+                            <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany }})</span>
+                        </div>
+                        <div class="year-selector">
+                            <button class="year-arrow" @click="changeDialogYear(-1)">
+                                <i class="pi pi-chevron-left"></i>
+                            </button>
+                            <span class="year-display">{{ dialogSelectedYear }}</span>
+                            <button class="year-arrow" @click="changeDialogYear(1)">
+                                <i class="pi pi-chevron-right"></i>
+                            </button>
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showHistoryDialog = false"
+                            class="close-dialog-btn" />
+                    </div>
+                </div>
+
+                <div class="stats-bar dialog-stats-bar">
+                    <div class="stats-column">Stock : {{ dialogHistoryKpis.stock }}</div>
+                    <div class="stats-column">Achat : {{ dialogHistoryKpis.achat }}</div>
+                    <div class="stats-column">Vente : {{ Math.abs(dialogHistoryKpis.vente) }}</div>
+                    <div class="stats-column">Rupt : {{ dialogHistoryKpis.rupt }}</div>
+                </div>
+
+                <div class="table-footer centered-footer top-pagination">
+                    <div class="pagination-info" v-if="dialogHistoryEntries.length > 0">
+                        {{ dialogHistoryPagination.page * dialogHistoryPagination.size + 1 }}-{{
+                            Math.min((dialogHistoryPagination.page +
+                                1) *
+                                dialogHistoryPagination.size, dialogHistoryPagination.totalElements) }} sur {{
+                            dialogHistoryPagination.totalElements
+                        }}
+                    </div>
+                    <div class="pagination-controls centered">
+                        <button class="p-btn" :disabled="dialogHistoryPagination.page === 0"
+                            @click="fetchDialogHistory(dialogHistoryPagination.page - 1)">
+                            <i class="pi pi-angle-left"></i>
+                        </button>
+                        <span class="p-current">{{ dialogHistoryPagination.page + 1 }}</span>
+                        <button class="p-btn"
+                            :disabled="dialogHistoryPagination.page >= dialogHistoryPagination.totalPages - 1"
+                            @click="fetchDialogHistory(dialogHistoryPagination.page + 1)">
+                            <i class="pi pi-angle-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container dialog-history-container">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%">Date</th>
+                                    <th style="width: 5%">Type</th>
+                                    <th style="width: 10%">Type Doc</th>
+                                    <th style="width: 12%">N° Document</th>
+                                    <th style="width: 15%">Client / Frs</th>
+                                    <th style="width: 18%">Nom</th>
+                                    <th style="width: 8%" class="text-right">Qte</th>
+                                    <th style="width: 10%">Magasin</th>
+                                    <th style="width: 12%" class="text-right">PU</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingDialogHistory">
+                                    <td colspan="9" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="dialogHistoryEntries.length === 0">
+                                    <td colspan="9" class="text-center p-4">Aucune donnée disponible</td>
+                                </tr>
+                                <tr v-else v-for="(entry, index) in dialogHistoryEntries" :key="index">
+                                    <td>{{ formatDate(entry.postingDate) }}</td>
+                                    <td>
+                                        <div class="type-indicator-circle" :class="getEntryTypeClass(entry.entryType)">
+                                            {{ getEntryTypeLetter(entry.entryType) }}
+                                        </div>
+                                    </td>
+                                    <td>{{ entry.documentType }}</td>
+                                    <td>{{ entry.documentNo }}</td>
+                                    <td>{{ entry.sourceNo }}</td>
+                                    <td>{{ entry.sourceName }}</td>
+                                    <td class="text-right">{{ entry.quantity }}</td>
+                                    <td>{{ entry.locationCode }}</td>
+                                    <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <Dialog v-model:visible="showPurchasePriceDialog" modal :style="{ width: '50vw' }" class="history-dialog"
+            :showHeader="false">
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Historique Prix Achat</button>
+                        <div class="item-title-inline" v-if="selectedPurchasePriceItem">
+                            {{ selectedPurchasePriceItem.itemNo }} • {{
+                                selectedPurchasePriceItem.description }}
+                        </div>
+                        <div class="header-filter-container" v-if="availableVendors.length > 1">
+                            <select v-model="purchasePriceVendorFilter" class="vendor-filter-select"
+                                :disabled="isPurchasePriceFilterDisabled">
+                                <option value="">Tous les fournisseurs</option>
+                                <option v-for="vendor in availableVendors" :key="vendor" :value="vendor">
+                                    {{ vendor }}
+                                </option>
+                            </select>
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showPurchasePriceDialog = false"
+                            class="close-dialog-btn" style="margin-left: 0;" />
+                    </div>
+                </div>
+
+                <div class="table-container dialog-history-container" style="margin-top: 20px;">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%">Frs</th>
+                                    <th style="width: 15%">Date Début</th>
+                                    <th style="width: 15%">Date Fin</th>
+                                    <th style="width: 15%">Devise</th>
+                                    <th style="width: 20%" class="text-right">Coût Unitaire Direct</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingPurchasePrices">
+                                    <td colspan="5" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="purchasePrices.length === 0">
+                                    <td colspan="5" class="text-center p-4">Aucun historique de prix disponible</td>
+                                </tr>
+                                <tr v-else v-for="(price, index) in filteredPurchasePrices" :key="index">
+                                    <td>{{ price.vendorNo }}</td>
+                                    <td>{{ formatDate(price.startingDate) }}</td>
+                                    <td>{{ formatDate(price.endingDate) }}</td>
+                                    <td>{{ price.currencyCode }}</td>
+                                    <td class="text-right">{{ formatNumber(price.directUnitCost, 2) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- Comment Overlay -->
+        <OverlayPanel ref="commentOverlay" class="comment-overlay" appendTo="body"
+            :style="{ width: '25vw', minWidth: '25vw', maxWidth: '25vw', border: '1px solid #cbd5e1', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', background: 'white' }">
+            <div class="comment-content"
+                style="width: 100%; display: flex; flex-direction: column; gap: 10px; padding: 10px 10px 0px 10px !important; box-sizing: border-box !important;">
+                <textarea v-model="commentText" class="comment-textarea" placeholder="Saisissez votre commentaire..."
+                    rows="5"
+                    style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; font-family: inherit; font-size: 0.9rem; resize: none; outline: none;"></textarea>
+                <div class="comment-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <Button icon="pi pi-check" text rounded size="small" @click="saveComment" title="Enregistrer" />
+                    <Button icon="pi pi-times" text rounded size="small" @click="$refs.commentOverlay.toggle($event)"
+                        title="Fermer" />
+                </div>
+            </div>
+        </OverlayPanel>
     </div>
-
-    <!-- Stock History Dialog -->
-    <Dialog v-model:visible="showHistoryDialog" modal :style="{ width: '50vw' }" class="history-dialog"
-        :showHeader="false">
-        <div class="dialog-content-wrapper">
-            <div class="sidebar-header dialog-header">
-                <div class="header-actions">
-                    <button class="history-btn">Historique</button>
-                    <div class="item-title-inline" v-if="selectedHistoryItem">
-                        {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
-                            selectedHistoryItem.descriptionStructured || selectedHistoryItem.structuredDescription ||
-                            selectedHistoryItem.description || 'Temoins de freins' }}
-                        <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany }})</span>
-                    </div>
-                    <div class="year-selector">
-                        <button class="year-arrow" @click="changeDialogYear(-1)">
-                            <i class="pi pi-chevron-left"></i>
-                        </button>
-                        <span class="year-display">{{ dialogSelectedYear }}</span>
-                        <button class="year-arrow" @click="changeDialogYear(1)">
-                            <i class="pi pi-chevron-right"></i>
-                        </button>
-                    </div>
-                    <Button icon="pi pi-times" text rounded @click="showHistoryDialog = false"
-                        class="close-dialog-btn" />
-                </div>
-            </div>
-
-            <div class="stats-bar dialog-stats-bar">
-                <div class="stats-column">Stock : {{ dialogHistoryKpis.stock }}</div>
-                <div class="stats-column">Achat : {{ dialogHistoryKpis.achat }}</div>
-                <div class="stats-column">Vente : {{ Math.abs(dialogHistoryKpis.vente) }}</div>
-                <div class="stats-column">Rupt : {{ dialogHistoryKpis.rupt }}</div>
-            </div>
-
-            <div class="table-footer centered-footer top-pagination">
-                <div class="pagination-info" v-if="dialogHistoryEntries.length > 0">
-                    {{ dialogHistoryPagination.page * dialogHistoryPagination.size + 1 }}-{{
-                        Math.min((dialogHistoryPagination.page +
-                            1) *
-                            dialogHistoryPagination.size, dialogHistoryPagination.totalElements) }} sur {{
-                        dialogHistoryPagination.totalElements
-                    }}
-                </div>
-                <div class="pagination-controls centered">
-                    <button class="p-btn" :disabled="dialogHistoryPagination.page === 0"
-                        @click="fetchDialogHistory(dialogHistoryPagination.page - 1)">
-                        <i class="pi pi-angle-left"></i>
-                    </button>
-                    <span class="p-current">{{ dialogHistoryPagination.page + 1 }}</span>
-                    <button class="p-btn"
-                        :disabled="dialogHistoryPagination.page >= dialogHistoryPagination.totalPages - 1"
-                        @click="fetchDialogHistory(dialogHistoryPagination.page + 1)">
-                        <i class="pi pi-angle-right"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="table-container dialog-history-container">
-                <div class="table-wrapper">
-                    <table class="modern-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 10%">Date</th>
-                                <th style="width: 5%">Type</th>
-                                <th style="width: 10%">Type Doc</th>
-                                <th style="width: 12%">N° Document</th>
-                                <th style="width: 15%">Client / Frs</th>
-                                <th style="width: 18%">Nom</th>
-                                <th style="width: 8%" class="text-right">Qte</th>
-                                <th style="width: 10%">Magasin</th>
-                                <th style="width: 12%" class="text-right">PU</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-if="isLoadingDialogHistory">
-                                <td colspan="9" class="text-center p-4">Chargement...</td>
-                            </tr>
-                            <tr v-else-if="dialogHistoryEntries.length === 0">
-                                <td colspan="9" class="text-center p-4">Aucune donnée disponible</td>
-                            </tr>
-                            <tr v-else v-for="(entry, index) in dialogHistoryEntries" :key="index">
-                                <td>{{ formatDate(entry.postingDate) }}</td>
-                                <td>
-                                    <div class="type-indicator-circle" :class="getEntryTypeClass(entry.entryType)">
-                                        {{ getEntryTypeLetter(entry.entryType) }}
-                                    </div>
-                                </td>
-                                <td>{{ entry.documentType }}</td>
-                                <td>{{ entry.documentNo }}</td>
-                                <td>{{ entry.sourceNo }}</td>
-                                <td>{{ entry.sourceName }}</td>
-                                <td class="text-right">{{ entry.quantity }}</td>
-                                <td>{{ entry.locationCode }}</td>
-                                <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </Dialog>
-
-    <!-- Purchase Price History Dialog -->
-    <Dialog v-model:visible="showPurchasePriceDialog" modal :style="{ width: '50vw' }" class="history-dialog"
-        :showHeader="false">
-        <div class="dialog-content-wrapper">
-            <div class="sidebar-header dialog-header">
-                <div class="header-actions">
-                    <button class="history-btn">Historique Prix Achat</button>
-                    <div class="item-title-inline" v-if="selectedPurchasePriceItem">
-                        {{ selectedPurchasePriceItem.vendorNo }} • {{ selectedPurchasePriceItem.itemNo }} • {{
-                            selectedPurchasePriceItem.description }}
-                    </div>
-                    <Button icon="pi pi-times" text rounded @click="showPurchasePriceDialog = false"
-                        class="close-dialog-btn" style="margin-left: auto;" />
-                </div>
-            </div>
-
-            <div class="table-container dialog-history-container" style="margin-top: 20px;">
-                <div class="table-wrapper">
-                    <table class="modern-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 20%">Date Début</th>
-                                <th style="width: 20%">Date Fin</th>
-                                <th style="width: 15%">Devise</th>
-                                <th style="width: 20%" class="text-right">Coût Unitaire Direct</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-if="isLoadingPurchasePrices">
-                                <td colspan="4" class="text-center p-4">Chargement...</td>
-                            </tr>
-                            <tr v-else-if="purchasePrices.length === 0">
-                                <td colspan="4" class="text-center p-4">Aucun historique de prix disponible</td>
-                            </tr>
-                            <tr v-else v-for="(price, index) in purchasePrices" :key="index">
-                                <td>{{ formatDate(price.startingDate) }}</td>
-                                <td>{{ formatDate(price.endingDate) }}</td>
-                                <td>{{ price.currencyCode }}</td>
-                                <td class="text-right">{{ formatNumber(price.directUnitCost, 2) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </Dialog>
 </template>
-
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import OverlayPanel from 'primevue/overlaypanel'
 
 import { useCompareQuoteStore } from '../stores/compareQuote'
 
@@ -876,6 +1027,13 @@ const equivalencePagination = ref({
     totalPages: 0
 })
 
+const kitItems = ref([
+    { no: 'KIT-1', descriptionStructured: 'Composant Kit 1', quantity: 1, lastInvoicedDirectCost: 10.5, lastInvoicedCostDate: '2024-01-15', vendorNo: 'MOCK-VENDOR' },
+    { no: 'KIT-2', descriptionStructured: 'Composant Kit 2', quantity: 2, lastInvoicedDirectCost: 15.0, lastInvoicedCostDate: '2024-02-20', vendorNo: 'MOCK-VENDOR' },
+    { no: 'KIT-3', descriptionStructured: 'Composant Kit 3', quantity: 1, lastInvoicedDirectCost: 8.75, lastInvoicedCostDate: '2024-03-10', vendorNo: 'MOCK-VENDOR' },
+    { no: 'KIT-4', descriptionStructured: 'Composant Kit 4', quantity: 3, lastInvoicedDirectCost: 12.0, lastInvoicedCostDate: '2024-04-05', vendorNo: 'MOCK-VENDOR' }
+])
+
 // Sidebar History State
 const selectedYear = ref(new Date().getFullYear())
 const historyEntries = ref([])
@@ -886,6 +1044,24 @@ const historyPagination = ref({
     totalElements: 0,
     totalPages: 0
 })
+
+// Comment State
+const commentOverlay = ref(null)
+const commentText = ref('')
+const selectedCommentItem = ref(null)
+
+const toggleCommentOverlay = (event, item) => {
+    selectedCommentItem.value = item
+    commentText.value = item.comment || ''
+    commentOverlay.value.toggle(event)
+}
+
+const saveComment = () => {
+    if (selectedCommentItem.value) {
+        selectedCommentItem.value.comment = commentText.value
+    }
+    commentOverlay.value.hide()
+}
 const historyKpis = ref({
     stock: 0,
     vente: 0,
@@ -920,17 +1096,39 @@ const showPurchasePriceDialog = ref(false)
 const purchasePrices = ref([])
 const isLoadingPurchasePrices = ref(false)
 const selectedPurchasePriceItem = ref(null)
+const purchasePriceVendorFilter = ref('')
 
-const openPurchasePriceDialog = async (vendorNo, itemNo, description) => {
-    if (!vendorNo || !itemNo) return
+const availableVendors = computed(() => {
+    if (!purchasePrices.value) return []
+    const vendors = [...new Set(purchasePrices.value.map(p => p.vendorNo))].filter(Boolean)
+    return vendors.sort()
+})
 
-    selectedPurchasePriceItem.value = { vendorNo, itemNo, description }
+const filteredPurchasePrices = computed(() => {
+    if (!purchasePriceVendorFilter.value) return purchasePrices.value
+    return purchasePrices.value.filter(p => p.vendorNo === purchasePriceVendorFilter.value)
+})
+
+const isPurchasePriceFilterDisabled = ref(false)
+
+const openPurchasePriceDialog = async (vendorNo, itemNo, description, isFromSuppliers = false) => {
+    if (!itemNo) return
+
+    selectedPurchasePriceItem.value = { itemNo, description }
+    isPurchasePriceFilterDisabled.value = isFromSuppliers
+
+    if (isFromSuppliers && vendorNo) {
+        purchasePriceVendorFilter.value = vendorNo
+    } else {
+        purchasePriceVendorFilter.value = ''
+    }
+
     showPurchasePriceDialog.value = true
     isLoadingPurchasePrices.value = true
     purchasePrices.value = []
 
     try {
-        const data = await store.fetchPurchasePrices(vendorNo, itemNo)
+        const data = await store.fetchPurchasePrices(itemNo)
         purchasePrices.value = data || []
     } catch (error) {
         console.error('Error fetching purchase prices:', error)
@@ -1076,7 +1274,8 @@ const handleKeyDown = (event) => {
                 openPurchasePriceDialog(
                     vendor,
                     item.no,
-                    item.descriptionStructured || item.description
+                    item.descriptionStructured || item.description,
+                    !!item.buyFromVendorNo // true if from main table
                 )
             }
         }
@@ -1469,11 +1668,6 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
             equivalencePagination.value.page = 0
             equivalencePagination.value.totalPages = 1
         }
-
-        // Fetch last invoiced costs for the loaded equivalence items
-        if (equivalenceItems.value.length > 0) {
-            fetchEquivalenceLastInvoicedCosts(equivalenceItems.value)
-        }
     } catch (error) {
         console.error('Error fetching equivalence items:', error)
         equivalenceItems.value = []
@@ -1490,8 +1684,6 @@ watch(() => props.line, () => {
 onMounted(() => {
     window.addEventListener('keydown', handleKeyDown)
     fetchDetails()
-    // Fetch kit costs on mount as they are static for now
-    fetchKitLastInvoicedCosts()
 })
 
 onUnmounted(() => {
@@ -1880,6 +2072,27 @@ const textRight = {
     -moz-appearance: textfield;
 }
 
+.qty-input.mini {
+    padding: 6px 10px;
+    font-size: 0.95rem;
+}
+
+.qty-input-wrapper.mini {
+    margin-top: 4px;
+}
+
+.initial-tag {
+    background-color: #f1f5f9;
+    color: #64748b;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 .info-icon {
     color: #3b82f6;
     cursor: pointer;
@@ -2159,6 +2372,23 @@ const textRight = {
     vertical-align: middle;
 }
 
+.qty-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #3b82f6;
+    color: white;
+    padding: 2px 6px;
+    min-width: 20px;
+    height: 18px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-left: 6px;
+    vertical-align: middle;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
 /* Main Layout Styles */
 .main-layout {
     display: flex;
@@ -2381,7 +2611,7 @@ const textRight = {
 }
 
 .item-title-inline {
-    width: 58%;
+    flex-grow: 1;
     font-weight: 800;
     font-size: 0.9rem;
     color: #1e293b;
@@ -2392,6 +2622,7 @@ const textRight = {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .history-btn {
@@ -2644,6 +2875,63 @@ const textRight = {
     justify-content: center;
     padding: 5px;
     transition: color 0.2s;
+    padding: 5px;
+}
+
+.header-filter-container {
+    margin-left: auto;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.vendor-filter-select {
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    background-color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    min-width: 180px;
+}
+
+.vendor-filter-select:disabled {
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+}
+
+.vendor-filter-select:hover {
+    border-color: #cbd5e1;
+    background-color: #fff;
+}
+
+.vendor-filter-select:focus {
+    border-color: #3b82f6;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.preferential-icon {
+    font-size: 0.9rem;
+    margin-left: 6px;
+    vertical-align: middle;
+    color: #cbd5e1;
+    transition: all 0.2s ease;
+}
+
+.preferential-icon.active {
+    color: #10b981;
+    text-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+
+.preferential-icon.inactive {
+    color: #ef4444;
 }
 
 .close-info-btn:hover {
@@ -2952,5 +3240,128 @@ const textRight = {
     font-size: 0.8rem;
     color: #64748b;
     text-align: left;
+}
+
+.comment-icon {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+}
+
+.comment-icon:hover {
+    color: #3b82f6;
+    transform: scale(1.1);
+}
+
+.comment-icon.has-comment {
+    color: #3b82f6;
+}
+
+.comment-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.comment-textarea:focus {
+    border-color: #3b82f6;
+}
+
+.comment-dialog :deep(.p-dialog-header) {
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.comment-dialog :deep(.p-dialog-content) {
+    padding: 1.5rem;
+}
+
+.comment-dialog :deep(.p-dialog-footer) {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.comment-icon {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+}
+
+.comment-icon:hover {
+    color: #3b82f6;
+    transform: scale(1.1);
+}
+
+.comment-icon.has-comment {
+    color: #3b82f6;
+}
+</style>
+
+<style>
+.p-overlaypanel.comment-overlay {
+    width: 25vw !important;
+    min-width: 25vw !important;
+    max-width: 25vw !important;
+}
+
+.p-overlaypanel.comment-overlay .p-overlaypanel-content {
+    padding: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+}
+
+.comment-content {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+}
+
+.comment-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 6px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.comment-title {
+    flex: 1 !important;
+}
+
+.comment-header .header-actions {
+    display: flex !important;
+    gap: 4px !important;
+}
+
+.comment-header .header-actions .p-button.p-button-icon-only {
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+}
+
+.comment-textarea {
+    width: 100% !important;
+    padding: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    font-family: inherit !important;
+    font-size: 0.9rem !important;
+    resize: none !important;
+    outline: none !important;
+    transition: border-color 0.2s !important;
 }
 </style>

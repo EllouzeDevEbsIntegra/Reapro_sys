@@ -175,10 +175,13 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        async fetchPurchasePrices(vendorNo, itemNo) {
+        async fetchPurchasePrices(itemNo, vendorNo = null) {
             try {
+                const params = { itemNo }
+                if (vendorNo) params.vendorNo = vendorNo
+
                 const response = await axios.get('/api/purchase-prices', {
-                    params: { vendorNo, itemNo }
+                    params
                 })
                 return response.data
             } catch (err) {

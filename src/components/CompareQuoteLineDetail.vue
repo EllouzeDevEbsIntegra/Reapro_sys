@@ -12,7 +12,8 @@
                     <span class="item-desc">{{ line.structuredDescription || line.description || 'Description' }}</span>
                 </div>
                 <div class="info-right">
-                    <span class="status-dot"></span>
+                    <span class="status-dot" :class="statusDotClass" @click="openVerificationDialog"
+                        :title="`TecDoc: ${verificationStatus?.countNotCreated || 0} à créer`"></span>
                     <div class="page-indicator">
                         Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                     </div>
@@ -40,7 +41,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -472,7 +473,13 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="item in kitItems" :key="item.no" @click="selectKitItem(item)"
+                                <tr v-if="isLoadingKit">
+                                    <td colspan="15" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="kitItems.length === 0">
+                                    <td colspan="15" class="text-center p-4">Aucune donnée disponible</td>
+                                </tr>
+                                <tr v-else v-for="item in kitItems" :key="item.no" @click="selectKitItem(item)"
                                     class="cursor-pointer transition-colors hover:bg-blue-50"
                                     :class="{ 'bg-blue-100': isItemSelected(item) }">
                                     <td>
@@ -487,13 +494,15 @@
                                     </td>
                                     <td>
                                         <div class="flex flex-col gap-1">
-                                            <span class="stock-tag tag-import" :class="getImportStyleClass(0)">
+                                            <span class="stock-tag tag-import"
+                                                :class="getImportStyleClass(item.qtyImport || 0)">
                                                 <span>Imp :</span>
-                                                <span>0</span>
+                                                <span>{{ item.qtyImport || 0 }}</span>
                                             </span>
-                                            <span class="stock-tag tag-cmd" :class="getQteCmdStyleClass(0)">
+                                            <span class="stock-tag tag-cmd"
+                                                :class="getQteCmdStyleClass(item.qtyOnPurchOrder || 0)">
                                                 <span>Cmd :</span>
-                                                <span>0</span>
+                                                <span>{{ item.qtyOnPurchOrder || 0 }}</span>
                                             </span>
                                         </div>
                                     </td>
@@ -512,17 +521,19 @@
                                         <div class="cell-reference clickable-cell"
                                             @click.stop="openPurchasePriceDialog(item.vendorNo, item.no, item.descriptionStructured, false)"
                                             title="Voir l'historique des prix">
-                                            {{ formatNumber(item.lastInvoicedDirectCost, 2) }}
+                                            {{ formatNumber(item.lastCurrPrice || item.lastInvoicedDirectCost, 2) }}
                                         </div>
-                                        <div class="cell-description">-</div>
+                                        <div class="cell-description">{{ formatDate(item.lastDate) }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(item.lastInvoicedDirectCost, 3) }}
+                                        <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS ||
+                                            item.lastInvoicedDirectCost, 3) }}
                                         </div>
-                                        <div class="cell-description">-</div>
+                                        <div class="cell-description">{{ formatDate(item.lastPurshDate) }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(item.lastInvoicedDirectCost, 3) }}
+                                        <div class="cell-reference">{{ formatNumber(item.unitPrice ||
+                                            item.lastInvoicedDirectCost, 3) }}
                                         </div>
                                     </td>
                                     <td>
@@ -576,13 +587,22 @@
                         </table>
                     </div>
                     <div class="table-footer">
-                        <div class="pagination-info">1-4 sur 4</div>
+                        <div class="pagination-info" v-if="kitItems.length > 0">
+                            {{ kitPagination.page * kitPagination.size + 1 }}-{{
+                                Math.min((kitPagination.page + 1) *
+                                    kitPagination.size, kitPagination.totalElements) }} sur {{
+                                kitPagination.totalElements }}
+                        </div>
                         <div class="pagination-controls">
-                            <button class="p-btn" disabled><i class="pi pi-angle-double-left"></i></button>
-                            <button class="p-btn" disabled><i class="pi pi-angle-left"></i></button>
-                            <span class="p-current">1</span>
-                            <button class="p-btn" disabled><i class="pi pi-angle-right"></i></button>
-                            <button class="p-btn" disabled><i class="pi pi-angle-double-right"></i></button>
+                            <button class="p-btn" :disabled="kitPagination.page === 0"
+                                @click="fetchKitItems(selectedDetail.no, kitPagination.page - 1)">
+                                <i class="pi pi-angle-left"></i>
+                            </button>
+                            <span class="p-current">{{ kitPagination.page + 1 }}</span>
+                            <button class="p-btn" :disabled="kitPagination.page >= kitPagination.totalPages - 1"
+                                @click="fetchKitItems(selectedDetail.no, kitPagination.page + 1)">
+                                <i class="pi pi-angle-right"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -716,94 +736,152 @@
 
                 <!-- Main Content -->
                 <div class="info-dialog-body">
-                    <div class="info-top-section">
-                        <!-- Image Gallery -->
-                        <div class="info-gallery">
-                            <div class="thumbnail-list">
-                                <button class="thumb-nav-btn up" @click="prevImage"><i
-                                        class="pi pi-chevron-up"></i></button>
-                                <div v-for="(thumb, index) in selectedInfoItem?.thumbnails" :key="index"
-                                    class="thumb-item" :class="{ active: index === currentImageIndex }"
-                                    @click="currentImageIndex = index">
-                                    <img :src="thumb" alt="thumbnail">
-                                </div>
-                                <button class="thumb-nav-btn down" @click="nextImage"><i
-                                        class="pi pi-chevron-down"></i></button>
-                            </div>
-                            <div class="main-image-container">
-                                <img :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
-                                    class="main-article-image">
-                            </div>
-                        </div>
-
-                        <!-- Technical Specs -->
-                        <div class="info-specs-container">
-                            <div class="brand-header">
-                                <img :src="selectedInfoItem?.brandLogo" alt="Brand" class="brand-logo">
-                                <div class="brand-info">
-                                    <div class="brand-ref">N° de référence: {{ selectedInfoItem?.no }}</div>
-                                    <div class="brand-desc">{{ selectedInfoItem?.descriptionStructured }}</div>
-                                </div>
-                            </div>
-                            <div class="specs-table">
-                                <div v-for="(spec, index) in selectedInfoItem?.specs" :key="index" class="spec-row">
-                                    <div class="spec-label">{{ spec.label }}</div>
-                                    <div class="spec-value">{{ spec.value }}</div>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- Loading State -->
+                    <div v-if="selectedInfoItem?.isLoading" class="loading-state">
+                        <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: #3b82f6;"></i>
+                        <p>Chargement des informations...</p>
                     </div>
 
-                    <!-- Stacked Sections -->
-                    <div class="info-sections-container">
-                        <!-- OEM Numbers Section -->
-                        <div class="info-section">
-                            <div class="info-section-header">
-                                <i class="pi pi-list"></i>
-                                <span>Numéros OEM</span>
-                            </div>
-                            <div class="info-section-content">
-                                <div class="oe-numbers-list">
-                                    <div v-for="(num, index) in selectedInfoItem?.oemNumbers" :key="index"
-                                        class="oe-number-item">
-                                        {{ num }}
+                    <template v-else>
+                        <div class="info-top-section">
+                            <!-- Image Gallery -->
+                            <div class="info-gallery">
+                                <div class="thumbnail-list" v-if="selectedInfoItem?.thumbnails?.length > 0">
+                                    <button class="thumb-nav-btn up" @click="prevImage"
+                                        v-if="selectedInfoItem.thumbnails.length > 1"><i
+                                            class="pi pi-chevron-up"></i></button>
+                                    <div class="thumbnail-scroll-container">
+                                        <div v-for="(thumb, index) in selectedInfoItem?.thumbnails" :key="index"
+                                            class="thumb-item" :class="{ active: index === currentImageIndex }"
+                                            @click="currentImageIndex = index">
+                                            <img :src="thumb" alt="thumbnail">
+                                        </div>
+                                    </div>
+                                    <button class="thumb-nav-btn down" @click="nextImage"
+                                        v-if="selectedInfoItem.thumbnails.length > 1"><i
+                                            class="pi pi-chevron-down"></i></button>
+                                </div>
+                                <div class="main-image-container">
+                                    <img v-if="selectedInfoItem?.thumbnails?.[currentImageIndex]"
+                                        :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
+                                        class="main-article-image">
+                                    <div v-else class="no-image-placeholder">
+                                        <i class="pi pi-image" style="font-size: 3rem; color: #94a3b8;"></i>
+                                        <p>Aucune image disponible</p>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Technical Specs -->
+                            <div class="info-specs-container">
+                                <div class="brand-header">
+                                    <img v-if="selectedInfoItem?.brandLogo" :src="selectedInfoItem?.brandLogo"
+                                        alt="Brand" class="brand-logo">
+                                    <div class="brand-info">
+                                        <div class="brand-ref">N° de référence: {{ selectedInfoItem?.no }}</div>
+                                        <div class="brand-desc">{{ selectedInfoItem?.genericDescription ||
+                                            selectedInfoItem?.descriptionStructured }}</div>
+                                        <div class="brand-name" v-if="selectedInfoItem?.brand">{{
+                                            selectedInfoItem?.brand }}</div>
+                                    </div>
+                                </div>
+                                <div class="specs-table" v-if="selectedInfoItem?.specs?.length > 0">
+                                    <div v-for="(spec, index) in selectedInfoItem?.specs" :key="index" class="spec-row">
+                                        <div class="spec-label">{{ spec.label }}</div>
+                                        <div class="spec-value">{{ spec.value }}</div>
+                                    </div>
+                                </div>
+                                <div v-else class="no-data-message">
+                                    Aucune spécification technique disponible.
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Vehicles Section -->
-                        <div class="info-section">
-                            <div class="info-section-header">
-                                <i class="pi pi-car"></i>
-                                <span>Véhicules concernés</span>
+                        <!-- Stacked Sections -->
+                        <div class="info-sections-container">
+                            <!-- OEM Numbers Section -->
+                            <div class="info-section" v-if="selectedInfoItem?.oemNumbers?.length > 0">
+                                <div class="info-section-header">
+                                    <i class="pi pi-list"></i>
+                                    <span>Numéros OEM</span>
+                                </div>
+                                <div class="info-section-content">
+                                    <div class="oe-numbers-list">
+                                        <div v-for="(num, index) in selectedInfoItem?.oemNumbers" :key="index"
+                                            class="oe-number-item">
+                                            {{ num }}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="info-section-content">
-                                <div class="vehicles-list-container">
-                                    <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
-                                        <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
-                                            class="brand-group">
-                                            <div class="brand-toggle-row" @click="toggleBrand(brandGroup.brand)">
-                                                <i class="pi"
-                                                    :class="expandedBrands.has(brandGroup.brand) ? 'pi-minus' : 'pi-plus'"></i>
-                                                <span class="brand-name">{{ brandGroup.brand }}</span>
-                                            </div>
-                                            <div v-if="expandedBrands.has(brandGroup.brand)" class="models-list">
-                                                <div v-for="(model, mIndex) in brandGroup.models" :key="mIndex"
-                                                    class="model-item">
-                                                    <i class="pi pi-plus model-plus-icon"></i>
-                                                    <span class="model-text">{{ model }}</span>
+
+                            <!-- PDFs Section -->
+                            <div class="info-section" v-if="selectedInfoItem?.pdfs?.length > 0">
+                                <div class="info-section-header">
+                                    <i class="pi pi-file-pdf"></i>
+                                    <span>Documents PDF</span>
+                                </div>
+                                <div class="info-section-content">
+                                    <div class="pdfs-list">
+                                        <a v-for="(pdf, index) in selectedInfoItem?.pdfs" :key="index" :href="pdf.url"
+                                            target="_blank" rel="noopener noreferrer" class="pdf-item">
+                                            <i class="pi pi-file-pdf"></i>
+                                            <span>{{ pdf.fileName }}</span>
+                                            <i class="pi pi-external-link"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- GTINs Section -->
+                            <div class="info-section" v-if="selectedInfoItem?.gtins?.length > 0">
+                                <div class="info-section-header">
+                                    <i class="pi pi-barcode"></i>
+                                    <span>Codes-barres (GTIN)</span>
+                                </div>
+                                <div class="info-section-content">
+                                    <div class="oe-numbers-list">
+                                        <div v-for="(gtin, index) in selectedInfoItem?.gtins" :key="index"
+                                            class="oe-number-item">
+                                            {{ gtin }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vehicles Section -->
+                            <div class="info-section" v-if="selectedInfoItem?.vehicles?.length > 0">
+                                <div class="info-section-header">
+                                    <i class="pi pi-car"></i>
+                                    <span>Véhicules concernés</span>
+                                </div>
+                                <div class="info-section-content">
+                                    <div class="vehicles-list-container">
+                                        <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
+                                            <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
+                                                class="brand-group">
+                                                <div class="brand-toggle-row" @click="toggleBrand(brandGroup.brand)">
+                                                    <i class="pi"
+                                                        :class="expandedBrands.has(brandGroup.brand) ? 'pi-minus' : 'pi-plus'"></i>
+                                                    <span class="brand-name">{{ brandGroup.brand }}</span>
+                                                </div>
+                                                <div v-if="expandedBrands.has(brandGroup.brand)" class="models-list">
+                                                    <div v-for="(model, mIndex) in brandGroup.models" :key="mIndex"
+                                                        class="model-item">
+                                                        <i class="pi pi-plus model-plus-icon"></i>
+                                                        <span class="model-text">{{ model }}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div v-else class="no-data-message">
-                                        Aucune donnée de véhicule disponible pour cet article.
+                                        <div v-else class="no-data-message">
+                                            Aucune donnée de véhicule disponible pour cet article.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </div>
         </div>
@@ -1027,12 +1105,14 @@ const equivalencePagination = ref({
     totalPages: 0
 })
 
-const kitItems = ref([
-    { no: 'KIT-1', descriptionStructured: 'Composant Kit 1', quantity: 1, lastInvoicedDirectCost: 10.5, lastInvoicedCostDate: '2024-01-15', vendorNo: 'MOCK-VENDOR' },
-    { no: 'KIT-2', descriptionStructured: 'Composant Kit 2', quantity: 2, lastInvoicedDirectCost: 15.0, lastInvoicedCostDate: '2024-02-20', vendorNo: 'MOCK-VENDOR' },
-    { no: 'KIT-3', descriptionStructured: 'Composant Kit 3', quantity: 1, lastInvoicedDirectCost: 8.75, lastInvoicedCostDate: '2024-03-10', vendorNo: 'MOCK-VENDOR' },
-    { no: 'KIT-4', descriptionStructured: 'Composant Kit 4', quantity: 3, lastInvoicedDirectCost: 12.0, lastInvoicedCostDate: '2024-04-05', vendorNo: 'MOCK-VENDOR' }
-])
+const kitItems = ref([])
+const isLoadingKit = ref(false)
+const kitPagination = ref({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0
+})
 
 // Sidebar History State
 const selectedYear = ref(new Date().getFullYear())
@@ -1090,6 +1170,16 @@ const isLoadingIntercompanyStock = ref(false)
 
 // Article Info Dialog State
 const showInfoDialog = ref(false)
+
+// TecDoc Verification State
+const verificationStatus = ref(null)
+const showVerificationDialog = ref(false)
+const isLoadingVerification = ref(false)
+const verificationManufacturerFilter = ref('')
+const verificationPagination = ref({
+    page: 0,
+    size: 10
+})
 
 // Purchase Price Dialog State
 const showPurchasePriceDialog = ref(false)
@@ -1229,6 +1319,42 @@ const selectedInfoItem = ref(null)
 const currentImageIndex = ref(0)
 const expandedBrands = ref(new Set())
 
+// TecDoc Verification Computed Properties
+const masterItemNo = computed(() => {
+    if (!props.line?.itemNo) return ''
+    return props.line.itemNo.replace(/MASTER/gi, '').trim()
+})
+
+const availableManufacturers = computed(() => {
+    if (!verificationStatus.value?.items) return []
+    const manufacturers = [...new Set(verificationStatus.value.items.map(item => item.manufacturerName))]
+    return manufacturers.sort()
+})
+
+const filteredVerificationItems = computed(() => {
+    if (!verificationStatus.value?.items) return []
+    if (!verificationManufacturerFilter.value) return verificationStatus.value.items
+    return verificationStatus.value.items.filter(item =>
+        item.manufacturerName === verificationManufacturerFilter.value
+    )
+})
+
+const paginatedVerificationItems = computed(() => {
+    const start = verificationPagination.value.page * verificationPagination.value.size
+    const end = start + verificationPagination.value.size
+    return filteredVerificationItems.value.slice(start, end)
+})
+
+const verificationTotalPages = computed(() => {
+    return Math.ceil(filteredVerificationItems.value.length / verificationPagination.value.size)
+})
+
+const statusDotClass = computed(() => {
+    if (!verificationStatus.value) return 'loading'
+    if (verificationStatus.value.countNotCreated === 0) return 'success'
+    return 'warning'
+})
+
 const toggleBrand = (brand) => {
     if (expandedBrands.value.has(brand)) {
         expandedBrands.value.delete(brand)
@@ -1321,57 +1447,122 @@ const getQtyCmdStyleClass = (qtyValue) => {
     return getQteCmdStyleClass(qtyValue)
 }
 
-const openInfoDialog = (item) => {
-    selectedInfoItem.value = {
-        ...item,
-        brand: 'febi bilstein',
-        brandLogo: '/images/articles/febi_logo.png',
-        mainImage: '/images/articles/rotule_1.jpg',
-        thumbnails: [
-            '/images/articles/rotule_1.jpg',
-            '/images/articles/rotule_2.jpg',
-            '/images/articles/rotule_3.jpg'
-        ],
-        specs: [
-            { label: "Côté d'assemblage", value: "Essieu avant gauche, inférieur, Essieu avant droit" },
-            { label: "Dimension du cône [mm]", value: "18" },
-            { label: "Poids [kg]", value: "0,470" },
-            { label: "Type de bras oscillant", value: "pour bras oscillant transversal" },
-            { label: "Tenir compte des informations service", value: "" }
-        ],
-        oemNumbers: [
-            "MERCEDES-BENZ 124 333 01 27",
-            "MERCEDES-BENZ 124 333 03 27",
-            "MERCEDES-BENZ A124 333 01 27",
-            "MERCEDES-BENZ A124 333 03 27",
-            "MERCEDES-BENZ 124 333 01 27",
-            "MERCEDES-BENZ 124 333 03 27",
-            "MERCEDES-BENZ A124 333 01 27",
-            "MERCEDES-BENZ A124 333 03 27"
-        ],
-        vehicles: [
-            {
-                brand: 'MERCEDES-BENZ',
-                models: [
-                    'MERCEDES-BENZ W124 Coupé (C124) ( 03.1987 - 07.1993 , 118 - 231 CH)',
-                    'MERCEDES-BENZ W124 Berline (W124) ( 12.1984 - 08.1993 , 72 - 326 CH)',
-                    'MERCEDES-BENZ W124 Break (S124) ( 09.1985 - 07.1993 , 72 - 197 CH)',
-                    'MERCEDES-BENZ SL Cabriolet (R129) ( 03.1989 - 10.2001 , 190 - 381 CH)',
-                    'MERCEDES-BENZ 190 (W201) ( 10.1982 - 08.1993 , 72 - 235 CH)',
-                    'MERCEDES-BENZ Classe E Berline (W124) ( 06.1993 - 06.1995 , 75 - 381 CH)',
-                    'MERCEDES-BENZ Classe E Break (S124) ( 06.1993 - 06.1996 , 113 - 197 CH)',
-                    'MERCEDES-BENZ SL Cabriolet (R107) ( 09.1985 - 08.1989 , 180 - 245 CH)',
-                    'MERCEDES-BENZ Classe E Coupé (C124) ( 06.1993 - 06.1997 , 136 - 272 CH)',
-                    'MERCEDES-BENZ Classe E Cabriolet (A124) ( 06.1993 - 03.1998 , 136 - 272 CH)'
-                ]
-            }
-        ]
+// TecDoc Verification Functions
+const fetchVerificationStatus = async () => {
+    if (!masterItemNo.value) return
+
+    isLoadingVerification.value = true
+    try {
+        const data = await store.fetchTecdocVerification(masterItemNo.value)
+        verificationStatus.value = data
+    } catch (error) {
+        console.error('Failed to fetch verification status:', error)
+        verificationStatus.value = null
+    } finally {
+        isLoadingVerification.value = false
     }
-    currentImageIndex.value = 0
-    showInfoDialog.value = true
 }
 
-const selectLine = (detail) => {
+const openVerificationDialog = () => {
+    showVerificationDialog.value = true
+}
+
+const closeVerificationDialog = () => {
+    showVerificationDialog.value = false
+}
+
+const changeVerificationPage = (newPage) => {
+    verificationPagination.value.page = newPage
+}
+
+const openInfoDialog = async (item) => {
+    // Show dialog immediately with loading state
+    currentImageIndex.value = 0
+    showInfoDialog.value = true
+
+    // Debug: Log the item to verify fields are present
+    console.log('openInfoDialog called with item:', item)
+    console.log('VendorItemNo:', item.VendorItemNo)
+    console.log('ManufacturerTecdocId:', item.ManufacturerTecdocId || item.manufacturerTecdocId)
+
+    // Initialize with basic item data
+    selectedInfoItem.value = {
+        ...item,
+        isLoading: true,
+        brand: '',
+        brandLogo: '',
+        thumbnails: [],
+        specs: [],
+        oemNumbers: [],
+        vehicles: [],
+        pdfs: []
+    }
+
+    // Fetch TecDoc data
+    try {
+        // Support both possible field name casings
+        const articleRef = item.VendorItemNo || item.vendorItemNo
+        const manufacturerId = item.ManufacturerTecdocId || item.manufacturerTecdocId
+
+        if (!articleRef || !manufacturerId) {
+            console.error('Missing article reference or manufacturer ID')
+            console.error('articleRef:', articleRef, 'manufacturerId:', manufacturerId)
+            selectedInfoItem.value.isLoading = false
+            return
+        }
+
+        console.log('Fetching TecDoc details for:', { articleRef, manufacturerId })
+        const response = await store.fetchTecdocArticleDetails(articleRef, manufacturerId)
+
+        if (response && response.articles && response.articles.length > 0) {
+            const article = response.articles[0]
+
+            // Map images
+            const thumbnails = article.images?.map(img => img.imageURL800) || []
+
+            // Map specs from articleCriteria
+            const specs = article.articleCriteria?.map(criteria => ({
+                label: criteria.criteriaDescription,
+                value: criteria.formattedValue
+            })) || []
+
+            // Map OEM numbers
+            const oemNumbers = article.oemNumbers?.map(oem =>
+                `${oem.mfrName} ${oem.articleNumber}`
+            ) || []
+
+            // Map PDFs
+            const pdfs = article.pdfs || []
+
+            // Get generic article description for brand/description
+            const genericDesc = article.genericArticles?.[0]?.genericArticleDescription || item.descriptionStructured
+
+            // Update selectedInfoItem with API data
+            selectedInfoItem.value = {
+                ...item,
+                isLoading: false,
+                brand: article.mfrName || '',
+                brandLogo: '/images/articles/febi_logo.png', // Default logo, can be enhanced later
+                thumbnails: thumbnails,
+                mainImage: thumbnails[0] || '',
+                specs: specs,
+                oemNumbers: oemNumbers,
+                pdfs: pdfs,
+                genericDescription: genericDesc,
+                vehicles: [], // TODO: Add vehicle compatibility if available in future API response
+                gtins: article.gtins || []
+            }
+        } else {
+            // No data found
+            selectedInfoItem.value.isLoading = false
+        }
+    } catch (error) {
+        console.error('Error fetching TecDoc article details:', error)
+        selectedInfoItem.value.isLoading = false
+    }
+}
+
+const selectLine = async (detail) => {
     // Reset year to current year on selection
     selectedYear.value = new Date().getFullYear()
     // Always update history selection
@@ -1387,7 +1578,11 @@ const selectLine = (detail) => {
     if (isAlreadySelectedDetail) return
 
     selectedDetail.value = detail
-    fetchEquivalenceItems(detail)
+
+    // Sequential loading: Equivalence first, then Kit
+    isLoadingKit.value = true // Show loading in Kit table immediately
+    await fetchEquivalenceItems(detail)
+    await fetchKitItems(detail.no)
 }
 
 const selectEquivalenceItem = (item) => {
@@ -1621,8 +1816,11 @@ const fetchDetails = async () => {
             selectedDetail.value = firstDetail
             selectedHistoryItem.value = firstDetail
             historyKpis.value.stock = firstDetail.inventoryWithoutImport || 0
-            // Auto-load equivalence items for the first line
-            fetchEquivalenceItems(firstDetail)
+            // Auto-load equivalence and kit items for the first line
+            isLoadingKit.value = true // Show loading in Kit table immediately
+            await fetchEquivalenceItems(firstDetail)
+            await fetchKitItems(firstDetail.no)
+
             // Auto-load intercompany stock
             fetchIntercompanyStock()
             // Auto-load last invoiced costs
@@ -1676,14 +1874,56 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
     }
 }
 
+const fetchKitItems = async (itemNo, page = 0) => {
+    if (!itemNo) return
+
+    isLoadingKit.value = true
+    try {
+        const data = await store.fetchKitItems(
+            itemNo,
+            page,
+            kitPagination.value.size
+        )
+
+        if (data && data.content) {
+            kitItems.value = data.content.map(item => ({
+                ...item,
+                quantityToOrder: 1
+            }))
+            kitPagination.value = {
+                ...kitPagination.value,
+                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements : 0,
+                totalPages: data.totalPages !== undefined ? data.totalPages : 1
+            }
+        } else {
+            const items = Array.isArray(data) ? data : [data]
+            kitItems.value = items.map(item => ({
+                ...item,
+                quantityToOrder: 1
+            }))
+            kitPagination.value.totalElements = kitItems.value.length
+            kitPagination.value.page = 0
+            kitPagination.value.totalPages = 1
+        }
+    } catch (error) {
+        console.error('Error fetching kit items:', error)
+        kitItems.value = []
+    } finally {
+        isLoadingKit.value = false
+    }
+}
+
 // Watch for line changes to refetch data
 watch(() => props.line, () => {
     fetchDetails()
+    fetchVerificationStatus()
 }, { deep: true })
 
 onMounted(() => {
     window.addEventListener('keydown', handleKeyDown)
     fetchDetails()
+    fetchVerificationStatus()
 })
 
 onUnmounted(() => {
@@ -2995,6 +3235,79 @@ const textRight = {
     padding: 2px;
 }
 
+.thumbnail-scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 5px;
+    /* Custom Scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+}
+
+.thumbnail-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 5px;
+    background: rgba(248, 250, 252, 0.8);
+    border-radius: 4px;
+}
+
+.thumb-page-btn {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.thumb-page-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.thumb-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.thumb-page-info {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    min-width: 40px;
+    text-align: center;
+}
+
 .main-image-container {
     flex: 1;
     display: flex;
@@ -3203,8 +3516,93 @@ const textRight = {
     color: #94a3b8;
     font-style: italic;
     font-size: 0.9rem;
+    padding: 10px;
     text-align: center;
-    padding: 20px;
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 15px;
+}
+
+.loading-state p {
+    color: #64748b;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* No Image Placeholder */
+.no-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 40px;
+    background: #f8fafc;
+    border-radius: 4px;
+}
+
+.no-image-placeholder p {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* Brand Name */
+.brand-name {
+    font-size: 0.85rem;
+    color: #16a34a;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+/* PDFs List */
+.pdfs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pdf-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #1e293b;
+    transition: all 0.2s;
+}
+
+.pdf-item:hover {
+    background: #f8fafc;
+    border-color: #3b82f6;
+    transform: translateX(4px);
+}
+
+.pdf-item i.pi-file-pdf {
+    color: #dc2626;
+    font-size: 1.2rem;
+}
+
+.pdf-item i.pi-external-link {
+    color: #3b82f6;
+    font-size: 0.9rem;
+    margin-left: auto;
+}
+
+.pdf-item span {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .info-dialog-body {

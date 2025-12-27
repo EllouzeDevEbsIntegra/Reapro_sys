@@ -9,17 +9,23 @@
             <div class="item-info">
                 <div class="info-left">
                     <h1 class="item-no">{{ line.itemNo }}</h1>
-                    <span class="item-desc">{{ line.structuredDescription || line.description || 'Description' }}</span>
+                    <div class="description-row">
+                        <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
+                            }}</span>
+                        <div class="page-indicator">
+                            Ligne {{ currentIndex + 1 }} / {{ totalElements }}
+                        </div>
+                    </div>
                 </div>
                 <div class="info-right">
                     <div class="status-dot-container">
-                        <span class="status-dot" :class="statusDotClass" @click="openVerificationDialog"
-                            :title="`TecDoc: ${verificationStatus?.countNotCreated || 0} à créer`"></span>
+                        <div class="status-badge-rect" :class="statusDotClass" @click="openVerificationDialog"
+                            :title="`TecDoc: ${verificationStatus?.countNotCreated || 0} à créer`">
+                            <img src="/images/articles/tecalliance_partner.png" alt="TecAlliance"
+                                class="status-badge-icon">
+                        </div>
                         <span v-if="verificationStatus && verificationStatus.countNotCreated > 0"
                             class="status-dot-badge">{{ verificationStatus.countNotCreated }}</span>
-                    </div>
-                    <div class="page-indicator">
-                        Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                     </div>
                 </div>
             </div>
@@ -2141,6 +2147,32 @@ const textRight = {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
+.info-right {
+    display: flex;
+    align-items: stretch;
+    gap: 5px;
+    margin-left: auto;
+    height: 100%;
+}
+
+.info-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.description-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.item-desc {
+    flex: 1;
+}
+
 .page-indicator {
     background: #e2e8f0;
     color: #1e293b;
@@ -2151,7 +2183,9 @@ const textRight = {
     white-space: nowrap;
     border: 1px solid #cbd5e1;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    margin: 0;
 }
 
 .header-middle {
@@ -2161,19 +2195,19 @@ const textRight = {
 }
 
 .count-badge {
-    background-color: #fbbf24;
-    color: #92400e;
-    padding: 0 8px;
+    background-color: #3b82f6;
+    color: white;
+    padding: 0 12px;
     border-radius: 8px;
     font-weight: 800;
     font-size: 1.1rem;
-    box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
     height: 54px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 90%;
-    border: 1px solid #3b82f6;
+    width: 70%;
+    border: 1px solid #2563eb;
 }
 
 .header-stocks {
@@ -3650,28 +3684,6 @@ const textRight = {
 .brand-name {
     font-size: 0.85rem;
     color: #16a34a;
-    font-weight: 600;
-    margin-top: 4px;
-}
-
-/* PDFs List */
-.pdfs-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.pdf-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    text-decoration: none;
-    color: #1e293b;
-    transition: all 0.2s;
 }
 
 .pdf-item:hover {
@@ -3859,51 +3871,63 @@ const textRight = {
 .status-dot-container {
     position: relative;
     display: inline-block;
+    height: 100%;
 }
 
-.status-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    display: inline-block;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.status-dot.loading {
-    background-color: #94a3b8 !important;
-    animation: pulse 1.5s ease-in-out infinite;
-}
-
-.status-dot.success {
-    background-color: #10b981 !important;
-}
-
-.status-dot.warning {
-    background-color: #f59e0b !important;
-}
-
-.status-dot:hover {
-    transform: scale(1.3);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-}
-
-.status-dot-badge {
-    position: absolute;
-    top: -6px;
-    right: -8px;
-    background-color: #dc2626;
-    color: white;
-    font-size: 10px;
-    font-weight: 700;
-    min-width: 16px;
-    height: 16px;
+.status-badge-rect {
+    width: 140px;
+    height: 100%;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 4px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 6px;
+}
+
+.status-badge-rect.loading {
+    background-color: #94a3b8;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-badge-rect.success {
+    background-color: #10b981;
+}
+
+.status-badge-rect.warning {
+    background-color: #f59e0b;
+}
+
+.status-badge-rect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.status-badge-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+.status-dot-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #dc2626;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.5);
+    border: 2px solid white;
     pointer-events: none;
 }
 

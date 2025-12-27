@@ -1115,7 +1115,7 @@
                                     <th style="width: 25%">Fabricant</th>
                                     <th style="width: 20%">Référence</th>
                                     <th style="width: 15%">Statut</th>
-                                    <th style="width: 40%">Description</th>
+                                    <th style="width: 40%">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1134,11 +1134,93 @@
                                             {{ item.status === 'CREATED' ? 'Créé' : 'Non Créé' }}
                                         </span>
                                     </td>
-                                    <td>{{ item.articleDescription || '-' }}</td>
+                                    <td>
+                                        <Button v-if="item.status !== 'CREATED'" label="Ajouter AM" icon="pi pi-plus"
+                                            class="p-button-sm create-am-btn" @click="createArticleMaster(item)" />
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- Create Article Master Dialog -->
+        <Dialog v-model:visible="showCreateArticleMasterDialog" modal :style="{ width: '50vw' }" class="history-dialog"
+            :showHeader="false">
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Création Article Master</button>
+                        <Button icon="pi pi-times" text rounded @click="showCreateArticleMasterDialog = false"
+                            class="close-dialog-btn" />
+                    </div>
+                </div>
+
+                <div class="info-dialog-body" v-if="selectedArticleMasterCandidate">
+                    <!-- Master Info Section -->
+                    <div class="info-section">
+                        <div class="info-section-header">
+                            <i class="pi pi-box"></i>
+                            <span>Informations Master</span>
+                        </div>
+                        <div class="info-section-content">
+                            <div class="specs-table">
+                                <div class="spec-row">
+                                    <div class="spec-label">Référence Master</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo }}</div>
+                                </div>
+                                <div class="spec-row">
+                                    <div class="spec-label">Description</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.masterDescription }}</div>
+                                </div>
+                                <div class="spec-row">
+                                    <div class="spec-label">Groupe</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.groupName }}</div>
+                                </div>
+                                <div class="spec-row">
+                                    <div class="spec-label">Sous-Groupe</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.subGroupName }}</div>
+                                </div>
+                                <div class="spec-row">
+                                    <div class="spec-label">Marque (MakeCode)</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.makeCode }}</div>
+                                </div>
+                                <div class="spec-row">
+                                    <div class="spec-label">Champ Libre</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.champsLibre }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Candidate Info Section -->
+                    <div class="info-section">
+                        <div class="info-section-header">
+                            <i class="pi pi-plus-circle"></i>
+                            <span>Nouvel Article (Candidat)</span>
+                        </div>
+                        <div class="info-section-content">
+                            <div class="specs-table">
+                                <div class="spec-row">
+                                    <div class="spec-label">Fabricant</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.manufacturerName }}</div>
+                                </div>
+                                <div class="spec-row">
+                                    <div class="spec-label">Référence Article</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dialog-footer"
+                    style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <Button label="Annuler" class="p-button-text p-button-secondary"
+                        @click="showCreateArticleMasterDialog = false" />
+                    <Button label="Valider la création" class="p-button-primary" @click="confirmCreateArticleMaster" />
                 </div>
             </div>
         </Dialog>
@@ -1571,6 +1653,42 @@ const closeVerificationDialog = () => {
 
 const changeVerificationPage = (newPage) => {
     verificationPagination.value.page = newPage
+}
+
+const showCreateArticleMasterDialog = ref(false)
+const selectedArticleMasterCandidate = ref(null)
+
+const createArticleMaster = (item) => {
+    console.log('Create Article Master for:', item)
+    console.log('Props Line:', props.line)
+
+    selectedArticleMasterCandidate.value = {
+        // Master Info from props.line
+        masterItemNo: props.line.itemNo,
+        masterDescription: props.line.structuredDescription || props.line.description,
+        groupName: props.line.groupe,
+        subGroupName: props.line.sousGroupe,
+        makeCode: props.line.makeCode,
+        champsLibre: props.line.champsLibre,
+        // Hidden codes for validation
+        groupCode: props.line.itemProductCode,
+        subGroupCode: props.line.itemSubProductCode,
+
+        // Candidate Info from item
+        manufacturerName: item.bcManufacturerName || item.manufacturerName,
+        manufacturerCode: item.bcManufacturerCode,
+        articleNumber: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : ''
+    }
+
+    showCreateArticleMasterDialog.value = true
+}
+
+const confirmCreateArticleMaster = async () => {
+    console.log('Validating creation with:', selectedArticleMasterCandidate.value)
+    // TODO: Call API to create article master
+    // After success:
+    // showCreateArticleMasterDialog.value = false
+    // fetchVerificationStatus() // Refresh status
 }
 
 const openInfoDialog = async (item) => {
@@ -2091,7 +2209,7 @@ const textRight = {
 }
 
 .item-info {
-    width: 15%;
+    width: 17%;
     display: flex;
     justify-content: space-between;
     padding-left: 5px;
@@ -2131,28 +2249,21 @@ const textRight = {
 .info-right {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
     align-items: flex-end;
     min-width: fit-content;
     padding: 0;
     height: 100%;
-}
-
-.status-dot {
-    width: 12px;
-    height: 12px;
-    background-color: #65a30d;
-    border-radius: 50%;
-    margin-top: 4px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.info-right {
-    display: flex;
-    align-items: stretch;
-    gap: 5px;
     margin-left: auto;
-    height: 100%;
+    gap: 5px;
+}
+
+.status-dot-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin: 0;
+    padding: 0;
 }
 
 .info-left {
@@ -2189,25 +2300,27 @@ const textRight = {
 }
 
 .header-middle {
-    width: 8%;
+    width: 6%;
     display: flex;
     justify-content: center;
+    padding-right: 0;
 }
 
 .count-badge {
-    background-color: #3b82f6;
-    color: white;
-    padding: 0 12px;
+    background-color: white;
+    color: #3b82f6;
+    padding: 0 4px;
     border-radius: 8px;
     font-weight: 800;
     font-size: 1.1rem;
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
     height: 54px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 70%;
-    border: 1px solid #2563eb;
+    width: 100%;
+    border: 3px solid #3b82f6;
+    margin: 10px;
 }
 
 .header-stocks {
@@ -3959,5 +4072,22 @@ const textRight = {
 .status-badge.status-not-created {
     background: #fef3c7;
     color: #92400e;
+}
+
+.create-am-btn {
+    background-color: white !important;
+    color: #3b82f6 !important;
+    border: 1px solid #3b82f6 !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    padding: 6px 12px !important;
+    transition: all 0.2s ease !important;
+}
+
+.create-am-btn:hover {
+    background-color: #eff6ff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
 }
 </style>

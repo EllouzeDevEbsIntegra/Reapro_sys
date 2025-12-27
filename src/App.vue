@@ -1,11 +1,10 @@
 <template>
   <router-view />
-  <Toast />
+  <Toast class="custom-toast" />
 </template>
 
 <script setup>
 import Toast from 'primevue/toast'
 </script>
 
-<style>
-</style>
+<style></style>

@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                            }}</span>
+                        }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,7 +51,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -1211,6 +1211,10 @@
                                     <div class="spec-label">Référence Article</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber }}</div>
                                 </div>
+                                <div class="spec-row">
+                                    <div class="spec-label">Code Fournisseur (VendorNo)</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.vendorNo }}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1218,12 +1222,14 @@
 
                 <div class="dialog-footer"
                     style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                    <Button label="Annuler" class="p-button-text p-button-secondary"
+                    <Button label="Annuler" icon="pi pi-times" class="p-button-text p-button-secondary dialog-btn"
                         @click="showCreateArticleMasterDialog = false" />
-                    <Button label="Valider la création" class="p-button-primary" @click="confirmCreateArticleMaster" />
+                    <Button label="Valider la création" icon="pi pi-check" class="p-button-primary dialog-btn"
+                        @click="confirmCreateArticleMaster" />
                 </div>
             </div>
         </Dialog>
+
 
         <!-- Comment Overlay -->
         <OverlayPanel ref="commentOverlay" class="comment-overlay" appendTo="body"
@@ -1247,6 +1253,8 @@ import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import OverlayPanel from 'primevue/overlaypanel'
+import Toast from 'primevue/toast'
+import { useToast } from 'primevue/usetoast'
 
 import { useCompareQuoteStore } from '../stores/compareQuote'
 
@@ -1268,6 +1276,7 @@ const props = defineProps({
 const emit = defineEmits(['back', 'prev', 'next'])
 
 const store = useCompareQuoteStore()
+const toast = useToast()
 const isSidebarExpanded = ref(false)
 const showHistoryDialog = ref(false)
 const selectedCompany = ref('')
@@ -1370,18 +1379,21 @@ const purchasePriceVendorFilter = ref('')
 
 const availableVendors = computed(() => {
     if (!purchasePrices.value) return []
-    const vendors = [...new Set(purchasePrices.value.map(p => p.vendorNo))].filter(Boolean)
+    const vendors = [...new Set(purchasePrices.value.map(p =>
+        p.vendorNo))].filter(Boolean)
     return vendors.sort()
 })
 
 const filteredPurchasePrices = computed(() => {
     if (!purchasePriceVendorFilter.value) return purchasePrices.value
-    return purchasePrices.value.filter(p => p.vendorNo === purchasePriceVendorFilter.value)
+    return purchasePrices.value.filter(p => p.vendorNo ===
+        purchasePriceVendorFilter.value)
 })
 
 const isPurchasePriceFilterDisabled = ref(false)
 
-const openPurchasePriceDialog = async (vendorNo, itemNo, description, isFromSuppliers = false) => {
+const openPurchasePriceDialog = async (vendorNo, itemNo, description,
+    isFromSuppliers = false) => {
     if (!itemNo) return
 
     selectedPurchasePriceItem.value = { itemNo, description }
@@ -1468,14 +1480,17 @@ const fetchEquivalenceLastInvoicedCosts = async (items) => {
                 equivalenceLastInvoicedCosts.value.set(item.no, costMap)
             }
         } catch (error) {
-            console.error(`Error fetching last invoiced cost for equivalence item ${item.no}:`, error)
+            console.error(`Error fetching last invoiced cost for equivalence item ${item.no}:`,
+                error)
         }
     }
 }
 
 const fetchKitLastInvoicedCosts = async () => {
     // Mock kit items for now, as per template loop
-    const kitItems = [1, 2, 3, 4].map(i => ({ no: 'KIT-' + i, vendorNo: 'MOCK-VENDOR' }))
+    const kitItems = [1, 2, 3, 4].map(i => ({
+        no: 'KIT-' + i, vendorNo: 'MOCK-VENDOR'
+    }))
 
     for (const item of kitItems) {
         try {
@@ -1507,7 +1522,8 @@ const masterItemNo = computed(() => {
 
 const availableManufacturers = computed(() => {
     if (!verificationStatus.value?.items) return []
-    const manufacturers = [...new Set(verificationStatus.value.items.map(item => item.manufacturerName))]
+    const manufacturers = [...new Set(verificationStatus.value.items.map(item =>
+        item.manufacturerName))]
     return manufacturers.sort()
 })
 
@@ -1526,7 +1542,8 @@ const paginatedVerificationItems = computed(() => {
 })
 
 const verificationTotalPages = computed(() => {
-    return Math.ceil(filteredVerificationItems.value.length / verificationPagination.value.size)
+    return Math.ceil(filteredVerificationItems.value.length /
+        verificationPagination.value.size)
 })
 
 const statusDotClass = computed(() => {
@@ -1545,12 +1562,14 @@ const toggleBrand = (brand) => {
 
 const nextImage = () => {
     if (!selectedInfoItem.value) return
-    currentImageIndex.value = (currentImageIndex.value + 1) % selectedInfoItem.value.thumbnails.length
+    currentImageIndex.value = (currentImageIndex.value + 1) %
+        selectedInfoItem.value.thumbnails.length
 }
 
 const prevImage = () => {
     if (!selectedInfoItem.value) return
-    currentImageIndex.value = (currentImageIndex.value - 1 + selectedInfoItem.value.thumbnails.length) % selectedInfoItem.value.thumbnails.length
+    currentImageIndex.value = (currentImageIndex.value - 1 +
+        selectedInfoItem.value.thumbnails.length) % selectedInfoItem.value.thumbnails.length
 }
 
 const orderReasons = [
@@ -1573,7 +1592,7 @@ const handleKeyDown = (event) => {
         event.preventDefault()
         if (selectedHistoryItem.value) {
             const item = selectedHistoryItem.value
-            // Handle different vendor field names (buyFromVendorNo for main table, vendorNo for equivalence/kits)
+            // Handle different vendor field names (buyFromVendorNo for main table, vendorNo for equivalence / kits)
             const vendor = item.buyFromVendorNo || item.vendorNo
 
             if (vendor && item.no) {
@@ -1677,18 +1696,47 @@ const createArticleMaster = (item) => {
         // Candidate Info from item
         manufacturerName: item.bcManufacturerName || item.manufacturerName,
         manufacturerCode: item.bcManufacturerCode,
-        articleNumber: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : ''
+        articleNumber: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : '',
+        vendorNo: item.vendorNo || '401230'
     }
 
     showCreateArticleMasterDialog.value = true
 }
 
+const isCreatingArticleMaster = ref(false)
+
 const confirmCreateArticleMaster = async () => {
-    console.log('Validating creation with:', selectedArticleMasterCandidate.value)
-    // TODO: Call API to create article master
-    // After success:
-    // showCreateArticleMasterDialog.value = false
-    // fetchVerificationStatus() // Refresh status
+    if (!selectedArticleMasterCandidate.value) return
+
+    const candidate = selectedArticleMasterCandidate.value
+    const payload = {
+        ref: candidate.articleNumber,
+        frs: candidate.vendorNo,
+        refTecdoc: candidate.articleNumber,
+        refMaster: candidate.masterItemNo,
+        group: candidate.groupCode,
+        subGroup: candidate.subGroupCode,
+        champsLibre: candidate.champsLibre,
+        manufacturer: candidate.manufacturerCode,
+        marque: candidate.makeCode
+    }
+
+    isCreatingArticleMaster.value = true
+    try {
+        await store.createArticleMaster(payload)
+        // Success handling
+        showCreateArticleMasterDialog.value = false
+        // Refresh verification status to update the list
+        await fetchVerificationStatus()
+        // Optional: Show success toast/notification
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Article Master créé avec succès', life: 3000 })
+    } catch (error) {
+        console.error('Failed to create article master:', error)
+        // Optional: Show error toast/notification
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la création de l\'Article Master', life: 3000 })
+    } finally {
+        isCreatingArticleMaster.value = false
+    }
 }
 
 const openInfoDialog = async (item) => {
@@ -1699,7 +1747,8 @@ const openInfoDialog = async (item) => {
     // Debug: Log the item to verify fields are present
     console.log('openInfoDialog called with item:', item)
     console.log('VendorItemNo:', item.VendorItemNo)
-    console.log('ManufacturerTecdocId:', item.ManufacturerTecdocId || item.manufacturerTecdocId)
+    console.log('ManufacturerTecdocId:', item.ManufacturerTecdocId ||
+        item.manufacturerTecdocId)
 
     // Initialize with basic item data
     selectedInfoItem.value = {
@@ -1751,7 +1800,8 @@ const openInfoDialog = async (item) => {
             const pdfs = article.pdfs || []
 
             // Get generic article description for brand/description
-            const genericDesc = article.genericArticles?.[0]?.genericArticleDescription || item.descriptionStructured
+            const genericDesc = article.genericArticles?.[0]?.genericArticleDescription ||
+                item.descriptionStructured
 
             // Update selectedInfoItem with API data
             selectedInfoItem.value = {
@@ -1831,7 +1881,8 @@ const fetchHistory = async (page = 0) => {
             historyEntries.value = data.content
             historyPagination.value = {
                 ...historyPagination.value,
-                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number : 0),
+                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number
+                    : 0),
                 totalElements: data.totalElements !== undefined ? data.totalElements : 0,
                 totalPages: data.totalPages !== undefined ? data.totalPages : 1
             }
@@ -1875,7 +1926,8 @@ const fetchDialogHistory = async (page = 0) => {
             dialogHistoryEntries.value = data.content
             dialogHistoryPagination.value = {
                 ...dialogHistoryPagination.value,
-                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number : 0),
+                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number
+                    : 0),
                 totalElements: data.totalElements !== undefined ? data.totalElements : 0,
                 totalPages: data.totalPages !== undefined ? data.totalPages : 1
             }
@@ -1992,7 +2044,6 @@ const getPercentageChange = (detail, field1, field2) => {
     const percentageChange = ((value1 - value2) / value2) * 100
 
     if (Math.abs(percentageChange) < 0.01) return null // Don't show if ~0%
-
     const arrow = percentageChange > 0 ? '↑' : percentageChange < 0 ? '↓' : ''
     const sign = percentageChange > 0 ? '+' : ''
 
@@ -2006,7 +2057,6 @@ const calculatePercentageChange = (value1, value2) => {
     const percentageChange = ((value1 - value2) / value2) * 100
 
     if (Math.abs(percentageChange) < 0.01) return null
-
     const arrow = percentageChange > 0 ? '↑' : percentageChange < 0 ? '↓' : ''
     const sign = percentageChange > 0 ? '+' : ''
 
@@ -2021,11 +2071,14 @@ const getPercentageClass = (percentageText) => {
 }
 
 const fetchDetails = async () => {
-    if (!props.line || !props.line.compareQuoteNo || !props.line.itemNo) return
+    if (!props.line || !props.line.compareQuoteNo || !props.line.itemNo)
+        return
 
     isLoadingDetails.value = true
     try {
-        const data = await store.fetchQuoteLineDetails(props.line.compareQuoteNo, props.line.itemNo)
+        const data = await
+            store.fetchQuoteLineDetails(props.line.compareQuoteNo,
+                props.line.itemNo)
         quoteLineDetails.value = Array.isArray(data) ? data : [data]
         if (quoteLineDetails.value.length > 0) {
             const firstDetail = quoteLineDetails.value[0]
@@ -2068,8 +2121,10 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
             }))
             equivalencePagination.value = {
                 ...equivalencePagination.value,
-                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number : 0),
-                totalElements: data.totalElements !== undefined ? data.totalElements : 0,
+                page: data.page !== undefined ? data.page : (data.number !==
+                    undefined ? data.number : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements
+                    : 0,
                 totalPages: data.totalPages !== undefined ? data.totalPages : 1
             }
         } else {
@@ -2078,7 +2133,8 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
                 ...item,
                 quantityToOrder: 1
             }))
-            equivalencePagination.value.totalElements = equivalenceItems.value.length
+            equivalencePagination.value.totalElements =
+                equivalenceItems.value.length
             equivalencePagination.value.page = 0
             equivalencePagination.value.totalPages = 1
         }
@@ -2108,8 +2164,10 @@ const fetchKitItems = async (itemNo, page = 0) => {
             }))
             kitPagination.value = {
                 ...kitPagination.value,
-                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number : 0),
-                totalElements: data.totalElements !== undefined ? data.totalElements : 0,
+                page: data.page !== undefined ? data.page : (data.number !==
+                    undefined ? data.number : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements
+                    : 0,
                 totalPages: data.totalPages !== undefined ? data.totalPages : 1
             }
         } else {
@@ -4080,6 +4138,201 @@ const textRight = {
     border: 1px solid #3b82f6 !important;
     border-radius: 6px !important;
     font-weight: 600 !important;
+    border-color: #3b82f6;
+}
+
+.comment-dialog :deep(.p-dialog-header) {
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.comment-dialog :deep(.p-dialog-content) {
+    padding: 1.5rem;
+}
+
+.comment-dialog :deep(.p-dialog-footer) {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.comment-icon {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+}
+
+.comment-icon:hover {
+    color: #3b82f6;
+    transform: scale(1.1);
+}
+
+.comment-icon.has-comment {
+    color: #3b82f6;
+}
+</style>
+
+<style>
+.p-overlaypanel.comment-overlay {
+    width: 25vw !important;
+    min-width: 25vw !important;
+    max-width: 25vw !important;
+}
+
+.p-overlaypanel.comment-overlay .p-overlaypanel-content {
+    padding: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+}
+
+.comment-content {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+}
+
+.comment-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 6px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.comment-title {
+    flex: 1 !important;
+}
+
+.comment-header .header-actions {
+    display: flex !important;
+    gap: 4px !important;
+}
+
+.comment-header .header-actions .p-button.p-button-icon-only {
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+}
+
+.comment-textarea {
+    width: 100% !important;
+    padding: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    font-family: inherit !important;
+    font-size: 0.9rem !important;
+    resize: none !important;
+    outline: none !important;
+    transition: border-color 0.2s !important;
+}
+
+/* TecDoc Verification Styles */
+.status-dot-container {
+    position: relative;
+    display: inline-block;
+    height: 100%;
+}
+
+.status-badge-rect {
+    width: 140px;
+    height: 100%;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 6px;
+}
+
+.status-badge-rect.loading {
+    background-color: #94a3b8;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-badge-rect.success {
+    background-color: #10b981;
+}
+
+.status-badge-rect.warning {
+    background-color: #f59e0b;
+}
+
+.status-badge-rect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.status-badge-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+.status-dot-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #dc2626;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.5);
+    border: 2px solid white;
+    pointer-events: none;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-badge.status-created {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.status-not-created {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.create-am-btn {
+    background-color: white !important;
+    color: #3b82f6 !important;
+    border: 1px solid #3b82f6 !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
     font-size: 0.85rem !important;
     padding: 6px 12px !important;
     transition: all 0.2s ease !important;
@@ -4089,5 +4342,49 @@ const textRight = {
     background-color: #eff6ff !important;
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
+}
+
+.header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.history-btn {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 24px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 200px;
+    text-align: center;
+}
+
+.dialog-btn {
+    padding: 10px 20px !important;
+    font-size: 1rem !important;
+    min-width: 120px !important;
+}
+
+.dialog-btn .p-button-icon {
+    font-size: 1.1rem !important;
+}
+
+/* Custom Toast Styles */
+body .custom-toast {
+    width: 400px !important;
+}
+
+body .custom-toast .p-toast-message .p-toast-message-content {
+    padding: 10px !important;
+    gap: 5px !important;
+}
+
+body .custom-toast .p-toast-detail {
+    margin-top: 8px !important;
+    line-height: 1.5 !important;
 }
 </style>

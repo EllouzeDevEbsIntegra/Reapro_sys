@@ -238,6 +238,16 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 console.error('TecDoc verification error:', err)
                 throw err
             }
+        },
+
+        async createArticleMaster(payload) {
+            try {
+                const response = await axios.post('/api/bc/items/copy', payload)
+                return response.data
+            } catch (err) {
+                console.error('Create Article Master error:', err)
+                throw err
+            }
         }
     }
 })

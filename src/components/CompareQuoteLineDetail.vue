@@ -12,8 +12,12 @@
                     <span class="item-desc">{{ line.structuredDescription || line.description || 'Description' }}</span>
                 </div>
                 <div class="info-right">
-                    <span class="status-dot" :class="statusDotClass" @click="openVerificationDialog"
-                        :title="`TecDoc: ${verificationStatus?.countNotCreated || 0} à créer`"></span>
+                    <div class="status-dot-container">
+                        <span class="status-dot" :class="statusDotClass" @click="openVerificationDialog"
+                            :title="`TecDoc: ${verificationStatus?.countNotCreated || 0} à créer`"></span>
+                        <span v-if="verificationStatus && verificationStatus.countNotCreated > 0"
+                            class="status-dot-badge">{{ verificationStatus.countNotCreated }}</span>
+                    </div>
                     <div class="page-indicator">
                         Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                     </div>
@@ -1037,6 +1041,94 @@
                                     <td>{{ formatDate(price.endingDate) }}</td>
                                     <td>{{ price.currencyCode }}</td>
                                     <td class="text-right">{{ formatNumber(price.directUnitCost, 2) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- TecDoc Verification Dialog -->
+        <Dialog v-model:visible="showVerificationDialog" modal :style="{ width: '70vw' }" class="history-dialog"
+            :showHeader="false">
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Vérification TecDoc</button>
+                        <div class="item-title-inline" v-if="line">
+                            {{ masterItemNo }} • {{ line.structuredDescription || line.description }}
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showVerificationDialog = false"
+                            class="close-dialog-btn" />
+                    </div>
+                </div>
+
+                <div class="stats-bar dialog-stats-bar">
+                    <div class="stats-column">Total : {{ verificationStatus?.totalTecDocItems || 0 }}</div>
+                    <div class="stats-column">Éligibles : {{ verificationStatus?.countEligible || 0 }}</div>
+                    <div class="stats-column">Créés : {{ verificationStatus?.countCreated || 0 }}</div>
+                    <div class="stats-column">Non Créés : {{ verificationStatus?.countNotCreated || 0 }}</div>
+                </div>
+
+                <div class="verification-filter" style="padding: 10px 20px;">
+                    <label style="font-weight: 600; margin-right: 10px;">Fabricant:</label>
+                    <select v-model="verificationManufacturerFilter" class="manufacturer-filter"
+                        style="padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem;">
+                        <option value="">Tous les fabricants</option>
+                        <option v-for="mfr in availableManufacturers" :key="mfr" :value="mfr">
+                            {{ mfr }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="table-footer centered-footer top-pagination">
+                    <div class="pagination-info" v-if="filteredVerificationItems.length > 0">
+                        {{ verificationPagination.page * verificationPagination.size + 1 }}-{{
+                            Math.min((verificationPagination.page + 1) * verificationPagination.size,
+                                filteredVerificationItems.length) }} sur {{ filteredVerificationItems.length }}
+                    </div>
+                    <div class="pagination-controls centered">
+                        <button class="p-btn" :disabled="verificationPagination.page === 0"
+                            @click="changeVerificationPage(verificationPagination.page - 1)">
+                            <i class="pi pi-angle-left"></i>
+                        </button>
+                        <span class="p-current">{{ verificationPagination.page + 1 }}</span>
+                        <button class="p-btn" :disabled="verificationPagination.page >= verificationTotalPages - 1"
+                            @click="changeVerificationPage(verificationPagination.page + 1)">
+                            <i class="pi pi-angle-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container dialog-history-container">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%">Fabricant</th>
+                                    <th style="width: 20%">Référence</th>
+                                    <th style="width: 15%">Statut</th>
+                                    <th style="width: 40%">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingVerification">
+                                    <td colspan="4" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="paginatedVerificationItems.length === 0">
+                                    <td colspan="4" class="text-center p-4">Aucun article trouvé</td>
+                                </tr>
+                                <tr v-else v-for="(item, index) in paginatedVerificationItems" :key="index">
+                                    <td>{{ item.manufacturerName }}</td>
+                                    <td>{{ item.articleNumber }}</td>
+                                    <td>
+                                        <span class="status-badge"
+                                            :class="item.status === 'CREATED' ? 'status-created' : 'status-not-created'">
+                                            {{ item.status === 'CREATED' ? 'Créé' : 'Non Créé' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ item.articleDescription || '-' }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -3761,5 +3853,87 @@ const textRight = {
     resize: none !important;
     outline: none !important;
     transition: border-color 0.2s !important;
+}
+
+/* TecDoc Verification Styles */
+.status-dot-container {
+    position: relative;
+    display: inline-block;
+}
+
+.status-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.status-dot.loading {
+    background-color: #94a3b8 !important;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-dot.success {
+    background-color: #10b981 !important;
+}
+
+.status-dot.warning {
+    background-color: #f59e0b !important;
+}
+
+.status-dot:hover {
+    transform: scale(1.3);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.status-dot-badge {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    background-color: #dc2626;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-badge.status-created {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.status-not-created {
+    background: #fef3c7;
+    color: #92400e;
 }
 </style>

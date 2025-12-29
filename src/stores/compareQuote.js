@@ -248,6 +248,29 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 console.error('Create Article Master error:', err)
                 throw err
             }
+        },
+
+        async updateQuoteLine(id, etag, payload, companyId = null) {
+            try {
+                const headers = {
+                    'If-Match': etag,
+                    'Content-Type': 'application/json'
+                }
+
+                const params = {}
+                if (companyId) {
+                    params.companyId = companyId
+                }
+
+                const response = await axios.patch(`/api/bc/quote-lines/${id}`, payload, {
+                    headers,
+                    params
+                })
+                return response
+            } catch (err) {
+                console.error('Update quote line error:', err)
+                throw err
+            }
         }
     }
 })

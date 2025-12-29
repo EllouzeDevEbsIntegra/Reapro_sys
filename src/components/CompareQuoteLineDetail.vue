@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                            }}</span>
+                        }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,7 +51,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -216,7 +216,8 @@
                                             <span class="initial-tag" title="Prix Initial">{{
                                                 formatNumber(detail.initialVendorPrice, 2) }}</span>
                                             <input type="number" v-model.number="detail.askingPrice"
-                                                class="qty-input mini" placeholder="Prix Nég" />
+                                                class="qty-input mini" placeholder="Prix Nég"
+                                                @change="updateLine(detail)" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
@@ -224,18 +225,20 @@
                                             <span class="initial-tag" title="Quantité Initiale">{{
                                                 detail.initialQuantity }}</span>
                                             <input type="number" v-model.number="detail.askingQty"
-                                                class="qty-input mini" placeholder="Qte Nég" />
+                                                class="qty-input mini" placeholder="Qte Nég"
+                                                @change="updateLine(detail)" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="detail.quantity" class="qty-input"
-                                                min="0" />
+                                                min="0" @change="updateLine(detail)" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="reason-select-container">
-                                            <select v-model="detail.quoteLineReason" class="reason-select">
+                                            <select v-model="detail.quoteLineReason" class="reason-select"
+                                                @change="updateLine(detail)">
                                                 <option value=""></option>
                                                 <option v-for="reason in orderReasons" :key="reason.value"
                                                     :value="reason.value">
@@ -264,7 +267,8 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button class="validate-line-btn" title="Valider la ligne">
+                                            <button class="validate-line-btn" title="Valider la ligne"
+                                                @click="updateLine(detail)">
                                                 <i class="pi pi-check"></i>
                                             </button>
                                         </div>
@@ -1266,6 +1270,7 @@ import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 
 import { useCompareQuoteStore } from '../stores/compareQuote'
+import { useAuthStore } from '../stores/auth'
 
 
 const props = defineProps({
@@ -1286,6 +1291,7 @@ const props = defineProps({
 const emit = defineEmits(['back', 'prev', 'next'])
 
 const store = useCompareQuoteStore()
+const authStore = useAuthStore()
 const toast = useToast()
 const isSidebarExpanded = ref(false)
 const showHistoryDialog = ref(false)
@@ -1748,6 +1754,37 @@ const confirmCreateArticleMaster = async () => {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la création de l\'Article Master', life: 3000 })
     } finally {
         isCreatingArticleMaster.value = false
+    }
+}
+
+
+const updateLine = async (detail) => {
+    if (!detail || !detail.id) return
+
+    const userCompanyId = authStore.user?.bcCompanyId
+    console.log('Updating line:', detail)
+    console.log('ETag:', detail['@odata.etag'])
+    console.log('User CompanyId:', userCompanyId)
+
+    const payload = {
+        askingPrice: detail.askingPrice,
+        askingQty: detail.askingQty,
+        quantity: detail.quantity,
+        quoteLineReason: detail.quoteLineReason
+    }
+
+    try {
+        await store.updateQuoteLine(detail.id, detail['@odata.etag'], payload, userCompanyId)
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Ligne mise à jour', life: 2000 })
+        // Refresh to get new ETag
+        await fetchDetails()
+    } catch (error) {
+        console.error('Update line error:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour', life: 3000 })
+        if (error.response && error.response.status === 412) {
+            // ETag mismatch, refresh data
+            await fetchDetails()
+        }
     }
 }
 

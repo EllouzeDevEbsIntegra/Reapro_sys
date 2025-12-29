@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                        }}</span>
+                            }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,11 +51,11 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
-                        <span class="stock-value-main date">23/12/2025</span>
+                        <span class="stock-value-main date">{{ formatDate(stock.lastPurchaseDate) }}</span>
                     </div>
                 </div>
             </div>
@@ -96,21 +96,21 @@
                         <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 6%">Frs</th>
-                                    <th style="width: 12%">Réf / Desig</th>
-                                    <th style="width: 5%">Stocks</th>
-                                    <th style="width: 6%">Appro</th>
-                                    <th style="width: 6%">Dernier Achat</th>
-                                    <th style="width: 7%">Cout Directe</th>
-                                    <th style="width: 10%">Prix Revient</th>
-                                    <th style="width: 10%">Prix de Vente</th>
-                                    <th style="width: 8%">Nég Prix</th>
-                                    <th style="width: 7%">Nég Qte</th>
-                                    <th style="width: 7%">Qte à confirmer</th>
-                                    <th style="width: 8%">Raison</th>
-                                    <th style="width: 3%">Info</th>
-                                    <th style="width: 2%"></th>
-                                    <th style="width: 3%"></th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
+                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig</th>
+                                    <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat</th>
+                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Cout Directe</th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix Revient</th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de Vente</th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Nég Prix</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Nég Qte</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Qte à confirmer</th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Raison</th>
+                                    <th :style="{ width: isSidebarExpanded ? '5%' : '3%' }">Info</th>
+                                    <th style="width: 2%" v-if="!isSidebarExpanded"></th>
+                                    <th style="width: 3%" v-if="!isSidebarExpanded"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -211,7 +211,7 @@
                                             </span>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper mini">
                                             <span class="initial-tag" title="Prix Initial">{{
                                                 formatNumber(detail.initialVendorPrice, 2) }}</span>
@@ -219,7 +219,7 @@
                                                 class="qty-input mini" placeholder="Prix Nég" />
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper mini">
                                             <span class="initial-tag" title="Quantité Initiale">{{
                                                 detail.initialQuantity }}</span>
@@ -227,13 +227,13 @@
                                                 class="qty-input mini" placeholder="Qte Nég" />
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="detail.quantity" class="qty-input"
                                                 min="0" />
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="reason-select-container">
                                             <select v-model="detail.quoteLineReason" class="reason-select">
                                                 <option value=""></option>
@@ -254,7 +254,7 @@
                                                 @click.stop="openInfoDialog(detail)"></i>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <i class="pi pi-comment comment-icon cursor-pointer"
                                                 :class="{ 'has-comment': detail.comment }"
@@ -262,7 +262,7 @@
                                                 title="Ajouter un commentaire"></i>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <button class="validate-line-btn" title="Valider la ligne">
                                                 <i class="pi pi-check"></i>
@@ -299,21 +299,21 @@
                         <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 6%">Frs</th>
-                                    <th style="width: 12%">Réf / Desig</th>
-                                    <th style="width: 5%">Stocks</th>
-                                    <th style="width: 6%">Appro</th>
-                                    <th style="width: 6%">Dernier Achat</th>
-                                    <th style="width: 7%">Prix Devise</th>
-                                    <th style="width: 10%">Cout Calculé / Date</th>
-                                    <th style="width: 10%">Prix de vente</th>
-                                    <th style="width: 8%">Achat</th>
-                                    <th style="width: 7%">Vente</th>
-                                    <th style="width: 7%">Panier à Cmd</th>
-                                    <th style="width: 8%">Raison</th>
-                                    <th style="width: 3%">Info</th>
-                                    <th style="width: 2%"></th>
-                                    <th style="width: 3%"></th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
+                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig</th>
+                                    <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat</th>
+                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise</th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Cout Calculé / Date</th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de vente</th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Achat</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Vente</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Panier à Cmd</th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Raison</th>
+                                    <th :style="{ width: isSidebarExpanded ? '5%' : '3%' }">Info</th>
+                                    <th style="width: 2%" v-if="!isSidebarExpanded"></th>
+                                    <th style="width: 3%" v-if="!isSidebarExpanded"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -380,21 +380,21 @@
                                     <td>
                                         <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}</div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="cell-reference">{{ item.acheteCurrYear || 0 }}</div>
                                         <div class="cell-description">{{ item.totalAchete || 0 }}</div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="cell-reference">{{ item.venduCurrYear || 0 }}</div>
                                         <div class="cell-description">{{ item.totalVendu || 0 }}</div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="item.quantityToOrder" class="qty-input"
                                                 min="0" />
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="reason-select-container">
                                             <select v-model="item.orderReason" class="reason-select">
                                                 <option value=""></option>
@@ -415,7 +415,7 @@
                                                 @click.stop="openInfoDialog(item)"></i>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <i class="pi pi-comment comment-icon cursor-pointer"
                                                 :class="{ 'has-comment': item.comment }"
@@ -423,7 +423,7 @@
                                                 title="Ajouter un commentaire"></i>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <button class="validate-line-btn" title="Valider la ligne">
                                                 <i class="pi pi-check"></i>
@@ -465,21 +465,21 @@
                         <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 6%">Composant</th>
-                                    <th style="width: 12%">Réf / Desig</th>
-                                    <th style="width: 5%">Stocks</th>
-                                    <th style="width: 6%">Appro</th>
-                                    <th style="width: 6%">Dernier Achat</th>
-                                    <th style="width: 7%">Prix Devise</th>
-                                    <th style="width: 10%">Cout Calculé / Date</th>
-                                    <th style="width: 10%">Prix de vente</th>
-                                    <th style="width: 8%">Achat</th>
-                                    <th style="width: 7%">Vente</th>
-                                    <th style="width: 7%">Panier à Cmd</th>
-                                    <th style="width: 8%">Raison</th>
-                                    <th style="width: 3%">Info</th>
-                                    <th style="width: 2%"></th>
-                                    <th style="width: 3%"></th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Composant</th>
+                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig</th>
+                                    <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat</th>
+                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise</th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Cout Calculé / Date</th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de vente</th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Achat</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Vente</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Panier à Cmd</th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Raison</th>
+                                    <th :style="{ width: isSidebarExpanded ? '5%' : '3%' }">Info</th>
+                                    <th style="width: 2%" v-if="!isSidebarExpanded"></th>
+                                    <th style="width: 3%" v-if="!isSidebarExpanded"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -542,25 +542,23 @@
                                         <div class="cell-description">{{ formatDate(item.lastPurshDate) }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(item.unitPrice ||
-                                            item.lastInvoicedDirectCost, 3) }}
-                                        </div>
+                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}</div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="cell-reference">{{ item.acheteCurrYear || 0 }}</div>
                                         <div class="cell-description">{{ item.totalAchete || 0 }}</div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="cell-reference">{{ item.venduCurrYear || 0 }}</div>
                                         <div class="cell-description">{{ item.totalVendu || 0 }}</div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="item.quantityToOrder" class="qty-input"
                                                 min="0" />
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="reason-select-container">
                                             <select v-model="item.orderReason" class="reason-select">
                                                 <option value=""></option>
@@ -569,6 +567,10 @@
                                                     {{ reason.label }}
                                                 </option>
                                             </select>
+                                            <button v-if="item.orderReason" class="clear-reason-btn"
+                                                @click="item.orderReason = ''" title="Effacer">
+                                                <i class="pi pi-times"></i>
+                                            </button>
                                         </div>
                                     </td>
                                     <td>
@@ -577,7 +579,7 @@
                                                 @click.stop="openInfoDialog(item)"></i>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <i class="pi pi-comment comment-icon cursor-pointer"
                                                 :class="{ 'has-comment': item.comment }"
@@ -585,7 +587,7 @@
                                                 title="Ajouter un commentaire"></i>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <button class="validate-line-btn" title="Valider la ligne">
                                                 <i class="pi pi-check"></i>
@@ -678,19 +680,19 @@
                         <table class="modern-table history-table">
                             <thead>
                                 <tr>
-                                    <th :style="{ width: isSidebarExpanded ? '10%' : '15%' }">Date</th>
-                                    <th :style="{ width: isSidebarExpanded ? '7%' : '8%' }">Type</th>
+                                    <th :style="{ width: isSidebarExpanded ? '8%' : '15%' }">Date</th>
+                                    <th :style="{ width: isSidebarExpanded ? '5%' : '8%' }">Type</th>
                                     <template v-if="isSidebarExpanded">
                                         <th style="width: 10%">Type Doc</th>
-                                        <th style="width: 12%">N° Document</th>
+                                        <th style="width: 10%">N° Document</th>
                                     </template>
-                                    <th :style="{ width: isSidebarExpanded ? '12%' : '15%' }">Client / Frs</th>
-                                    <th :style="{ width: isSidebarExpanded ? '17%' : '42%' }">Nom</th>
-                                    <th style="width: 8%" class="text-right">Qte</th>
+                                    <th :style="{ width: isSidebarExpanded ? '10%' : '15%' }">Client / Frs</th>
+                                    <th :style="{ width: isSidebarExpanded ? '35%' : '42%' }">Nom</th>
+                                    <th :style="{ width: isSidebarExpanded ? '6%' : '8%' }" class="text-right">Qte</th>
                                     <template v-if="isSidebarExpanded">
-                                        <th style="width: 10%">Magasin</th>
+                                        <th style="width: 6%">Magasin</th>
                                     </template>
-                                    <th :style="{ width: isSidebarExpanded ? '14%' : '12%' }" class="text-right">PU</th>
+                                    <th :style="{ width: isSidebarExpanded ? '10%' : '12%' }" class="text-right">PU</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -701,7 +703,8 @@
                                     <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Aucune donnée
                                         disponible</td>
                                 </tr>
-                                <tr v-else v-for="(entry, index) in historyEntries" :key="index">
+                                <tr v-else v-for="(entry, index) in historyEntries" :key="index"
+                                    :class="{ 'rupture-row': entry.entryType === 'Rupture' }">
                                     <td>{{ formatDate(entry.postingDate) }}</td>
                                     <td>
                                         <div class="type-indicator-circle" :class="getEntryTypeClass(entry.entryType)">
@@ -1114,8 +1117,9 @@
                                 <tr>
                                     <th style="width: 25%">Fabricant</th>
                                     <th style="width: 20%">Référence</th>
+                                    <th style="width: 15%">MASTER ERP</th>
                                     <th style="width: 15%">Statut</th>
-                                    <th style="width: 40%">Action</th>
+                                    <th style="width: 25%">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1128,6 +1132,11 @@
                                 <tr v-else v-for="(item, index) in paginatedVerificationItems" :key="index">
                                     <td>{{ item.manufacturerName }}</td>
                                     <td>{{ item.articleNumber }}</td>
+                                    <td>
+                                        <span :class="getMasterErpClass(item.referenceMaster)">
+                                            {{ item.referenceMaster }}
+                                        </span>
+                                    </td>
                                     <td>
                                         <span class="status-badge"
                                             :class="item.status === 'CREATED' ? 'status-created' : 'status-not-created'">
@@ -1257,6 +1266,7 @@ import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 
 import { useCompareQuoteStore } from '../stores/compareQuote'
+
 
 const props = defineProps({
     line: {
@@ -1704,6 +1714,7 @@ const createArticleMaster = (item) => {
 }
 
 const isCreatingArticleMaster = ref(false)
+const hasCreatedArticleMaster = ref(false)
 
 const confirmCreateArticleMaster = async () => {
     if (!selectedArticleMasterCandidate.value) return
@@ -1725,6 +1736,7 @@ const confirmCreateArticleMaster = async () => {
     try {
         await store.createArticleMaster(payload)
         // Success handling
+        hasCreatedArticleMaster.value = true
         showCreateArticleMasterDialog.value = false
         // Refresh verification status to update the list
         await fetchVerificationStatus()
@@ -1808,7 +1820,7 @@ const openInfoDialog = async (item) => {
                 ...item,
                 isLoading: false,
                 brand: article.mfrName || '',
-                brandLogo: '/images/articles/febi_logo.png', // Default logo, can be enhanced later
+                brandLogo: article.supplierLogoUrl || '/images/articles/febi_logo.png', // Use dynamic logo or fallback
                 thumbnails: thumbnails,
                 mainImage: thumbnails[0] || '',
                 specs: specs,
@@ -2024,6 +2036,18 @@ const getEntryTypeClass = (entryType) => {
     return 'type-t'
 }
 
+const getMasterErpClass = (referenceMaster) => {
+    if (!referenceMaster) return ''
+
+    // Compare with the original full item number from props (which includes "MASTER")
+    // instead of the stripped masterItemNo used in the header
+    const currentMaster = props.line?.itemNo ? props.line.itemNo.trim() : ''
+    const refMaster = referenceMaster.toString().trim()
+
+    // Case-insensitive comparison
+    return currentMaster.toLowerCase() === refMaster.toLowerCase() ? 'master-erp-match' : 'master-erp-mismatch'
+}
+
 const isItemSelected = (item) => {
     if (!selectedHistoryItem.value) return false
     // If both have IDs, compare IDs
@@ -2193,6 +2217,15 @@ watch(() => props.line, () => {
     fetchDetails()
     fetchVerificationStatus()
 }, { deep: true })
+
+// Watch for verification dialog close to refresh data if an article was created
+watch(showVerificationDialog, (newValue) => {
+    if (!newValue && hasCreatedArticleMaster.value) {
+        fetchDetails()
+        fetchVerificationStatus()
+        hasCreatedArticleMaster.value = false
+    }
+})
 
 onMounted(() => {
     window.addEventListener('keydown', handleKeyDown)
@@ -4170,6 +4203,11 @@ const textRight = {
 .comment-icon.has-comment {
     color: #3b82f6;
 }
+
+.rupture-row td {
+    color: #dc2626 !important;
+    font-weight: 600;
+}
 </style>
 
 <style>
@@ -4386,5 +4424,15 @@ body .custom-toast .p-toast-message .p-toast-message-content {
 body .custom-toast .p-toast-detail {
     margin-top: 8px !important;
     line-height: 1.5 !important;
+}
+
+.master-erp-match {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.master-erp-mismatch {
+    color: #dc2626;
+    font-weight: 700;
 }
 </style>

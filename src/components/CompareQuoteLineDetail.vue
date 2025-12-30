@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                            }}</span>
+                        }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,7 +51,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -175,11 +175,11 @@
                                         </div>
                                         <div class="cell-description">
                                             <span
-                                                v-if="calculatePercentageChange(detail.directUnitCost, getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost)"
-                                                :class="getPercentageClass(calculatePercentageChange(detail.directUnitCost, getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost))"
+                                                v-if="calculatePercentageChange(detail.directUnitCost, getSecondLastPurchasePrice(detail.buyFromVendorNo))"
+                                                :class="getPercentageClass(calculatePercentageChange(detail.directUnitCost, getSecondLastPurchasePrice(detail.buyFromVendorNo)))"
                                                 class="percentage-indicator">
                                                 {{ calculatePercentageChange(detail.directUnitCost,
-                                                    getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost) }}
+                                                    getSecondLastPurchasePrice(detail.buyFromVendorNo)) }}
                                             </span>
                                         </div>
                                     </td>
@@ -1422,6 +1422,7 @@ const purchasePrices = ref([])
 const isLoadingPurchasePrices = ref(false)
 const selectedPurchasePriceItem = ref(null)
 const purchasePriceVendorFilter = ref('')
+const allPurchasePrices = ref([])
 
 const availableVendors = computed(() => {
     if (!purchasePrices.value) return []
@@ -1556,6 +1557,23 @@ const fetchKitLastInvoicedCosts = async () => {
     }
 }
 
+const getSecondLastPurchasePrice = (vendorNo) => {
+    if (!vendorNo || !allPurchasePrices.value.length) return null
+
+    // Filter by vendor (use loose equality to handle string/number differences)
+    const vendorPrices = allPurchasePrices.value.filter(p => p.vendorNo == vendorNo)
+
+    // Sort by startingDate descending
+    vendorPrices.sort((a, b) => new Date(b.startingDate) - new Date(a.startingDate))
+
+    // Return the second item (index 1) if it exists
+    if (vendorPrices.length >= 2) {
+        return vendorPrices[1].directUnitCost
+    }
+
+    return null
+}
+
 const selectedInfoItem = ref(null)
 const currentImageIndex = ref(0)
 const isViewing360 = ref(false)
@@ -1621,12 +1639,12 @@ const prevImage = () => {
 }
 
 const orderReasons = [
-    { value: 'Price', label: 'Prix augmenté' },
-    { value: 'Replaced', label: 'Remplacé autre fabricant' },
-    { value: 'History', label: 'Mouvement lent' },
-    { value: 'New', label: 'Nouveau article' },
-    { value: 'Waiting', label: 'En attente devis autre fabricant' },
-    { value: 'SurStock', label: 'Sur Stockage' }
+    { value: 'Prix augmenté', label: 'Prix augmenté' },
+    { value: 'Remplacé autre fabricant', label: 'Remplacé autre fabricant' },
+    { value: 'Mouvement lent', label: 'Mouvement lent' },
+    { value: 'Nouveau article', label: 'Nouveau article' },
+    { value: 'En attente devis autre fabricant', label: 'En attente devis autre fabricant' },
+    { value: 'Sur Stockage', label: 'Sur Stockage' }
 ]
 
 const handleKeyDown = (event) => {
@@ -2198,7 +2216,7 @@ const calculatePercentageChange = (value1, value2) => {
 
     const percentageChange = ((value1 - value2) / value2) * 100
 
-    if (Math.abs(percentageChange) < 0.01) return null
+    // Always show percentage, even if 0
     const arrow = percentageChange > 0 ? '↑' : percentageChange < 0 ? '↓' : ''
     const sign = percentageChange > 0 ? '+' : ''
 
@@ -2236,6 +2254,16 @@ const fetchDetails = async (silent = false) => {
             fetchIntercompanyStock()
             // Auto-load last invoiced costs
             fetchLastInvoicedCosts()
+
+            // Fetch all purchase prices for comparison
+            try {
+                const itemNoToFetch = firstDetail.no || props.line.itemNo
+                const prices = await store.fetchPurchasePrices(itemNoToFetch)
+                allPurchasePrices.value = prices || []
+            } catch (err) {
+                console.error('Error fetching all purchase prices:', err)
+                allPurchasePrices.value = []
+            }
         }
     } catch (error) {
         console.error('Error fetching details:', error)

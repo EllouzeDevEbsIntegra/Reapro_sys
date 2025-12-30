@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <div class="line-detail-container">
         <!-- Section 1: Full-width Header -->
         <div class="top-header">
@@ -770,7 +770,8 @@
                         <div class="info-top-section">
                             <!-- Image Gallery -->
                             <div class="info-gallery">
-                                <div class="thumbnail-list" v-if="selectedInfoItem?.thumbnails?.length > 0">
+                                <div class="thumbnail-list"
+                                    v-if="!isViewing360 && selectedInfoItem?.thumbnails?.length > 0">
                                     <button class="thumb-nav-btn up" @click="prevImage"
                                         v-if="selectedInfoItem.thumbnails.length > 1"><i
                                             class="pi pi-chevron-up"></i></button>
@@ -786,12 +787,34 @@
                                             class="pi pi-chevron-down"></i></button>
                                 </div>
                                 <div class="main-image-container">
-                                    <img v-if="selectedInfoItem?.thumbnails?.[currentImageIndex]"
-                                        :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
-                                        class="main-article-image">
-                                    <div v-else class="no-image-placeholder">
-                                        <i class="pi pi-image" style="font-size: 3rem; color: #94a3b8;"></i>
-                                        <p>Aucune image disponible</p>
+                                    <!-- 360 Toggle Button -->
+                                    <button v-if="selectedInfoItem?.images360?.length > 0" class="viewer-360-toggle-btn"
+                                        @click="isViewing360 = !isViewing360"
+                                        :title="isViewing360 ? 'Retour aux photos' : 'Vue 360°'">
+                                        <i class="pi" :class="isViewing360 ? 'pi-images' : 'pi-sync'"
+                                            style="font-size: 1.2rem;"></i>
+                                    </button>
+
+                                    <!-- Standard Image View -->
+                                    <template v-if="!isViewing360">
+                                        <img v-if="selectedInfoItem?.thumbnails?.[currentImageIndex]"
+                                            :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
+                                            class="main-article-image">
+                                        <div v-else class="no-image-placeholder">
+                                            <i class="pi pi-image" style="font-size: 3rem; color: #94a3b8;"></i>
+                                            <p>Aucune image disponible</p>
+                                        </div>
+                                    </template>
+
+                                    <!-- 360 View -->
+                                    <div v-else class="viewer-360-container" @mousemove="handle360MouseMove"
+                                        @touchmove.prevent="handle360TouchMove">
+                                        <img :src="selectedInfoItem?.images360?.[current360Frame]" alt="360 View"
+                                            class="image-360" draggable="false">
+                                        <div class="viewer-360-overlay">
+                                            <i class="pi pi-sync spin-icon"></i>
+                                            <span>Faites glisser pour tourner</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1535,6 +1558,8 @@ const fetchKitLastInvoicedCosts = async () => {
 
 const selectedInfoItem = ref(null)
 const currentImageIndex = ref(0)
+const isViewing360 = ref(false)
+const current360Frame = ref(0)
 const expandedBrands = ref(new Set())
 
 // TecDoc Verification Computed Properties
@@ -1801,6 +1826,8 @@ const updateLine = async (detail) => {
 const openInfoDialog = async (item) => {
     // Show dialog immediately with loading state
     currentImageIndex.value = 0
+    isViewing360.value = false
+    current360Frame.value = 0
     showInfoDialog.value = true
 
     // Debug: Log the item to verify fields are present
@@ -1816,6 +1843,7 @@ const openInfoDialog = async (item) => {
         brand: '',
         brandLogo: '',
         thumbnails: [],
+        images360: [],
         specs: [],
         oemNumbers: [],
         vehicles: [],
@@ -1841,8 +1869,18 @@ const openInfoDialog = async (item) => {
         if (response && response.articles && response.articles.length > 0) {
             const article = response.articles[0]
 
-            // Map images
-            const thumbnails = article.images?.map(img => img.imageURL800) || []
+            // Map images and separate 360 images (ZIP)
+            const allImages = article.images || []
+            const thumbnails = []
+            const images360 = []
+
+            allImages.forEach(img => {
+                if (img.fileName && img.fileName.toUpperCase().endsWith('.ZIP')) {
+                    images360.push(img.imageURL800)
+                } else {
+                    thumbnails.push(img.imageURL800)
+                }
+            })
 
             // Map specs from articleCriteria
             const specs = article.articleCriteria?.map(criteria => ({
@@ -1869,6 +1907,7 @@ const openInfoDialog = async (item) => {
                 brand: article.mfrName || '',
                 brandLogo: article.supplierLogoUrl || '/images/articles/febi_logo.png', // Use dynamic logo or fallback
                 thumbnails: thumbnails,
+                images360: images360,
                 mainImage: thumbnails[0] || '',
                 specs: specs,
                 oemNumbers: oemNumbers,
@@ -1885,6 +1924,38 @@ const openInfoDialog = async (item) => {
         console.error('Error fetching TecDoc article details:', error)
         selectedInfoItem.value.isLoading = false
     }
+}
+
+const handle360MouseMove = (event) => {
+    if (!selectedInfoItem.value?.images360?.length) return
+
+    const container = event.currentTarget
+    const rect = container.getBoundingClientRect()
+    const x = event.clientX - rect.left
+    const width = rect.width
+
+    // Calculate frame based on horizontal position
+    // More frames = smoother rotation
+    const totalFrames = selectedInfoItem.value.images360.length
+    const frameIndex = Math.floor((x / width) * totalFrames)
+
+    // Ensure index is within bounds
+    current360Frame.value = Math.max(0, Math.min(frameIndex, totalFrames - 1))
+}
+
+const handle360TouchMove = (event) => {
+    if (!selectedInfoItem.value?.images360?.length) return
+
+    const container = event.currentTarget
+    const rect = container.getBoundingClientRect()
+    const touch = event.touches[0]
+    const x = touch.clientX - rect.left
+    const width = rect.width
+
+    const totalFrames = selectedInfoItem.value.images360.length
+    const frameIndex = Math.floor((x / width) * totalFrames)
+
+    current360Frame.value = Math.max(0, Math.min(frameIndex, totalFrames - 1))
 }
 
 const selectLine = async (detail) => {
@@ -2686,6 +2757,7 @@ const textRight = {
     transition: all 0.2s ease;
     outline: none;
     text-align: right;
+    appearance: none;
     -moz-appearance: textfield;
 }
 
@@ -2907,10 +2979,6 @@ const textRight = {
     color: #475569;
 }
 
-.tag-import,
-.tag-cmd {
-    /* Base styles handled by .stock-tag */
-}
 
 /* Favorable styles - Solid green background */
 .stock-tag.status-favorable {
@@ -3691,6 +3759,10 @@ const textRight = {
     align-items: center;
     justify-content: center;
     padding: 10px;
+    position: relative;
+    background: #f8fafc;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .main-article-image {
@@ -4254,6 +4326,81 @@ const textRight = {
 .rupture-row td {
     color: #dc2626 !important;
     font-weight: 600;
+}
+
+/* 360 Viewer Styles */
+.viewer-360-toggle-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    color: #3b82f6;
+}
+
+.viewer-360-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    background: #f8fafc;
+}
+
+.viewer-360-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    cursor: ew-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-360 {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.viewer-360-overlay {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+}
+
+.spin-icon {
+    animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 </style>
 

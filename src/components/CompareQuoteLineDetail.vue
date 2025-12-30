@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                        }}</span>
+                            }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,7 +51,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -150,7 +150,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference" :class="getStyleClass(detail.styleDate)">
+                                        <div class="cell-reference">
                                             {{
                                                 formatNumber(getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost,
                                                     2) }}
@@ -217,7 +217,7 @@
                                                 formatNumber(detail.initialVendorPrice, 2) }}</span>
                                             <input type="number" v-model.number="detail.askingPrice"
                                                 class="qty-input mini" placeholder="Prix Nég"
-                                                @change="updateLine(detail)" />
+                                                @change="updateLine(detail)" :disabled="detail.isUpdating" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
@@ -226,19 +226,25 @@
                                                 detail.initialQuantity }}</span>
                                             <input type="number" v-model.number="detail.askingQty"
                                                 class="qty-input mini" placeholder="Qte Nég"
-                                                @change="updateLine(detail)" />
+                                                @change="updateLine(detail)" :disabled="detail.isUpdating" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="detail.quantity" class="qty-input"
-                                                min="0" @change="updateLine(detail)" />
+                                                min="0" @change="updateLine(detail)" :disabled="detail.isUpdating" />
+                                            <i v-if="detail.treated" class="pi pi-check-circle"
+                                                style="color: #22c55e; margin-left: 8px; font-size: 1.1rem;"
+                                                title="Ligne traitée"></i>
+                                            <i v-else class="pi pi-exclamation-circle"
+                                                style="color: #f97316; margin-left: 8px; font-size: 1.1rem;"
+                                                title="Non traité"></i>
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="reason-select-container">
                                             <select v-model="detail.quoteLineReason" class="reason-select"
-                                                @change="updateLine(detail)">
+                                                @change="updateLine(detail)" :disabled="detail.isUpdating">
                                                 <option value=""></option>
                                                 <option v-for="reason in orderReasons" :key="reason.value"
                                                     :value="reason.value">
@@ -268,8 +274,9 @@
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <button class="validate-line-btn" title="Valider la ligne"
-                                                @click="updateLine(detail)">
-                                                <i class="pi pi-check"></i>
+                                                @click="updateLine(detail)" :disabled="detail.isUpdating">
+                                                <i class="pi"
+                                                    :class="detail.isUpdating ? 'pi-spin pi-spinner' : 'pi-check'"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -1766,6 +1773,8 @@ const updateLine = async (detail) => {
     console.log('ETag:', detail['@odata.etag'])
     console.log('User CompanyId:', userCompanyId)
 
+    detail.isUpdating = true // Set loading state
+
     const payload = {
         askingPrice: detail.askingPrice,
         askingQty: detail.askingQty,
@@ -1776,14 +1785,15 @@ const updateLine = async (detail) => {
     try {
         await store.updateQuoteLine(detail.id, detail['@odata.etag'], payload, userCompanyId)
         toast.add({ severity: 'success', summary: 'Succès', detail: 'Ligne mise à jour', life: 2000 })
-        // Refresh to get new ETag
-        await fetchDetails()
+        // Silent refresh to get new ETag without global loading
+        await fetchDetails(true)
     } catch (error) {
         console.error('Update line error:', error)
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour', life: 3000 })
+        detail.isUpdating = false // Reset loading state on error
         if (error.response && error.response.status === 412) {
             // ETag mismatch, refresh data
-            await fetchDetails()
+            await fetchDetails(true)
         }
     }
 }
@@ -2131,11 +2141,11 @@ const getPercentageClass = (percentageText) => {
     return 'percentage-neutral'
 }
 
-const fetchDetails = async () => {
+const fetchDetails = async (silent = false) => {
     if (!props.line || !props.line.compareQuoteNo || !props.line.itemNo)
         return
 
-    isLoadingDetails.value = true
+    if (!silent) isLoadingDetails.value = true
     try {
         const data = await
             store.fetchQuoteLineDetails(props.line.compareQuoteNo,
@@ -2159,7 +2169,7 @@ const fetchDetails = async () => {
     } catch (error) {
         console.error('Error fetching details:', error)
     } finally {
-        isLoadingDetails.value = false
+        if (!silent) isLoadingDetails.value = false
     }
 }
 

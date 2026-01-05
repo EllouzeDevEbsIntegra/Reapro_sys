@@ -69,7 +69,7 @@
                     <span class="amount" style="font-size: 1.1rem; font-weight: 700;">{{ totalAmount ?
                         formatNumber(totalAmount, 2) : '-' }}</span>
                 </div>
-                <i class="pi pi-calculator" style="font-size: 1.2rem;"></i>
+                <i class="pi pi-calculator" style="font-size: 1.5rem;"></i>
             </div>
 
             <!-- 5% -->
@@ -919,21 +919,7 @@
                                 </div>
                             </div>
 
-                            <!-- GTINs Section -->
-                            <div class="info-section" v-if="selectedInfoItem?.gtins?.length > 0">
-                                <div class="info-section-header">
-                                    <i class="pi pi-barcode"></i>
-                                    <span>Codes-barres (GTIN)</span>
-                                </div>
-                                <div class="info-section-content">
-                                    <div class="oe-numbers-list">
-                                        <div v-for="(gtin, index) in selectedInfoItem?.gtins" :key="index"
-                                            class="oe-number-item">
-                                            {{ gtin }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+
 
                             <!-- Vehicles Section -->
                             <div class="info-section" v-if="selectedInfoItem?.vehicles?.length > 0">
@@ -1985,7 +1971,11 @@ const openInfoDialog = async (item) => {
                 oemNumbers: oemNumbers,
                 pdfs: pdfs,
                 genericDescription: genericDesc,
-                vehicles: [], // TODO: Add vehicle compatibility if available in future API response
+                vehicles: article.linkedVehicles?.map(v => ({
+                    brand: v.manuName,
+                    id: v.manuId,
+                    models: []
+                })) || [],
                 gtins: article.gtins || []
             }
         } else {
@@ -2321,6 +2311,21 @@ const fetchDetails = async (silent = false) => {
             isLoadingKit.value = true // Show loading in Kit table immediately
             await fetchEquivalenceItems(firstDetail)
             await fetchKitItems(firstDetail.no)
+
+            // Fetch total amount for the first detail
+            if (firstDetail.documentNo) {
+                selectedDocumentNo.value = firstDetail.documentNo
+                try {
+                    const amount = await store.fetchTotalAmount(firstDetail.documentNo)
+                    totalAmount.value = amount
+                } catch (error) {
+                    console.error('Error fetching total amount:', error)
+                    totalAmount.value = null
+                }
+            } else {
+                selectedDocumentNo.value = null
+                totalAmount.value = null
+            }
 
             // Auto-load intercompany stock
             fetchIntercompanyStock()

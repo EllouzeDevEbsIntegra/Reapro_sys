@@ -1,4 +1,4 @@
-﻿<template>
+<template>
     <div class="line-detail-container">
         <!-- Section 1: Full-width Header -->
         <div class="top-header">
@@ -2024,6 +2024,8 @@ const fetchHistory = async (page = 0) => {
             historyPagination.value.size,
             null // Global history for sidebar
         )
+
+        console.log('History Data:', data)
 
         if (data && data.content) {
             historyEntries.value = data.content

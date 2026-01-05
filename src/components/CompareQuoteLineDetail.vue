@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                            }}</span>
+                        }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,7 +51,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -407,7 +407,7 @@
                                     </td>
                                     <td>
                                         <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3)
-                                        }}</div>
+                                            }}</div>
                                         <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
                                         </div>
                                     </td>
@@ -932,14 +932,24 @@
                                         <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
                                             <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
                                                 class="brand-group">
-                                                <div class="brand-toggle-row" @click="toggleBrand(brandGroup.brand)">
+                                                <div class="brand-toggle-row" @click="toggleBrand(brandGroup)">
                                                     <i class="pi"
                                                         :class="expandedBrands.has(brandGroup.brand) ? 'pi-minus' : 'pi-plus'"></i>
                                                     <span class="brand-name">{{ brandGroup.brand }}</span>
                                                 </div>
                                                 <div v-if="expandedBrands.has(brandGroup.brand)" class="models-list">
-                                                    <div v-for="(model, mIndex) in brandGroup.models" :key="mIndex"
-                                                        class="model-item">
+                                                    <div v-if="brandGroup.isLoading" class="loading-models"
+                                                        style="padding: 10px; color: #64748b; font-style: italic;">
+                                                        <i class="pi pi-spin pi-spinner" style="margin-right: 8px;"></i>
+                                                        Chargement des
+                                                        modèles...
+                                                    </div>
+                                                    <div v-else-if="brandGroup.models.length === 0" class="no-models"
+                                                        style="padding: 10px; color: #94a3b8; font-style: italic;">
+                                                        Aucun modèle trouvé.
+                                                    </div>
+                                                    <div v-else v-for="(model, mIndex) in brandGroup.models"
+                                                        :key="mIndex" class="model-item">
                                                         <i class="pi pi-plus model-plus-icon"></i>
                                                         <span class="model-text">{{ model }}</span>
                                                     </div>
@@ -971,7 +981,7 @@
                                 selectedHistoryItem.structuredDescription ||
                                 selectedHistoryItem.description || 'Temoins de freins' }}
                             <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany
-                            }})</span>
+                                }})</span>
                         </div>
                         <div class="year-selector">
                             <button class="year-arrow" @click="changeDialogYear(-1)">
@@ -1242,7 +1252,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Master</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo
-                                    }}</div>
+                                        }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Description</div>
@@ -1257,7 +1267,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Sous-Groupe</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.subGroupName
-                                    }}</div>
+                                        }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Marque (MakeCode)</div>
@@ -1289,7 +1299,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Article</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber
-                                    }}</div>
+                                        }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Code Fournisseur (VendorNo)</div>
@@ -1658,12 +1668,76 @@ const statusDotClass = computed(() => {
     return 'warning'
 })
 
-const toggleBrand = (brand) => {
-    if (expandedBrands.value.has(brand)) {
-        expandedBrands.value.delete(brand)
+const toggleBrand = async (brandGroup) => {
+    console.log('toggleBrand called for:', brandGroup)
+    if (expandedBrands.value.has(brandGroup.brand)) {
+        expandedBrands.value.delete(brandGroup.brand)
     } else {
-        expandedBrands.value.add(brand)
+        expandedBrands.value.add(brandGroup.brand)
+        // Fetch vehicles if not already loaded
+        console.log('Checking fetch condition:', { modelsLength: brandGroup.models.length, id: brandGroup.id })
+        if (brandGroup.models.length === 0 && brandGroup.id) {
+            await fetchVehiclesForBrand(brandGroup)
+        }
     }
+}
+
+const fetchVehiclesForBrand = async (brandGroup) => {
+    console.log('fetchVehiclesForBrand called with:', { articleId: selectedInfoItem.value?.articleId, brandGroupId: brandGroup.id })
+    if (!selectedInfoItem.value?.articleId || !brandGroup.id) {
+        console.warn('Missing articleId or brandGroup.id')
+        return
+    }
+
+    brandGroup.isLoading = true
+    try {
+        const vehicles = await store.fetchArticleVehicles(selectedInfoItem.value.articleId, brandGroup.id)
+
+        // Group by modelDesc
+        const groupedModels = {}
+        vehicles.forEach(v => {
+            if (!groupedModels[v.modelDesc]) {
+                groupedModels[v.modelDesc] = {
+                    manuDesc: v.manuDesc,
+                    modelDesc: v.modelDesc,
+                    minYear: v.yearOfConstructionFrom,
+                    maxYear: v.yearOfConstructionTo,
+                    minHp: v.powerHpFrom,
+                    maxHp: v.powerHpFrom,
+                    count: 0
+                }
+            }
+
+            const group = groupedModels[v.modelDesc]
+            group.count++
+
+            // Update ranges
+            if (v.yearOfConstructionFrom < group.minYear) group.minYear = v.yearOfConstructionFrom
+            if (v.yearOfConstructionTo > group.maxYear) group.maxYear = v.yearOfConstructionTo
+            if (v.powerHpFrom < group.minHp) group.minHp = v.powerHpFrom
+            if (v.powerHpFrom > group.maxHp) group.maxHp = v.powerHpFrom
+        })
+
+        // Format output
+        brandGroup.models = Object.values(groupedModels).map(g => {
+            const minDate = formatConstructionDate(g.minYear)
+            const maxDate = g.maxYear ? formatConstructionDate(g.maxYear) : '...'
+            return `${g.manuDesc} ${g.modelDesc} ( ${minDate} - ${maxDate} , ${g.minHp} - ${g.maxHp} CH)`
+        })
+
+    } catch (error) {
+        console.error('Error fetching vehicles for brand:', error)
+        brandGroup.models = ['Erreur lors du chargement des véhicules']
+    } finally {
+        brandGroup.isLoading = false
+    }
+}
+
+const formatConstructionDate = (dateNum) => {
+    if (!dateNum) return '...'
+    const str = dateNum.toString()
+    if (str.length !== 6) return str
+    return `${str.substring(4, 6)}.${str.substring(0, 4)}`
 }
 
 const nextImage = () => {
@@ -1926,6 +2000,11 @@ const openInfoDialog = async (item) => {
 
         if (response && response.articles && response.articles.length > 0) {
             const article = response.articles[0]
+            console.log('Full TecDoc Article:', article)
+            console.log('Legacy Article ID:', article.legacyArticleId)
+            if (article.linkedVehicles?.length > 0) {
+                console.log('First Linked Vehicle:', article.linkedVehicles[0])
+            }
 
             // Map images and separate 360 images (ZIP)
             const allImages = article.images || []
@@ -1961,6 +2040,7 @@ const openInfoDialog = async (item) => {
             // Update selectedInfoItem with API data
             selectedInfoItem.value = {
                 ...item,
+                articleId: article.genericArticles?.[0]?.legacyArticleId,
                 isLoading: false,
                 brand: article.mfrName || '',
                 brandLogo: article.supplierLogoUrl || '/images/articles/febi_logo.png', // Use dynamic logo or fallback

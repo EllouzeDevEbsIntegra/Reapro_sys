@@ -283,6 +283,18 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 console.error('Fetch total amount error:', err)
                 throw err
             }
+        },
+
+        async fetchArticleVehicles(articleId, manuId) {
+            try {
+                const response = await axios.get('/api/tecdoc/article-vehicles', {
+                    params: { articleId, manuId }
+                })
+                return response.data
+            } catch (err) {
+                console.error('Error fetching article vehicles:', err)
+                throw err
+            }
         }
     }
 })

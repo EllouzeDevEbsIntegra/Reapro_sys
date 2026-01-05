@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                        }}</span>
+                            }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,7 +51,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -407,7 +407,7 @@
                                     </td>
                                     <td>
                                         <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3)
-                                            }}</div>
+                                        }}</div>
                                         <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
                                         </div>
                                     </td>
@@ -980,7 +980,7 @@
                                 selectedHistoryItem.structuredDescription ||
                                 selectedHistoryItem.description || 'Temoins de freins' }}
                             <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany
-                                }})</span>
+                            }})</span>
                         </div>
                         <div class="year-selector">
                             <button class="year-arrow" @click="changeDialogYear(-1)">
@@ -1251,7 +1251,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Master</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo
-                                        }}</div>
+                                    }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Description</div>
@@ -1266,7 +1266,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Sous-Groupe</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.subGroupName
-                                        }}</div>
+                                    }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Marque (MakeCode)</div>
@@ -1298,7 +1298,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Article</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber
-                                        }}</div>
+                                    }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Code Fournisseur (VendorNo)</div>
@@ -1668,9 +1668,12 @@ const statusDotClass = computed(() => {
 })
 
 const toggleBrand = async (brandGroup) => {
-    if (expandedBrands.value.has(brandGroup.brand)) {
-        expandedBrands.value.delete(brandGroup.brand)
-    } else {
+    const isExpanded = expandedBrands.value.has(brandGroup.brand)
+
+    // Collapse all others (Accordion behavior)
+    expandedBrands.value.clear()
+
+    if (!isExpanded) {
         expandedBrands.value.add(brandGroup.brand)
         // Fetch vehicles if not already loaded
         if (brandGroup.models.length === 0 && brandGroup.id) {
@@ -1788,7 +1791,7 @@ const formatNumber = (value, decimals) => {
 }
 
 const formatDate = (dateString) => {
-    if (!dateString || dateString === '0001-01-01') return '-'
+    if (!dateString || dateString === '0001-01-01' || dateString.startsWith('1753-01-01')) return '-'
     const date = new Date(dateString)
     if (isNaN(date.getTime())) return dateString
 
@@ -1956,6 +1959,7 @@ const openInfoDialog = async (item) => {
     isViewing360.value = false
     current360Frame.value = 0
     showInfoDialog.value = true
+    expandedBrands.value.clear()
 
     // Debug: Log the item to verify fields are present
     console.log('openInfoDialog called with item:', item)

@@ -941,8 +941,7 @@
                                                     <div v-if="brandGroup.isLoading" class="loading-models"
                                                         style="padding: 10px; color: #64748b; font-style: italic;">
                                                         <i class="pi pi-spin pi-spinner" style="margin-right: 8px;"></i>
-                                                        Chargement des
-                                                        modèles...
+                                                        Chargement des modèles...
                                                     </div>
                                                     <div v-else-if="brandGroup.models.length === 0" class="no-models"
                                                         style="padding: 10px; color: #94a3b8; font-style: italic;">
@@ -950,7 +949,7 @@
                                                     </div>
                                                     <div v-else v-for="(model, mIndex) in brandGroup.models"
                                                         :key="mIndex" class="model-item">
-                                                        <i class="pi pi-plus model-plus-icon"></i>
+                                                        <i class="pi pi-angle-right model-plus-icon"></i>
                                                         <span class="model-text">{{ model }}</span>
                                                     </div>
                                                 </div>
@@ -1669,13 +1668,11 @@ const statusDotClass = computed(() => {
 })
 
 const toggleBrand = async (brandGroup) => {
-    console.log('toggleBrand called for:', brandGroup)
     if (expandedBrands.value.has(brandGroup.brand)) {
         expandedBrands.value.delete(brandGroup.brand)
     } else {
         expandedBrands.value.add(brandGroup.brand)
         // Fetch vehicles if not already loaded
-        console.log('Checking fetch condition:', { modelsLength: brandGroup.models.length, id: brandGroup.id })
         if (brandGroup.models.length === 0 && brandGroup.id) {
             await fetchVehiclesForBrand(brandGroup)
         }
@@ -1683,9 +1680,7 @@ const toggleBrand = async (brandGroup) => {
 }
 
 const fetchVehiclesForBrand = async (brandGroup) => {
-    console.log('fetchVehiclesForBrand called with:', { articleId: selectedInfoItem.value?.articleId, brandGroupId: brandGroup.id })
     if (!selectedInfoItem.value?.articleId || !brandGroup.id) {
-        console.warn('Missing articleId or brandGroup.id')
         return
     }
 
@@ -2000,11 +1995,6 @@ const openInfoDialog = async (item) => {
 
         if (response && response.articles && response.articles.length > 0) {
             const article = response.articles[0]
-            console.log('Full TecDoc Article:', article)
-            console.log('Legacy Article ID:', article.legacyArticleId)
-            if (article.linkedVehicles?.length > 0) {
-                console.log('First Linked Vehicle:', article.linkedVehicles[0])
-            }
 
             // Map images and separate 360 images (ZIP)
             const allImages = article.images || []

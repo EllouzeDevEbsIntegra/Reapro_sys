@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <div class="line-detail-container">
         <!-- Section 1: Full-width Header -->
         <div class="top-header">
@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                        }}</span>
+                            }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,7 +51,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -61,9 +61,15 @@
             </div>
 
             <!-- 15% -->
-            <div class="order-total">
-                <i class="pi pi-wallet"></i>
-                <span class="amount">4870,25 $</span>
+            <div class="order-total" style="display: flex; align-items: center; gap: 10px;">
+                <div class="amount-wrapper" style="display: flex; flex-direction: column; align-items: flex-start;">
+                    <span v-if="selectedDocumentNo" class="doc-no"
+                        style="font-size: 0.8rem; color: #64748b; font-weight: 600;">{{
+                            selectedDocumentNo }}</span>
+                    <span class="amount" style="font-size: 1.1rem; font-weight: 700;">{{ totalAmount ?
+                        formatNumber(totalAmount, 2) : '-' }}</span>
+                </div>
+                <i class="pi pi-calculator" style="font-size: 1.2rem;"></i>
             </div>
 
             <!-- 5% -->
@@ -97,13 +103,18 @@
                             <thead>
                                 <tr>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
-                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig</th>
+                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig
+                                    </th>
                                     <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
-                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat</th>
-                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Cout Directe</th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix Revient</th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de Vente</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Cout Directe
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix Revient
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de Vente
+                                    </th>
                                     <th style="width: 8%" v-if="!isSidebarExpanded">Nég Prix</th>
                                     <th style="width: 7%" v-if="!isSidebarExpanded">Nég Qte</th>
                                     <th style="width: 7%" v-if="!isSidebarExpanded">Qte à confirmer</th>
@@ -129,7 +140,8 @@
                                     </td>
                                     <td>
                                         <div class="cell-reference">{{ detail.no }}</div>
-                                        <div class="cell-description">{{ detail.descriptionStructured }}</div>
+                                        <div class="cell-description">{{ detail.descriptionStructured }}
+                                        </div>
                                     </td>
                                     <td>
                                         <div class="cell-reference" :class="getStyleClass(detail.styleInvNoImport)">{{
@@ -156,7 +168,9 @@
                                                     2) }}
                                             <span v-if="getLastInvoicedData(detail.buyFromVendorNo)?.quantity"
                                                 class="qty-badge">
-                                                {{ Math.round(getLastInvoicedData(detail.buyFromVendorNo)?.quantity) }}
+                                                {{
+                                                    Math.round(getLastInvoicedData(detail.buyFromVendorNo)?.quantity)
+                                                }}
                                             </span>
                                         </div>
                                         <div class="cell-description">
@@ -184,7 +198,8 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(detail.prixDeRevientCalcule, 3) }}
+                                        <div class="cell-reference">{{
+                                            formatNumber(detail.prixDeRevientCalcule, 3) }}
                                         </div>
                                         <div class="cell-description">
                                             {{ formatNumber(detail.lastDirectUnitCostCalculated, 3) }}
@@ -198,7 +213,8 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(detail.calcAncienPrixDeVente, 3) }}
+                                        <div class="cell-reference">{{
+                                            formatNumber(detail.calcAncienPrixDeVente, 3) }}
                                         </div>
                                         <div class="cell-description">
                                             {{ formatNumber(detail.unitPriceLCY, 3) }}
@@ -311,13 +327,18 @@
                             <thead>
                                 <tr>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
-                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig</th>
+                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig
+                                    </th>
                                     <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
-                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat</th>
-                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise</th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Cout Calculé / Date</th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de vente</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Cout Calculé /
+                                        Date</th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de vente
+                                    </th>
                                     <th style="width: 8%" v-if="!isSidebarExpanded">Achat</th>
                                     <th style="width: 7%" v-if="!isSidebarExpanded">Vente</th>
                                     <th style="width: 7%" v-if="!isSidebarExpanded">Panier à Cmd</th>
@@ -385,11 +406,14 @@
                                         <div class="cell-description">{{ formatDate(item.lastDate) }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3) }}</div>
-                                        <div class="cell-description">{{ formatDate(item.lastPurshDate) }}</div>
+                                        <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3)
+                                        }}</div>
+                                        <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
+                                        </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}</div>
+                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}
+                                        </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="cell-reference">{{ item.acheteCurrYear || 0 }}</div>
@@ -477,13 +501,18 @@
                             <thead>
                                 <tr>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Composant</th>
-                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig</th>
+                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig
+                                    </th>
                                     <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
-                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat</th>
-                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise</th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Cout Calculé / Date</th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de vente</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Cout Calculé /
+                                        Date</th>
+                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de vente
+                                    </th>
                                     <th style="width: 8%" v-if="!isSidebarExpanded">Achat</th>
                                     <th style="width: 7%" v-if="!isSidebarExpanded">Vente</th>
                                     <th style="width: 7%" v-if="!isSidebarExpanded">Panier à Cmd</th>
@@ -542,7 +571,8 @@
                                         <div class="cell-reference clickable-cell"
                                             @click.stop="openPurchasePriceDialog(item.vendorNo, item.no, item.descriptionStructured, false)"
                                             title="Voir l'historique des prix">
-                                            {{ formatNumber(item.lastCurrPrice || item.lastInvoicedDirectCost, 2) }}
+                                            {{ formatNumber(item.lastCurrPrice ||
+                                                item.lastInvoicedDirectCost, 2) }}
                                         </div>
                                         <div class="cell-description">{{ formatDate(item.lastDate) }}</div>
                                     </td>
@@ -550,10 +580,12 @@
                                         <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS ||
                                             item.lastInvoicedDirectCost, 3) }}
                                         </div>
-                                        <div class="cell-description">{{ formatDate(item.lastPurshDate) }}</div>
+                                        <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
+                                        </div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}</div>
+                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}
+                                        </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="cell-reference">{{ item.acheteCurrYear || 0 }}</div>
@@ -640,11 +672,13 @@
                         <button class="history-btn">Historique</button>
                         <div class="item-title-inline" v-if="selectedHistoryItem">
                             {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
-                                selectedHistoryItem.descriptionStructured || selectedHistoryItem.structuredDescription ||
+                                selectedHistoryItem.descriptionStructured ||
+                                selectedHistoryItem.structuredDescription ||
                                 selectedHistoryItem.description || 'Temoins de freins' }}
                         </div>
                         <div class="item-title-inline" v-else>
-                            {{ line.itemNo }} • {{ line.structuredDescription || line.description || 'Temoins de freins'
+                            {{ line.itemNo }} • {{ line.structuredDescription || line.description ||
+                                'Temoins de freins'
                             }}
                         </div>
                         <div class="year-selector">
@@ -697,7 +731,8 @@
                                         <th style="width: 10%">Type Doc</th>
                                         <th style="width: 10%">N° Document</th>
                                     </template>
-                                    <th :style="{ width: isSidebarExpanded ? '10%' : '15%' }">Client / Frs</th>
+                                    <th :style="{ width: isSidebarExpanded ? '10%' : '15%' }">Client / Frs
+                                    </th>
                                     <th :style="{ width: isSidebarExpanded ? '35%' : '42%' }">Nom</th>
                                     <th :style="{ width: isSidebarExpanded ? '6%' : '8%' }" class="text-right">Qte</th>
                                     <template v-if="isSidebarExpanded">
@@ -708,10 +743,12 @@
                             </thead>
                             <tbody>
                                 <tr v-if="isLoadingHistory">
-                                    <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Chargement...</td>
+                                    <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">
+                                        Chargement...</td>
                                 </tr>
                                 <tr v-else-if="historyEntries.length === 0">
-                                    <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Aucune donnée
+                                    <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Aucune
+                                        donnée
                                         disponible</td>
                                 </tr>
                                 <tr v-else v-for="(entry, index) in historyEntries" :key="index"
@@ -747,7 +784,8 @@
                 <!-- Header -->
                 <div class="info-dialog-header">
                     <div class="header-title">
-                        Informations Article . {{ selectedInfoItem?.no }} . {{ selectedInfoItem?.descriptionStructured
+                        Informations Article . {{ selectedInfoItem?.no }} . {{
+                            selectedInfoItem?.descriptionStructured
                         }}
                     </div>
                     <div class="header-right">
@@ -825,7 +863,8 @@
                                     <img v-if="selectedInfoItem?.brandLogo" :src="selectedInfoItem?.brandLogo"
                                         alt="Brand" class="brand-logo">
                                     <div class="brand-info">
-                                        <div class="brand-ref">N° de référence: {{ selectedInfoItem?.no }}</div>
+                                        <div class="brand-ref">N° de référence: {{ selectedInfoItem?.no }}
+                                        </div>
                                         <div class="brand-desc">{{ selectedInfoItem?.genericDescription ||
                                             selectedInfoItem?.descriptionStructured }}</div>
                                         <div class="brand-name" v-if="selectedInfoItem?.brand">{{
@@ -942,9 +981,11 @@
                         <button class="history-btn">Historique</button>
                         <div class="item-title-inline" v-if="selectedHistoryItem">
                             {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
-                                selectedHistoryItem.descriptionStructured || selectedHistoryItem.structuredDescription ||
+                                selectedHistoryItem.descriptionStructured ||
+                                selectedHistoryItem.structuredDescription ||
                                 selectedHistoryItem.description || 'Temoins de freins' }}
-                            <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany }})</span>
+                            <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany
+                            }})</span>
                         </div>
                         <div class="year-selector">
                             <button class="year-arrow" @click="changeDialogYear(-1)">
@@ -1076,7 +1117,8 @@
                                     <td colspan="5" class="text-center p-4">Chargement...</td>
                                 </tr>
                                 <tr v-else-if="purchasePrices.length === 0">
-                                    <td colspan="5" class="text-center p-4">Aucun historique de prix disponible</td>
+                                    <td colspan="5" class="text-center p-4">Aucun historique de prix
+                                        disponible</td>
                                 </tr>
                                 <tr v-else v-for="(price, index) in filteredPurchasePrices" :key="index">
                                     <td>{{ price.vendorNo }}</td>
@@ -1111,7 +1153,8 @@
                     <div class="stats-column">Total : {{ verificationStatus?.totalTecDocItems || 0 }}</div>
                     <div class="stats-column">Éligibles : {{ verificationStatus?.countEligible || 0 }}</div>
                     <div class="stats-column">Créés : {{ verificationStatus?.countCreated || 0 }}</div>
-                    <div class="stats-column">Non Créés : {{ verificationStatus?.countNotCreated || 0 }}</div>
+                    <div class="stats-column">Non Créés : {{ verificationStatus?.countNotCreated || 0 }}
+                    </div>
                 </div>
 
                 <div class="verification-filter" style="padding: 10px 20px;">
@@ -1212,27 +1255,33 @@
                             <div class="specs-table">
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Master</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo }}</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo
+                                    }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Description</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.masterDescription }}</div>
+                                    <div class="spec-value">{{
+                                        selectedArticleMasterCandidate.masterDescription }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Groupe</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.groupName }}</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.groupName }}
+                                    </div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Sous-Groupe</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.subGroupName }}</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.subGroupName
+                                    }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Marque (MakeCode)</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.makeCode }}</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.makeCode }}
+                                    </div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Champ Libre</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.champsLibre }}</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.champsLibre }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1248,15 +1297,18 @@
                             <div class="specs-table">
                                 <div class="spec-row">
                                     <div class="spec-label">Fabricant</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.manufacturerName }}</div>
+                                    <div class="spec-value">{{
+                                        selectedArticleMasterCandidate.manufacturerName }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Article</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber }}</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber
+                                    }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Code Fournisseur (VendorNo)</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.vendorNo }}</div>
+                                    <div class="spec-value">{{ selectedArticleMasterCandidate.vendorNo }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1423,6 +1475,8 @@ const isLoadingPurchasePrices = ref(false)
 const selectedPurchasePriceItem = ref(null)
 const purchasePriceVendorFilter = ref('')
 const allPurchasePrices = ref([])
+const totalAmount = ref(null)
+const selectedDocumentNo = ref(null)
 
 const availableVendors = computed(() => {
     if (!purchasePrices.value) return []
@@ -1992,6 +2046,22 @@ const selectLine = async (detail) => {
     if (isAlreadySelectedDetail) return
 
     selectedDetail.value = detail
+
+
+    // Fetch total amount for the document
+    if (detail.documentNo) {
+        selectedDocumentNo.value = detail.documentNo
+        try {
+            const amount = await store.fetchTotalAmount(detail.documentNo)
+            totalAmount.value = amount
+        } catch (error) {
+            console.error('Error fetching total amount:', error)
+            totalAmount.value = null
+        }
+    } else {
+        selectedDocumentNo.value = null
+        totalAmount.value = null
+    }
 
     // Sequential loading: Equivalence first, then Kit
     isLoadingKit.value = true // Show loading in Kit table immediately

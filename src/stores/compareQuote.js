@@ -271,6 +271,18 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 console.error('Update quote line error:', err)
                 throw err
             }
+        },
+
+        async fetchTotalAmount(documentNo) {
+            try {
+                const response = await axios.get('/api/bc/quote-lines/total-amount', {
+                    params: { documentNo }
+                })
+                return response.data
+            } catch (err) {
+                console.error('Fetch total amount error:', err)
+                throw err
+            }
         }
     }
 })

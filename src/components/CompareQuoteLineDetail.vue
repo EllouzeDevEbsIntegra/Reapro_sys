@@ -281,10 +281,10 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <i class="pi pi-comment comment-icon cursor-pointer"
-                                                :class="{ 'has-comment': detail.quoteLineComment }"
+                                            <i class="pi comment-icon cursor-pointer"
+                                                :class="[(detail.quoteLineComment || detail.QuoteLineComment) ? 'pi-comments has-comment' : 'pi-comment']"
                                                 @click.stop="toggleCommentOverlay($event, detail)"
-                                                title="Ajouter un commentaire"></i>
+                                                :title="(detail.quoteLineComment || detail.QuoteLineComment) ? 'Modifier commentaire' : 'Ajouter un commentaire'"></i>
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
@@ -1434,7 +1434,7 @@ const selectedCommentItem = ref(null)
 
 const toggleCommentOverlay = (event, item) => {
     selectedCommentItem.value = item
-    commentText.value = item.quoteLineComment || ''
+    commentText.value = item.quoteLineComment || item.QuoteLineComment || ''
     commentOverlay.value.toggle(event)
 }
 
@@ -4514,9 +4514,30 @@ const textRight = {
 }
 
 .comment-icon {
-    font-size: 1.1rem;
+    padding: 6px;
+    transition: all 0.2s;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #94a3b8;
-    transition: all 0.2s ease;
+}
+
+.comment-icon:hover {
+    background-color: #f1f5f9;
+    color: #3b82f6;
+    border-radius: 6px;
+}
+
+.comment-icon.has-comment {
+    color: #f97316 !important;
+}
+
+.comment-icon.has-comment:hover {
+    background-color: #fff7ed;
+    color: #ea580c !important;
+    transform: translateY(-1px);
 }
 
 .comment-icon:hover {

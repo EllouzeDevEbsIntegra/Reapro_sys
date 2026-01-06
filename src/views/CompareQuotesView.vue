@@ -32,11 +32,16 @@
 
                         <div class="spacer"></div>
 
-                        <div class="flex items-center gap-3">
-                            <span class="text-sm font-medium text-slate-700">
+                        <div class="flex items-center gap-4 flex-shrink-0" style="min-width: max-content;">
+                            <span class="text-sm font-medium text-slate-700 inline-block text-left"
+                                style="white-space: nowrap; width: 5rem;">
                                 {{ linesTreatedFilter === false ? 'Non Traité' : 'Tous' }}
                             </span>
-                            <InputSwitch v-model="linesTreatedFilter" :true-value="false" :false-value="null" />
+                            <label class="switch">
+                                <input type="checkbox" v-model="linesTreatedFilter" :true-value="false"
+                                    :false-value="null">
+                                <span class="slider round"></span>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -459,14 +464,57 @@ const getStatusClass = (status) => {
     }
 }
 
-/* Toggle Switch Customization - Better vertical centering */
-:deep(.p-inputswitch) {
-    vertical-align: middle;
+/* Custom Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 24px;
+    flex-shrink: 0;
 }
 
-:deep(.p-inputswitch .p-inputswitch-slider::before) {
-    margin-top: 0 !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    /* slate-300 */
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+input:checked+.slider {
+    background-color: #3b82f6;
+    /* blue-500 */
+}
+
+input:focus+.slider {
+    box-shadow: 0 0 1px #3b82f6;
+}
+
+input:checked+.slider:before {
+    transform: translateX(16px);
 }
 </style>

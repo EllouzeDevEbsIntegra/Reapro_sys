@@ -36,7 +36,8 @@
 
           <div class="form-group">
             <label for="confirmPassword">Confirmer le mot de passe</label>
-            <Password id="confirmPassword" v-model="form.confirmPassword" :feedback="false" toggleMask class="w-full" inputClass="w-full" required />
+            <Password id="confirmPassword" v-model="form.confirmPassword" :feedback="false" toggleMask class="w-full"
+              inputClass="w-full" required />
           </div>
 
           <div v-if="authStore.error" class="error-message">
@@ -44,7 +45,7 @@
             <span>{{ authStore.error }}</span>
           </div>
 
-          <Button type="submit" label="S'inscrire" :loading="authStore.isLoading" class="w-full" />
+          <Button type="submit" label="S'inscrire" :loading="authStore.isLoading" class="w-full register-submit-btn" />
 
           <div class="login-link">
             <p class="text-center mt-3">
@@ -56,14 +57,15 @@
         <!-- Verification Form -->
         <form v-else @submit.prevent="handleVerify" class="login-form">
           <p class="info-text">Un code a été envoyé à <strong>{{ form.email }}</strong></p>
-          
+
           <div class="form-group">
             <label for="code">Code de vérification</label>
-            <InputText id="code" v-model="verificationCode" placeholder="1234" required maxlength="4" class="w-full text-center text-xl tracking-widest" />
+            <InputText id="code" v-model="verificationCode" placeholder="1234" required maxlength="4"
+              class="w-full text-center text-xl tracking-widest" />
           </div>
 
           <Button type="submit" label="Vérifier le compte" :loading="authStore.isLoading" class="w-full" />
-          
+
           <Button label="Retour" class="p-button-text w-full mt-2" @click="isVerifying = false" />
         </form>
       </div>
@@ -200,7 +202,32 @@ label {
   font-size: 0.875rem;
 }
 
-.text-center { text-align: center; }
-.text-primary { color: #1e3a8a; }
-.font-semibold { font-weight: 600; }
+.text-center {
+  text-align: center;
+}
+
+.text-primary {
+  color: #1e3a8a;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.register-submit-btn {
+  height: 48px;
+  font-weight: 700;
+}
+
+:deep(.p-password) {
+  position: relative;
+}
+
+:deep(.p-password .p-icon) {
+  top: 50%;
+  transform: translateY(-50%);
+  right: 0.75rem;
+  position: absolute;
+  cursor: pointer;
+}
 </style>

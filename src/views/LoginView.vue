@@ -40,7 +40,8 @@
           <Button type="submit" label="Se connecter" :loading="authStore.isLoading" class="w-full login-button" />
 
           <div class="register-link">
-            <Button label="S'inscrire" class="p-button-outlined w-full mt-3" @click="router.push('/register')" />
+            <Button label="S'inscrire" class="p-button-outlined w-full mt-3 register-button"
+              @click="router.push('/register')" />
           </div>
         </form>
       </div>
@@ -177,9 +178,29 @@ label {
   padding: 0.875rem;
 }
 
+.register-button {
+  height: 48px;
+  font-weight: 700;
+  color: white !important;
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
 @media (max-width: 768px) {
   .login-right {
     padding: 1.5rem;
   }
+}
+
+:deep(.p-password) {
+  position: relative;
+}
+
+:deep(.p-password .p-icon) {
+  top: 50%;
+  transform: translateY(-50%);
+  right: 0.75rem;
+  position: absolute;
+  cursor: pointer;
 }
 </style>

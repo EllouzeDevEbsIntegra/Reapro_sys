@@ -1323,10 +1323,11 @@
                                 <div class="spec-row" style="align-items: center;">
                                     <div class="spec-label">Code Fournisseur (VendorNo) <span
                                             style="color: red;">*</span></div>
-                                    <div class="spec-value" style="width: 60%;">
+                                    <div class="spec-value">
                                         <Dropdown v-model="selectedArticleMasterCandidate.vendorNo" :options="vendors"
-                                            optionLabel="fullLabel" optionValue="number" filter
-                                            placeholder="Sélectionner un fournisseur" class="w-full"
+                                            optionLabel="fullLabel" optionValue="number" filter scrollHeight="400px"
+                                            placeholder="Sélectionner un fournisseur"
+                                            class="w-full vendor-dropdown-custom"
                                             :class="{ 'p-invalid': !selectedArticleMasterCandidate.vendorNo }" />
                                     </div>
                                 </div>
@@ -4880,5 +4881,129 @@ body .custom-toast .p-toast-detail {
 .master-erp-mismatch {
     color: #dc2626;
     font-weight: 700;
+}
+
+/* Custom Vendor Dropdown Style */
+.vendor-dropdown-custom {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    background-color: #f8fafc !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    height: 42px !important;
+    /* Fixed height for better visibility */
+    display: flex !important;
+    align-items: center !important;
+}
+
+.vendor-dropdown-custom:hover {
+    border-color: #cbd5e1 !important;
+    background-color: #fff !important;
+}
+
+.vendor-dropdown-custom.p-focus {
+    border-color: #3b82f6 !important;
+    background-color: #fff !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.vendor-dropdown-custom .p-dropdown-label {
+    padding: 0 12px !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.vendor-dropdown-custom .p-dropdown-trigger {
+    width: 2.5rem !important;
+    color: #64748b !important;
+}
+
+/* Dialog Layout Styles */
+.info-section {
+    margin-bottom: 20px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.info-section-header {
+    background: #f8fafc;
+    padding: 12px 15px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.95rem;
+}
+
+.info-section-header i {
+    color: #3b82f6;
+    font-size: 1.1rem;
+}
+
+.info-section-content {
+    padding: 15px;
+    /* Add padding to prevent text touching borders */
+}
+
+/* Dialog Specs Table Styles */
+.specs-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.spec-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    /* Increased vertical padding */
+    border-bottom: 1px solid #f1f5f9;
+    background: white;
+    min-height: 44px;
+    /* Increased min-height */
+}
+
+.spec-row:last-child {
+    border-bottom: none;
+}
+
+.spec-row:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.spec-label {
+    font-weight: 600;
+    color: #64748b;
+    font-size: 0.85rem;
+    width: 35%;
+    flex-shrink: 0;
+}
+
+.spec-value {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.9rem;
+    flex: 1;
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* Specific override for rows containing inputs/dropdowns */
+.spec-row:has(.vendor-dropdown-custom) .spec-value {
+    width: 65%;
+    flex: unset;
 }
 </style>

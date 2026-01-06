@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                        }}</span>
+                            }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,7 +51,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -407,7 +407,7 @@
                                     </td>
                                     <td>
                                         <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3)
-                                            }}</div>
+                                        }}</div>
                                         <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
                                         </div>
                                     </td>
@@ -1000,7 +1000,7 @@
                                 selectedHistoryItem.structuredDescription ||
                                 selectedHistoryItem.description || 'Temoins de freins' }}
                             <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany
-                                }})</span>
+                            }})</span>
                         </div>
                         <div class="year-selector">
                             <button class="year-arrow" @click="changeDialogYear(-1)">
@@ -1253,7 +1253,7 @@
             <div class="dialog-content-wrapper">
                 <div class="sidebar-header dialog-header">
                     <div class="header-actions">
-                        <button class="history-btn">Création Article Master</button>
+                        <button class="history-btn">Créer Article Adaptable</button>
                         <Button icon="pi pi-times" text rounded @click="showCreateArticleMasterDialog = false"
                             class="close-dialog-btn" />
                     </div>
@@ -1271,7 +1271,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Master</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo
-                                        }}</div>
+                                    }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Description</div>
@@ -1286,7 +1286,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Sous-Groupe</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.subGroupName
-                                        }}</div>
+                                    }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Marque (MakeCode)</div>
@@ -1318,11 +1318,16 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Article</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber
-                                        }}</div>
+                                    }}</div>
                                 </div>
-                                <div class="spec-row">
-                                    <div class="spec-label">Code Fournisseur (VendorNo)</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.vendorNo }}
+                                <div class="spec-row" style="align-items: center;">
+                                    <div class="spec-label">Code Fournisseur (VendorNo) <span
+                                            style="color: red;">*</span></div>
+                                    <div class="spec-value" style="width: 60%;">
+                                        <Dropdown v-model="selectedArticleMasterCandidate.vendorNo" :options="vendors"
+                                            optionLabel="fullLabel" optionValue="number" filter
+                                            placeholder="Sélectionner un fournisseur" class="w-full"
+                                            :class="{ 'p-invalid': !selectedArticleMasterCandidate.vendorNo }" />
                                     </div>
                                 </div>
                             </div>
@@ -1335,12 +1340,10 @@
                     <Button label="Annuler" icon="pi pi-times" class="p-button-text p-button-secondary dialog-btn"
                         @click="showCreateArticleMasterDialog = false" />
                     <Button label="Valider la création" icon="pi pi-check" class="p-button-primary dialog-btn"
-                        @click="confirmCreateArticleMaster" />
+                        @click="confirmCreateArticleMaster" :disabled="!selectedArticleMasterCandidate?.vendorNo" />
                 </div>
             </div>
         </Dialog>
-
-
         <!-- Comment Overlay -->
         <OverlayPanel ref="commentOverlay" class="comment-overlay" appendTo="body"
             :style="{ width: '25vw', minWidth: '25vw', maxWidth: '25vw', border: '1px solid #cbd5e1', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', background: 'white' }">
@@ -1363,6 +1366,7 @@ import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import OverlayPanel from 'primevue/overlaypanel'
+import Dropdown from 'primevue/dropdown'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 
@@ -1880,10 +1884,32 @@ const changeVerificationPage = (newPage) => {
 
 const showCreateArticleMasterDialog = ref(false)
 const selectedArticleMasterCandidate = ref(null)
+const vendors = ref([])
+
+onMounted(async () => {
+    try {
+        const fetchedVendors = await store.fetchVendors()
+        vendors.value = fetchedVendors.map(v => ({
+            ...v,
+            fullLabel: `${v.number} - ${v.displayName}`
+        }))
+    } catch (error) {
+        console.error('Error fetching vendors:', error)
+    }
+})
 
 const createArticleMaster = (item) => {
     console.log('Create Article Master for:', item)
     console.log('Props Line:', props.line)
+
+    let initialVendor = ''
+    if (item.vendorNo) {
+        // Try to find matching vendor in fetched list
+        const foundVendor = vendors.value.find(v => v.number === item.vendorNo)
+        if (foundVendor) {
+            initialVendor = foundVendor.number
+        }
+    }
 
     selectedArticleMasterCandidate.value = {
         // Master Info from props.line
@@ -1901,7 +1927,7 @@ const createArticleMaster = (item) => {
         manufacturerName: item.bcManufacturerName || item.manufacturerName,
         manufacturerCode: item.bcManufacturerCode,
         articleNumber: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : '',
-        vendorNo: item.vendorNo || '401230'
+        vendorNo: initialVendor
     }
 
     showCreateArticleMasterDialog.value = true

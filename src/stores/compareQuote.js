@@ -302,6 +302,16 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
+        async fetchVendors() {
+            try {
+                const response = await axios.get('/api/bc/vendors')
+                return response.data
+            } catch (err) {
+                console.error('Fetch vendors error:', err)
+                throw err
+            }
+        },
+
         async fetchArticleVehicles(articleId, manuId) {
             try {
                 const response = await axios.get('/api/tecdoc/article-vehicles', {

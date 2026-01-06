@@ -11,7 +11,7 @@
                     <h1 class="item-no">{{ line.itemNo }}</h1>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                            }}</span>
+                        }}</span>
                         <div class="page-indicator">
                             Ligne {{ currentIndex + 1 }} / {{ totalElements }}
                         </div>
@@ -51,7 +51,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -282,7 +282,7 @@
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <i class="pi pi-comment comment-icon cursor-pointer"
-                                                :class="{ 'has-comment': detail.comment }"
+                                                :class="{ 'has-comment': detail.quoteLineComment }"
                                                 @click.stop="toggleCommentOverlay($event, detail)"
                                                 title="Ajouter un commentaire"></i>
                                         </div>
@@ -407,7 +407,7 @@
                                     </td>
                                     <td>
                                         <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3)
-                                        }}</div>
+                                            }}</div>
                                         <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
                                         </div>
                                     </td>
@@ -778,6 +778,26 @@
             </div>
         </div>
 
+        <!-- Comment Overlay -->
+        <OverlayPanel ref="commentOverlay" class="comment-overlay" :showCloseIcon="false" :dismissable="true">
+            <div class="comment-content">
+                <div class="comment-header">
+                    <span class="comment-title">Commentaire</span>
+                    <div class="header-actions">
+                        <Button icon="pi pi-check" text rounded severity="success" @click="saveComment"
+                            tooltip="Enregistrer" />
+                        <Button icon="pi pi-times" text rounded severity="secondary"
+                            @click="$refs.commentOverlay.hide()" tooltip="Fermer" />
+                    </div>
+                </div>
+                <textarea v-model="commentText" rows="3" class="comment-textarea" placeholder="Saisir un commentaire..."
+                    maxlength="250"></textarea>
+                <div class="text-xs text-right text-gray-400 mt-1">
+                    {{ commentText.length }}/250
+                </div>
+            </div>
+        </OverlayPanel>
+
         <!-- Article Info Dialog -->
         <div v-if="showInfoDialog" class="info-dialog-overlay" @click.self="showInfoDialog = false">
             <div class="info-dialog-container">
@@ -980,7 +1000,7 @@
                                 selectedHistoryItem.structuredDescription ||
                                 selectedHistoryItem.description || 'Temoins de freins' }}
                             <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany
-                            }})</span>
+                                }})</span>
                         </div>
                         <div class="year-selector">
                             <button class="year-arrow" @click="changeDialogYear(-1)">
@@ -1251,7 +1271,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Master</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo
-                                    }}</div>
+                                        }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Description</div>
@@ -1266,7 +1286,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Sous-Groupe</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.subGroupName
-                                    }}</div>
+                                        }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Marque (MakeCode)</div>
@@ -1298,7 +1318,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Article</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber
-                                    }}</div>
+                                        }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Code Fournisseur (VendorNo)</div>
@@ -1414,15 +1434,21 @@ const selectedCommentItem = ref(null)
 
 const toggleCommentOverlay = (event, item) => {
     selectedCommentItem.value = item
-    commentText.value = item.comment || ''
+    commentText.value = item.quoteLineComment || ''
     commentOverlay.value.toggle(event)
 }
 
-const saveComment = () => {
+const saveComment = async () => {
     if (selectedCommentItem.value) {
-        selectedCommentItem.value.comment = commentText.value
+        try {
+            await store.updateQuoteLineComment(selectedCommentItem.value.id, commentText.value)
+            selectedCommentItem.value.quoteLineComment = commentText.value
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Commentaire enregistré', life: 2000 })
+            commentOverlay.value.hide()
+        } catch (error) {
+            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de l\'enregistrement', life: 3000 })
+        }
     }
-    commentOverlay.value.hide()
 }
 const historyKpis = ref({
     stock: 0,

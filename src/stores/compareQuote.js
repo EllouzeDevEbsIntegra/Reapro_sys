@@ -273,6 +273,23 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
+        async updateQuoteLineComment(id, comment) {
+            this.isLoading = true
+            this.error = null
+            try {
+                const response = await axios.patch(`/api/bc/quote-lines/${id}`, {
+                    quoteLineComment: comment
+                })
+                return response.data
+            } catch (err) {
+                this.error = err.response?.data?.message || 'Erreur lors de la mise à jour du commentaire'
+                console.error('Update quote line comment error:', err)
+                throw err
+            } finally {
+                this.isLoading = false
+            }
+        },
+
         async fetchTotalAmount(documentNo) {
             try {
                 const response = await axios.get('/api/bc/quote-lines/total-amount', {

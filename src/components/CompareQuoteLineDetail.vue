@@ -105,7 +105,7 @@
                             <thead>
                                 <tr>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
-                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig
+                                    <th :style="{ width: isSidebarExpanded ? '24%' : '16%' }">Réf / Desig
                                     </th>
                                     <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
@@ -113,9 +113,9 @@
                                     </th>
                                     <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Cout Directe
                                     </th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix Revient
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Prix Revient
                                     </th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de Vente
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Prix de Vente
                                     </th>
                                     <th style="width: 8%" v-if="!isSidebarExpanded">Nég Prix</th>
                                     <th style="width: 7%" v-if="!isSidebarExpanded">Nég Qte</th>
@@ -235,7 +235,7 @@
                                                 formatNumber(detail.initialVendorPrice, 2) }}</span>
                                             <input type="number" v-model.number="detail.askingPrice"
                                                 class="qty-input mini" placeholder="Prix Nég"
-                                                @change="updateLine(detail)" :disabled="detail.isUpdating" />
+                                                @change="updateLine(detail, false)" :disabled="detail.isUpdating" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
@@ -244,13 +244,13 @@
                                                 detail.initialQuantity }}</span>
                                             <input type="number" v-model.number="detail.askingQty"
                                                 class="qty-input mini" placeholder="Qte Nég"
-                                                @change="updateLine(detail)" :disabled="detail.isUpdating" />
+                                                @change="updateLine(detail, false)" :disabled="detail.isUpdating" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="detail.quantity" class="qty-input"
-                                                min="0" @change="updateLine(detail)" :disabled="detail.isUpdating" />
+                                                min="0" @change="updateLine(detail, true)" :disabled="detail.isUpdating" />
                                             <i v-if="detail.treated" class="pi pi-check-circle"
                                                 style="color: #22c55e; margin-left: 8px; font-size: 1.1rem;"
                                                 title="Ligne traitée"></i>
@@ -262,7 +262,7 @@
                                     <td v-if="!isSidebarExpanded">
                                         <div class="reason-select-container">
                                             <select v-model="detail.quoteLineReason" class="reason-select"
-                                                @change="updateLine(detail)" :disabled="detail.isUpdating">
+                                                @change="updateLine(detail, false)" :disabled="detail.isUpdating">
                                                 <option value=""></option>
                                                 <option v-for="reason in orderReasons" :key="reason.value"
                                                     :value="reason.value">
@@ -292,7 +292,7 @@
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <button class="validate-line-btn" title="Valider la ligne"
-                                                @click="updateLine(detail)" :disabled="detail.isUpdating">
+                                                @click="updateLine(detail, true)" :disabled="detail.isUpdating">
                                                 <i class="pi"
                                                     :class="detail.isUpdating ? 'pi-spin pi-spinner' : 'pi-check'"></i>
                                             </button>
@@ -329,7 +329,7 @@
                             <thead>
                                 <tr>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
-                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig
+                                    <th :style="{ width: isSidebarExpanded ? '24%' : '16%' }">Réf / Desig
                                     </th>
                                     <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
@@ -337,9 +337,9 @@
                                     </th>
                                     <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise
                                     </th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Cout Calculé /
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Cout Calculé /
                                         Date</th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de vente
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Prix de vente
                                     </th>
                                     <th style="width: 8%" v-if="!isSidebarExpanded">Achat</th>
                                     <th style="width: 7%" v-if="!isSidebarExpanded">Vente</th>
@@ -489,7 +489,7 @@
                             <thead>
                                 <tr>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
-                                    <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig
+                                    <th :style="{ width: isSidebarExpanded ? '24%' : '16%' }">Réf / Desig
                                     </th>
                                     <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
                                     <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
@@ -497,9 +497,9 @@
                                     </th>
                                     <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise
                                     </th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Cout Calculé /
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Cout Calculé /
                                         Date</th>
-                                    <th :style="{ width: isSidebarExpanded ? '15%' : '10%' }">Prix de vente
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Prix de vente
                                     </th>
                                     <th style="width: 8%" v-if="!isSidebarExpanded">Achat</th>
                                     <th style="width: 7%" v-if="!isSidebarExpanded">Vente</th>
@@ -2163,7 +2163,7 @@ const confirmCreateArticleMaster = async () => {
 }
 
 
-const updateLine = async (detail) => {
+const updateLine = async (detail, markAsTreated = false) => {
     if (!detail || !detail.id) return
 
     const userCompanyId = authStore.user?.bcCompanyId
@@ -2180,8 +2180,15 @@ const updateLine = async (detail) => {
         quoteLineReason: detail.quoteLineReason
     }
 
+    if (markAsTreated) {
+        payload.treated = true
+    }
+
     try {
         await store.updateQuoteLine(detail.id, detail['@odata.etag'], payload, userCompanyId)
+        if (markAsTreated) {
+            detail.treated = true
+        }
         toast.add({ severity: 'success', summary: 'Succès', detail: 'Ligne mise à jour', life: 2000 })
         // Silent refresh to get new ETag without global loading
         await fetchDetails(true)

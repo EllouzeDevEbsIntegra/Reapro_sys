@@ -455,14 +455,17 @@
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <i class="pi pi-comment comment-icon cursor-pointer"
-                                                :class="{ 'has-comment': item.comment }"
+                                                :class="{ 'has-comment': item.comment || item.commentPurchaseCart, 'text-orange-500': item.commentPurchaseCart }"
                                                 @click.stop="toggleCommentOverlay($event, item)"
                                                 title="Ajouter un commentaire"></i>
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
+                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart" title="Déjà dans le panier" disabled>
+                                                <i class="pi pi-shopping-cart"></i>
+                                            </button>
+                                            <button v-else class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
                                                 <i class="pi pi-check"></i>
                                             </button>
                                         </div>
@@ -610,14 +613,17 @@
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <i class="pi pi-comment comment-icon cursor-pointer"
-                                                :class="{ 'has-comment': item.comment }"
+                                                :class="{ 'has-comment': item.comment || item.commentPurchaseCart, 'text-orange-500': item.commentPurchaseCart }"
                                                 @click.stop="toggleCommentOverlay($event, item)"
                                                 title="Ajouter un commentaire"></i>
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
+                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart" title="Déjà dans le panier" disabled>
+                                                <i class="pi pi-shopping-cart"></i>
+                                            </button>
+                                            <button v-else class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
                                                 <i class="pi pi-check"></i>
                                             </button>
                                         </div>
@@ -1555,7 +1561,7 @@ const selectedCommentItem = ref(null)
 
 const toggleCommentOverlay = (event, item) => {
     selectedCommentItem.value = item
-    commentText.value = item.quoteLineComment || item.QuoteLineComment || ''
+    commentText.value = item.commentPurchaseCart || item.quoteLineComment || item.QuoteLineComment || ''
     commentOverlay.value.toggle(event)
 }
 
@@ -2679,7 +2685,8 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
             detail.ReferenceMaster,
             detail.no,
             page,
-            equivalencePagination.value.size
+            equivalencePagination.value.size,
+            props.line.compareQuoteNo
         )
 
         if (data && data.content) {
@@ -2746,7 +2753,8 @@ const fetchKitItems = async (itemNo, page = 0) => {
         const data = await store.fetchKitItems(
             itemNo,
             page,
-            kitPagination.value.size
+            kitPagination.value.size,
+            props.line.compareQuoteNo
         )
 
         if (data && data.content) {

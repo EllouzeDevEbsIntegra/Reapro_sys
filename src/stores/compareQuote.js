@@ -129,16 +129,20 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        async fetchEquivalenceItems(referenceMaster, no, page = 0, size = 10) {
+        async fetchEquivalenceItems(referenceMaster, no, page = 0, size = 10, compareQuoteNo = null) {
             this.error = null
             try {
+                const params = {
+                    referenceMaster,
+                    no,
+                    page,
+                    size
+                }
+                if (compareQuoteNo) {
+                    params.compareQuoteNo = compareQuoteNo
+                }
                 const response = await axios.get('/api/bc/itemsEqv', {
-                    params: {
-                        referenceMaster,
-                        no,
-                        page,
-                        size
-                    }
+                    params
                 })
                 return response.data
             } catch (err) {
@@ -147,15 +151,19 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        async fetchKitItems(no, page = 0, size = 10) {
+        async fetchKitItems(no, page = 0, size = 10, compareQuoteNo = null) {
             this.error = null
             try {
+                const params = {
+                    no,
+                    page,
+                    size
+                }
+                if (compareQuoteNo) {
+                    params.compareQuoteNo = compareQuoteNo
+                }
                 const response = await axios.get('/api/itemsKit', {
-                    params: {
-                        no,
-                        page,
-                        size
-                    }
+                    params
                 })
                 return response.data
             } catch (err) {

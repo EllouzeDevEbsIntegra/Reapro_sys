@@ -462,7 +462,7 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart" title="Déjà dans le panier" disabled>
+                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart" title="Voir dans le panier" @click.stop="openCartForItem(item)">
                                                 <i class="pi pi-shopping-cart"></i>
                                             </button>
                                             <button v-else class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
@@ -620,7 +620,7 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart" title="Déjà dans le panier" disabled>
+                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart" title="Voir dans le panier" @click.stop="openCartForItem(item)">
                                                 <i class="pi pi-shopping-cart"></i>
                                             </button>
                                             <button v-else class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
@@ -1565,6 +1565,18 @@ const toggleCommentOverlay = (event, item) => {
     commentOverlay.value.toggle(event)
 }
 
+const openCartForItem = (item) => {
+    activeRightPanel.value = 'cart'
+    activeCartTab.value = 'current'
+    cartFilters.value = {
+        compareQuoteNo: props.line.compareQuoteNo,
+        status: null,
+        itemNo: item.no,
+        vendorNo: ''
+    }
+    applyFilters()
+}
+
 const saveComment = async () => {
     if (selectedCommentItem.value) {
         // For Equivalence/KIT items, just store locally
@@ -1617,21 +1629,7 @@ const addToCart = async (item) => {
 
 
 
-const openCartForItem = (item) => {
-    // Open cart panel
-    activeRightPanel.value = 'cart'
-    activeCartTab.value = 'current'
-    
-    // Set filters to show this specific item
-    cartFilters.value = {
-        compareQuoteNo: props.line.compareQuoteNo,
-        status: null,
-        itemNo: item.no,
-        vendorNo: ''
-    }
-    
-    applyFilters()
-}
+
 
 const updateCartStatus = async (lineNo, status) => {
     try {

@@ -3223,8 +3223,8 @@ const textRight = {
     right: -8px;
     background-color: #ef4444;
     color: white;
-    border-radius: 50%;
-    width: 18px;
+    border-radius: 10px;
+    min-width: 18px;
     height: 18px;
     display: flex;
     align-items: center;
@@ -3233,6 +3233,7 @@ const textRight = {
     font-weight: 700;
     border: 2px solid white;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    padding: 0 4px;
 }
 
 .cart-btn:hover {

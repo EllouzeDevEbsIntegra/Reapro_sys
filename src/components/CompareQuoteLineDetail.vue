@@ -2937,15 +2937,22 @@ const textRight = {
     justify-content: space-between;
     padding-left: 5px;
     height: 54px;
+    margin: 10px;
+    align-items: center;
 }
 
 .info-left {
+    flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
-    padding-right: 5px;
+    padding: 0 10px;
     height: 100%;
+    border: 1px solid #3b82f6;
+    border-radius: 10px;
+    margin-right: 5px;
+    gap: 2px;
 }
 
 .item-no {
@@ -2989,12 +2996,7 @@ const textRight = {
     padding: 0;
 }
 
-.info-left {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
+
 
 .description-row {
     display: flex;

@@ -324,7 +324,7 @@
                     <div class="table-header-row">
                         <span class="table-title">Equivalence</span>
                     </div>
-                    <div class="table-wrapper">
+                    <div class="table-wrapper" @scroll="onEquivalenceScroll">
                         <table class="modern-table">
                             <thead>
                                 <tr>
@@ -471,25 +471,8 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="table-footer">
-                        <div class="pagination-info" v-if="equivalenceItems.length > 0">
-                            {{ equivalencePagination.page * equivalencePagination.size + 1 }}-{{
-                                Math.min((equivalencePagination.page + 1) *
-                                    equivalencePagination.size, equivalencePagination.totalElements) }} sur {{
-                                equivalencePagination.totalElements }}
-                        </div>
-                        <div class="pagination-controls">
-                            <button class="p-btn" :disabled="equivalencePagination.page === 0"
-                                @click="fetchEquivalenceItems(selectedDetail, equivalencePagination.page - 1)">
-                                <i class="pi pi-angle-left"></i>
-                            </button>
-                            <span class="p-current">{{ equivalencePagination.page + 1 }}</span>
-                            <button class="p-btn"
-                                :disabled="equivalencePagination.page >= equivalencePagination.totalPages - 1"
-                                @click="fetchEquivalenceItems(selectedDetail, equivalencePagination.page + 1)">
-                                <i class="pi pi-angle-right"></i>
-                            </button>
-                        </div>
+                    <div class="loading-indicator" v-if="isLoadingEquivalence && equivalenceItems.length > 0">
+                        <i class="pi pi-spin pi-spinner"></i> Chargement...
                     </div>
                 </div>
 
@@ -2632,14 +2615,20 @@ const fetchDetails = async (silent = false) => {
             store.fetchQuoteLineDetails(props.line.compareQuoteNo,
                 props.line.itemNo)
         quoteLineDetails.value = Array.isArray(data) ? data : [data]
+        
+        // Show Suppliers table immediately
+        if (!silent) isLoadingDetails.value = false
+
         if (quoteLineDetails.value.length > 0) {
             const firstDetail = quoteLineDetails.value[0]
             selectedDetail.value = firstDetail
             selectedHistoryItem.value = firstDetail
             historyKpis.value.stock = firstDetail.inventoryWithoutImport || 0
-            // Auto-load equivalence and kit items for the first line
-            isLoadingKit.value = true // Show loading in Kit table immediately
+            
+            // 2. Load Equivalence
             await fetchEquivalenceItems(firstDetail)
+            
+            // 3. Load Kit
             await fetchKitItems(firstDetail.no)
 
             // Fetch total amount for the first detail
@@ -2657,9 +2646,8 @@ const fetchDetails = async (silent = false) => {
                 totalAmount.value = null
             }
 
-            // Auto-load intercompany stock
+            // 4. Load secondary data (Intercompany Stock, Last Invoiced, Prices)
             fetchIntercompanyStock()
-            // Auto-load last invoiced costs
             fetchLastInvoicedCosts()
 
             // Fetch all purchase prices for comparison
@@ -2682,6 +2670,9 @@ const fetchDetails = async (silent = false) => {
 const fetchEquivalenceItems = async (detail, page = 0) => {
     if (!detail || !detail.ReferenceMaster || !detail.no) return
 
+    // Prevent duplicate calls if already loading
+    if (isLoadingEquivalence.value) return
+
     isLoadingEquivalence.value = true
     try {
         const data = await store.fetchEquivalenceItems(
@@ -2692,10 +2683,17 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
         )
 
         if (data && data.content) {
-            equivalenceItems.value = data.content.map(item => ({
+            const newItems = data.content.map(item => ({
                 ...item,
                 quantityToOrder: 1
             }))
+            
+            if (page === 0) {
+                equivalenceItems.value = newItems
+            } else {
+                equivalenceItems.value = [...equivalenceItems.value, ...newItems]
+            }
+
             equivalencePagination.value = {
                 ...equivalencePagination.value,
                 page: data.page !== undefined ? data.page : (data.number !==
@@ -2706,10 +2704,17 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
             }
         } else {
             const items = Array.isArray(data) ? data : [data]
-            equivalenceItems.value = items.map(item => ({
+            const newItems = items.map(item => ({
                 ...item,
                 quantityToOrder: 1
             }))
+            
+            if (page === 0) {
+                equivalenceItems.value = newItems
+            } else {
+                equivalenceItems.value = [...equivalenceItems.value, ...newItems]
+            }
+
             equivalencePagination.value.totalElements =
                 equivalenceItems.value.length
             equivalencePagination.value.page = 0
@@ -2717,9 +2722,19 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
         }
     } catch (error) {
         console.error('Error fetching equivalence items:', error)
-        equivalenceItems.value = []
+        if (page === 0) equivalenceItems.value = []
     } finally {
         isLoadingEquivalence.value = false
+    }
+}
+
+const onEquivalenceScroll = (event) => {
+    const { scrollTop, clientHeight, scrollHeight } = event.target
+    // Load more when user is near bottom (20px threshold)
+    if (scrollTop + clientHeight >= scrollHeight - 20) {
+        if (!isLoadingEquivalence.value && equivalencePagination.value.page < equivalencePagination.value.totalPages - 1) {
+            fetchEquivalenceItems(selectedDetail.value, equivalencePagination.value.page + 1)
+        }
     }
 }
 
@@ -2766,8 +2781,8 @@ const fetchKitItems = async (itemNo, page = 0) => {
 }
 
 // Watch for line changes to refetch data
-watch(() => props.line, () => {
-    fetchDetails()
+watch(() => props.line, async () => {
+    await fetchDetails()
     fetchVerificationStatus()
     activeRightPanel.value = 'history'
 }, { deep: true })
@@ -2828,13 +2843,13 @@ const openCartSidebar = () => {
         applyFilters();
     }
 };
-onMounted(() => {
+onMounted(async () => {
     window.addEventListener('keydown', handleKeyDown)
-    fetchDetails()
-    fetchVerificationStatus()
     if (props.line && props.line.compareQuoteNo) {
         store.fetchCartCount(props.line.compareQuoteNo)
     }
+    await fetchDetails()
+    fetchVerificationStatus()
 })
 
 onUnmounted(() => {
@@ -2876,7 +2891,7 @@ const textRight = {
 .line-detail-container {
     padding: 15px;
     background-color: #f1f5f9;
-    height: 100%;
+    height: calc(100vh - 90px);
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -3620,6 +3635,8 @@ const textRight = {
     background: white;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    height: 100%;
+    overflow: hidden;
 }
 
 .right-column.expanded {
@@ -3658,7 +3675,9 @@ const textRight = {
 
 .table-wrapper {
     overflow-x: auto;
+    overflow-y: auto;
     flex-grow: 1;
+    max-height: 600px;
 }
 
 .modern-table {
@@ -3922,6 +3941,16 @@ const textRight = {
 
 .history-container {
     flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.history-container .table-wrapper {
+    max-height: none !important;
+    height: 100%;
+    overflow-y: auto;
 }
 
 /* Dialog Specific Styles */
@@ -5366,8 +5395,22 @@ body .custom-toast .p-toast-detail {
     background-color: rgba(239, 68, 68, 0.1);
 }
 
+
 .cart-exists {
     color: #3b82f6;
+}
+
+.loading-indicator {
+    padding: 10px;
+    text-align: center;
+    color: #64748b;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
 }
 
 </style>

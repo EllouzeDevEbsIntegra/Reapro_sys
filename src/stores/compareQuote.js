@@ -13,7 +13,9 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
         pageSize: 20,
         currentLinesPage: 0,
         linesPageSize: 20,
-        currentLineGlobalIndex: null
+        currentLineGlobalIndex: null,
+        cartCount: 0,
+        cartItems: []
     }),
 
     actions: {
@@ -321,6 +323,20 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             } catch (err) {
                 console.error('Error fetching article vehicles:', err)
                 throw err
+            }
+        },
+
+        async fetchCartCount(compareQuoteNo) {
+            try {
+                const response = await axios.get('/api/bc/purchase-cart/count', {
+                    params: { compareQuoteNo }
+                })
+                // The API returns { "count": 7 }, so we need to access .count
+                this.cartCount = response.data.count !== undefined ? response.data.count : response.data
+                return this.cartCount
+            } catch (err) {
+                console.error('Fetch cart count error:', err)
+                this.isLoading = false
             }
         }
     }

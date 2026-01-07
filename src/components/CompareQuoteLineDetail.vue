@@ -73,13 +73,15 @@
             </div>
 
             <!-- 5% -->
-            <button class="cart-btn">
+            <button class="cart-btn" @click="openCartSidebar">
                 <div class="cart-icon-wrapper">
                     <i class="pi pi-shopping-cart"></i>
-                    <span class="cart-badge">1</span>
+                    <span v-if="store.cartCount > 0" class="cart-badge">{{ store.cartCount }}</span>
                 </div>
             </button>
         </div>
+
+
 
         <!-- Navigation Arrows -->
         <button class="nav-arrow left" @click="$emit('prev')" aria-label="Précédent">
@@ -665,116 +667,198 @@
 
             <!-- Section 3: Sidebar (30% or 50% width) -->
             <div class="right-column" :class="{ 'expanded': isSidebarExpanded }">
-                <div class="sidebar-header">
-                    <div class="header-actions">
-                        <Button :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text rounded
-                            @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
-                        <button class="history-btn">Historique</button>
-                        <div class="item-title-inline" v-if="selectedHistoryItem">
-                            {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
-                                selectedHistoryItem.descriptionStructured ||
-                                selectedHistoryItem.structuredDescription ||
-                                selectedHistoryItem.description || 'Temoins de freins' }}
+                <!-- History View -->
+                <template v-if="activeRightPanel === 'history'">
+                    <div class="sidebar-header">
+                        <div class="header-actions">
+                            <Button :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text
+                                rounded @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
+                            <button class="history-btn">Historique</button>
+                            <div class="item-title-inline" v-if="selectedHistoryItem">
+                                {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
+                                    selectedHistoryItem.descriptionStructured ||
+                                    selectedHistoryItem.structuredDescription ||
+                                    selectedHistoryItem.description || 'Temoins de freins' }}
+                            </div>
+                            <div class="item-title-inline" v-else>
+                                {{ line.itemNo }} • {{ line.structuredDescription || line.description ||
+                                    'Temoins de freins'
+                                }}
+                            </div>
+                            <div class="year-selector">
+                                <button class="year-arrow" @click="changeYear(-1)">
+                                    <i class="pi pi-chevron-left"></i>
+                                </button>
+                                <span class="year-display">{{ selectedYear }}</span>
+                                <button class="year-arrow" @click="changeYear(1)">
+                                    <i class="pi pi-chevron-right"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="item-title-inline" v-else>
-                            {{ line.itemNo }} • {{ line.structuredDescription || line.description ||
-                                'Temoins de freins'
-                            }}
+                    </div>
+
+                    <div class="stats-bar">
+                        <div class="stats-column">Stock : {{ historyKpis.stock }}</div>
+                        <div class="stats-column">Achat : {{ historyKpis.achat }}</div>
+                        <div class="stats-column">Vente : {{ Math.abs(historyKpis.vente) }}</div>
+                        <div class="stats-column">Rupt : {{ historyKpis.rupt }}</div>
+                    </div>
+
+                    <div class="table-footer top-pagination">
+                        <div class="pagination-info" v-if="historyEntries.length > 0">
+                            {{ historyPagination.page * historyPagination.size + 1 }}-{{
+                                Math.min((historyPagination.page + 1) *
+                                    historyPagination.size, historyPagination.totalElements) }} sur {{
+                                historyPagination.totalElements }}
                         </div>
-                        <div class="year-selector">
-                            <button class="year-arrow" @click="changeYear(-1)">
-                                <i class="pi pi-chevron-left"></i>
+                        <div class="pagination-controls">
+                            <button class="p-btn" :disabled="historyPagination.page === 0"
+                                @click="fetchHistory(historyPagination.page - 1)">
+                                <i class="pi pi-angle-left"></i>
                             </button>
-                            <span class="year-display">{{ selectedYear }}</span>
-                            <button class="year-arrow" @click="changeYear(1)">
-                                <i class="pi pi-chevron-right"></i>
+                            <span class="p-current">{{ historyPagination.page + 1 }}</span>
+                            <button class="p-btn"
+                                :disabled="historyPagination.page >= historyPagination.totalPages - 1"
+                                @click="fetchHistory(historyPagination.page + 1)">
+                                <i class="pi pi-angle-right"></i>
                             </button>
                         </div>
                     </div>
-                </div>
 
-                <div class="stats-bar">
-                    <div class="stats-column">Stock : {{ historyKpis.stock }}</div>
-                    <div class="stats-column">Achat : {{ historyKpis.achat }}</div>
-                    <div class="stats-column">Vente : {{ Math.abs(historyKpis.vente) }}</div>
-                    <div class="stats-column">Rupt : {{ historyKpis.rupt }}</div>
-                </div>
+                    <div class="table-container history-container">
+                        <div class="table-wrapper">
+                            <table class="modern-table history-table">
+                                <thead>
+                                    <tr>
+                                        <th :style="{ width: isSidebarExpanded ? '8%' : '15%' }">Date</th>
+                                        <th :style="{ width: isSidebarExpanded ? '5%' : '8%' }">Type</th>
+                                        <template v-if="isSidebarExpanded">
+                                            <th style="width: 10%">Type Doc</th>
+                                            <th style="width: 10%">N° Document</th>
+                                        </template>
+                                        <th :style="{ width: isSidebarExpanded ? '10%' : '15%' }">Client / Frs
+                                        </th>
+                                        <th :style="{ width: isSidebarExpanded ? '35%' : '42%' }">Nom</th>
+                                        <th :style="{ width: isSidebarExpanded ? '6%' : '8%' }" class="text-right">Qte
+                                        </th>
+                                        <template v-if="isSidebarExpanded">
+                                            <th style="width: 6%">Magasin</th>
+                                        </template>
+                                        <th :style="{ width: isSidebarExpanded ? '10%' : '12%' }" class="text-right">PU
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-if="isLoadingHistory">
+                                        <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">
+                                            Chargement...</td>
+                                    </tr>
+                                    <tr v-else-if="historyEntries.length === 0">
+                                        <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Aucune
+                                            donnée
+                                            disponible</td>
+                                    </tr>
+                                    <tr v-else v-for="(entry, index) in historyEntries" :key="index"
+                                        :class="{ 'rupture-row': entry.entryType === 'Rupture' }">
+                                        <td>{{ formatDate(entry.postingDate) }}</td>
+                                        <td>
+                                            <div class="type-indicator-circle"
+                                                :class="getEntryTypeClass(entry.entryType)">
+                                                {{ getEntryTypeLetter(entry.entryType) }}
+                                            </div>
+                                        </td>
+                                        <template v-if="isSidebarExpanded">
+                                            <td>{{ entry.documentType }}</td>
+                                            <td>{{ entry.documentNo }}</td>
+                                        </template>
+                                        <td>{{ entry.sourceNo }}</td>
+                                        <td>{{ entry.sourceName }}</td>
+                                        <td class="text-right">{{ entry.quantity }}</td>
+                                        <template v-if="isSidebarExpanded">
+                                            <td>{{ entry.locationCode }}</td>
+                                        </template>
+                                        <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
 
-                <div class="table-footer top-pagination">
-                    <div class="pagination-info" v-if="historyEntries.length > 0">
-                        {{ historyPagination.page * historyPagination.size + 1 }}-{{
-                            Math.min((historyPagination.page + 1) *
-                                historyPagination.size, historyPagination.totalElements) }} sur {{
-                            historyPagination.totalElements }}
-                    </div>
-                    <div class="pagination-controls">
-                        <button class="p-btn" :disabled="historyPagination.page === 0"
-                            @click="fetchHistory(historyPagination.page - 1)">
-                            <i class="pi pi-angle-left"></i>
-                        </button>
-                        <span class="p-current">{{ historyPagination.page + 1 }}</span>
-                        <button class="p-btn" :disabled="historyPagination.page >= historyPagination.totalPages - 1"
-                            @click="fetchHistory(historyPagination.page + 1)">
-                            <i class="pi pi-angle-right"></i>
-                        </button>
-                    </div>
-                </div>
+                <!-- Cart View -->
+                <template v-else-if="activeRightPanel === 'cart'">
+                    <div class="sidebar-header">
+                        <div class="header-actions">
+                            <Button :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text
+                                rounded @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
+                            <span class="table-title" style="font-size: 1.1rem; margin-left: 8px;">Panier d'Achat</span>
+                            
+                            <div style="flex-grow: 1;"></div>
 
-                <div class="table-container history-container">
-                    <div class="table-wrapper">
-                        <table class="modern-table history-table">
-                            <thead>
-                                <tr>
-                                    <th :style="{ width: isSidebarExpanded ? '8%' : '15%' }">Date</th>
-                                    <th :style="{ width: isSidebarExpanded ? '5%' : '8%' }">Type</th>
-                                    <template v-if="isSidebarExpanded">
-                                        <th style="width: 10%">Type Doc</th>
-                                        <th style="width: 10%">N° Document</th>
-                                    </template>
-                                    <th :style="{ width: isSidebarExpanded ? '10%' : '15%' }">Client / Frs
-                                    </th>
-                                    <th :style="{ width: isSidebarExpanded ? '35%' : '42%' }">Nom</th>
-                                    <th :style="{ width: isSidebarExpanded ? '6%' : '8%' }" class="text-right">Qte</th>
-                                    <template v-if="isSidebarExpanded">
-                                        <th style="width: 6%">Magasin</th>
-                                    </template>
-                                    <th :style="{ width: isSidebarExpanded ? '10%' : '12%' }" class="text-right">PU</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-if="isLoadingHistory">
-                                    <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">
-                                        Chargement...</td>
-                                </tr>
-                                <tr v-else-if="historyEntries.length === 0">
-                                    <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Aucune
-                                        donnée
-                                        disponible</td>
-                                </tr>
-                                <tr v-else v-for="(entry, index) in historyEntries" :key="index"
-                                    :class="{ 'rupture-row': entry.entryType === 'Rupture' }">
-                                    <td>{{ formatDate(entry.postingDate) }}</td>
-                                    <td>
-                                        <div class="type-indicator-circle" :class="getEntryTypeClass(entry.entryType)">
-                                            {{ getEntryTypeLetter(entry.entryType) }}
-                                        </div>
-                                    </td>
-                                    <template v-if="isSidebarExpanded">
-                                        <td>{{ entry.documentType }}</td>
-                                        <td>{{ entry.documentNo }}</td>
-                                    </template>
-                                    <td>{{ entry.sourceNo }}</td>
-                                    <td>{{ entry.sourceName }}</td>
-                                    <td class="text-right">{{ entry.quantity }}</td>
-                                    <template v-if="isSidebarExpanded">
-                                        <td>{{ entry.locationCode }}</td>
-                                    </template>
-                                    <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                            <div class="cart-tabs">
+                                <button 
+                                    class="cart-tab-btn" 
+                                    :class="{ 'active': activeCartTab === 'current' }"
+                                    @click="switchCartTab('current')">
+                                    {{ line.compareQuoteNo }}
+                                </button>
+                                <button 
+                                    class="cart-tab-btn" 
+                                    :class="{ 'active': activeCartTab === 'all' }"
+                                    @click="switchCartTab('all')">
+                                    Tous
+                                </button>
+                            </div>
+
+                            <Button icon="pi pi-times" text rounded severity="secondary"
+                                @click="activeRightPanel = 'history'" tooltip="Fermer" />
+                        </div>
                     </div>
-                </div>
+
+                    <div class="table-container history-container" style="margin-top: 10px; flex-grow: 1;">
+                        <div class="table-wrapper">
+                            <DataTable :value="store.cartItems" responsiveLayout="scroll" class="p-datatable-sm"
+                                :loading="store.isLoading" scrollable scrollHeight="flex">
+                                <Column field="buyFromVendorNo" header="FRS" sortable :style="{ width: isSidebarExpanded ? '9%' : '15%' }">
+                                    <template #body="slotProps">
+                                        <div class="cell-reference">{{ slotProps.data.buyFromVendorNo }}</div>
+                                    </template>
+                                </Column>
+                                <Column header="Article / Description" sortable field="itemNo">
+                                    <template #body="slotProps">
+                                        <div class="cell-reference">{{ slotProps.data.itemNo }}</div>
+                                        <div class="cell-description">{{ slotProps.data.description }}</div>
+                                    </template>
+                                </Column>
+                                <Column field="refMaster" header="Ref Master" sortable v-if="isSidebarExpanded"></Column>
+                                <Column field="quantity" header="Qté" sortable></Column>
+                                <Column field="directUnitCost" header="Coût" sortable>
+                                    <template #body="slotProps">
+                                        {{ formatNumber(slotProps.data.directUnitCost, 2) }}
+                                    </template>
+                                </Column>
+                                <Column field="compareQuoteNo" header="COMP / Date" sortable v-if="isSidebarExpanded">
+                                    <template #body="slotProps">
+                                        <div class="cell-reference">{{ slotProps.data.compareQuoteNo }}</div>
+                                        <div class="cell-description">{{ formatDate(slotProps.data.addedDate) }}</div>
+                                    </template>
+                                </Column>
+                                <Column field="status" header="Statut" sortable>
+                                    <template #body="slotProps">
+                                        <span
+                                            :class="'status-badge status-' + slotProps.data.status.toLowerCase()">{{
+                                                slotProps.data.status }}</span>
+                                    </template>
+                                </Column>
+                                <template #empty>
+                                    <div class="text-center p-4">
+                                        <p class="text-slate-500">Votre panier est vide.</p>
+                                    </div>
+                                </template>
+                            </DataTable>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
 
@@ -2577,10 +2661,40 @@ watch(showVerificationDialog, (newValue) => {
     }
 })
 
+const activeRightPanel = ref('history') // 'history' or 'cart'
+const activeCartTab = ref('current') // 'current' or 'all'
+
+const switchCartTab = async (tab) => {
+    activeCartTab.value = tab
+    if (tab === 'current') {
+        if (props.line && props.line.compareQuoteNo) {
+            await store.fetchCartItems(props.line.compareQuoteNo)
+        }
+    } else {
+        await store.fetchCartItems(null)
+    }
+}
+
+const openCartSidebar = async () => {
+    if (activeRightPanel.value === 'cart') {
+        activeRightPanel.value = 'history'
+    } else {
+        activeRightPanel.value = 'cart'
+        // Default to current tab when opening
+        activeCartTab.value = 'current'
+        if (props.line && props.line.compareQuoteNo) {
+            await store.fetchCartItems(props.line.compareQuoteNo)
+        }
+    }
+}
+
 onMounted(() => {
     window.addEventListener('keydown', handleKeyDown)
     fetchDetails()
     fetchVerificationStatus()
+    if (props.line && props.line.compareQuoteNo) {
+        store.fetchCartCount(props.line.compareQuoteNo)
+    }
 })
 
 onUnmounted(() => {
@@ -2831,11 +2945,11 @@ const textRight = {
 }
 
 .stock-part.ste {
-    width: 20%;
+    width: 35%;
 }
 
 .stock-part.stock {
-    width: 40%;
+    width: 25%;
 }
 
 .stock-part.purchase {
@@ -2961,6 +3075,36 @@ const textRight = {
 .cart-btn i {
     font-size: 1.6rem;
     color: #f59e0b;
+}
+
+.cart-tabs {
+    display: flex;
+    gap: 10px;
+    margin-right: 10px;
+}
+
+.cart-tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 6px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+}
+
+.cart-tab-btn:hover {
+    background-color: #f1f5f9;
+    color: #334155;
+}
+
+.cart-tab-btn.active {
+    background-color: #3b82f6;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 /* Quantity Input Styles */
@@ -4514,6 +4658,16 @@ const textRight = {
 .status-badge.status-not-created {
     background: #fef3c7;
     color: #92400e;
+}
+
+.status-badge.status-new {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.status-badge.status-verified {
+    background-color: #dcfce7;
+    color: #166534;
 }
 
 .create-am-btn {

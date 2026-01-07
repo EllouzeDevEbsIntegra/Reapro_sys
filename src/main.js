@@ -14,6 +14,7 @@ import Button from 'primevue/button'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Dropdown from 'primevue/dropdown'
+import Drawer from 'primevue/drawer'
 
 import './assets/styles/main.css'
 import './assets/styles/pagination-fix.css'
@@ -29,7 +30,9 @@ app.component('InputText', InputText)
 app.component('Button', Button)
 app.component('IconField', IconField)
 app.component('InputIcon', InputIcon)
+app.component('InputIcon', InputIcon)
 app.component('Dropdown', Dropdown)
+app.component('Drawer', Drawer)
 
 app.use(createPinia())
 app.use(router)

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import router from '../router'
 
 const apiClient = axios.create({
     baseURL: 'http://localhost:8057',
@@ -25,11 +26,12 @@ apiClient.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true
+        if (error.response?.status === 401) {
             const refreshToken = localStorage.getItem('refreshToken')
 
-            if (refreshToken) {
+            if (refreshToken && !originalRequest._retry) {
+                originalRequest._retry = true
+
                 try {
                     const response = await axios.post(`http://localhost:8057/api/auth/refresh-token?refreshToken=${refreshToken}`)
                     const { accessToken, refreshToken: newRefreshToken } = response.data
@@ -43,10 +45,21 @@ apiClient.interceptors.response.use(
                     // Refresh token expired or invalid
                     localStorage.removeItem('accessToken')
                     localStorage.removeItem('refreshToken')
-                    window.location.href = '/'
+                    router.push('/?sessionExpired=true')
                     return Promise.reject(refreshError)
                 }
+            } else {
+                // No refresh token or already retried
+                localStorage.removeItem('accessToken')
+                localStorage.removeItem('refreshToken')
+                router.push('/?sessionExpired=true')
             }
+        }
+
+        if (error.response?.status === 403) {
+            localStorage.removeItem('accessToken')
+            localStorage.removeItem('refreshToken')
+            router.push('/?sessionExpired=true')
         }
 
         return Promise.reject(error)

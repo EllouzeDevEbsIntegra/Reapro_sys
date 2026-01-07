@@ -50,9 +50,10 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
@@ -61,11 +62,21 @@ import AuthLeftSidebar from '../components/AuthLeftSidebar.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+const toast = useToast()
 
 const form = reactive({
   email: '',
   password: '',
   remember: false
+})
+
+onMounted(() => {
+  if (route.query.sessionExpired === 'true') {
+    toast.add({ severity: 'warn', summary: 'Session expirée', detail: 'Votre session a expiré. Veuillez vous reconnecter.', life: 5000 })
+    // Clean up the URL
+    router.replace({ query: {} })
+  }
 })
 
 const handleLogin = async () => {

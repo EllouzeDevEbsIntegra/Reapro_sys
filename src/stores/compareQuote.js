@@ -380,6 +380,18 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 console.error('Add to cart error:', err);
                 throw err;
             }
+        },
+
+        async checkItemInCart(compareQuoteNo, itemNo) {
+            try {
+                const response = await axios.get('/api/bc/purchase-cart/count', {
+                    params: { compareQuoteNo, itemNo }
+                });
+                return response.data.count || 0;
+            } catch (err) {
+                console.error('Check item in cart error:', err);
+                return 0;
+            }
         }
     }
 })

@@ -462,7 +462,12 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
+                                            <button v-if="itemsInCart.get(item.no) > 0" class="validate-line-btn cart-exists" 
+                                                :title="'Dans le panier (' + itemsInCart.get(item.no) + ')'" 
+                                                @click.stop="openCartForItem(item)">
+                                                <i class="pi pi-shopping-cart"></i>
+                                            </button>
+                                            <button v-else class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
                                                 <i class="pi pi-check"></i>
                                             </button>
                                         </div>
@@ -634,7 +639,12 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
+                                            <button v-if="itemsInCart.get(item.no) > 0" class="validate-line-btn cart-exists" 
+                                                :title="'Dans le panier (' + itemsInCart.get(item.no) + ')'" 
+                                                @click.stop="openCartForItem(item)">
+                                                <i class="pi pi-shopping-cart"></i>
+                                            </button>
+                                            <button v-else class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
                                                 <i class="pi pi-check"></i>
                                             </button>
                                         </div>
@@ -1535,6 +1545,10 @@ const kitPagination = ref({
     totalPages: 0
 })
 
+// Track which items are in cart (Map: itemNo -> count)
+const itemsInCart = ref(new Map())
+
+
 // Sidebar History State
 const selectedYear = ref(new Date().getFullYear())
 const historyEntries = ref([])
@@ -1585,7 +1599,7 @@ const addToCart = async (item) => {
             itemNo: item.no,
             refMaster: props.line.itemNo,
             quantity: item.quantityToOrder || 1,
-            directUnitCost: item.unitPrice,
+            directUnitCost: item.lastCurrPrice,
             compareQuoteNo: props.line.compareQuoteNo,
             comment: item.comment || ''
         }
@@ -1600,9 +1614,40 @@ const addToCart = async (item) => {
         if (activeRightPanel.value === 'cart') {
             applyFilters()
         }
+        
+        // Update cart existence for this item
+        const count = await store.checkItemInCart(props.line.compareQuoteNo, item.no)
+        itemsInCart.value.set(item.no, count)
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de l\'ajout au panier', life: 3000 })
     }
+}
+
+const checkCartExistence = async (items) => {
+    if (!props.line?.compareQuoteNo || !items || items.length === 0) return
+    
+    for (const item of items) {
+        if (item.no) {
+            const count = await store.checkItemInCart(props.line.compareQuoteNo, item.no)
+            itemsInCart.value.set(item.no, count)
+        }
+    }
+}
+
+const openCartForItem = (item) => {
+    // Open cart panel
+    activeRightPanel.value = 'cart'
+    activeCartTab.value = 'current'
+    
+    // Set filters to show this specific item
+    cartFilters.value = {
+        compareQuoteNo: props.line.compareQuoteNo,
+        status: null,
+        itemNo: item.no,
+        vendorNo: ''
+    }
+    
+    applyFilters()
 }
 const historyKpis = ref({
     stock: 0,
@@ -2666,6 +2711,8 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
         equivalenceItems.value = []
     } finally {
         isLoadingEquivalence.value = false
+        // Check which items are in cart
+        await checkCartExistence(equivalenceItems.value)
     }
 }
 
@@ -2708,6 +2755,8 @@ const fetchKitItems = async (itemNo, page = 0) => {
         kitItems.value = []
     } finally {
         isLoadingKit.value = false
+        // Check which items are in cart
+        await checkCartExistence(kitItems.value)
     }
 }
 

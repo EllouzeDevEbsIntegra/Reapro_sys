@@ -12,9 +12,6 @@
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
                             }}</span>
-                        <div class="page-indicator">
-                            Ligne {{ currentIndex + 1 }} / {{ totalElements }}
-                        </div>
                     </div>
                 </div>
                 <div class="info-right">
@@ -32,12 +29,19 @@
 
             <!-- 7% -->
             <div class="header-middle">
+                <div class="page-indicator-badge">
+                    Ligne {{ currentIndex + 1 }} / {{ totalElements }}
+                </div>
+            </div>
+
+            <!-- 7% -->
+            <div class="header-middle">
                 <div class="count-badge">
                     Count : {{ line.countItemManual || 0 }}
                 </div>
             </div>
 
-            <!-- 60% -->
+            <!-- 54% -->
             <div class="header-stocks">
                 <div class="stock-column label-column">
                     <div class="stocks-label">STOCKS</div>
@@ -3009,19 +3013,22 @@ const textRight = {
     flex: 1;
 }
 
-.page-indicator {
-    background: #e2e8f0;
+.page-indicator-badge {
+    background-color: white;
     color: #1e293b;
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-size: 0.85rem;
+    padding: 0 8px;
+    border-radius: 10px;
     font-weight: 800;
-    white-space: nowrap;
-    border: 1px solid #cbd5e1;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    font-size: 0.9rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    height: 54px;
     display: flex;
     align-items: center;
-    margin: 0;
+    justify-content: center;
+    width: 100%;
+    border: 1px solid #3b82f6;
+    margin: 10px;
+    white-space: nowrap;
 }
 
 .header-middle {
@@ -3049,7 +3056,7 @@ const textRight = {
 }
 
 .header-stocks {
-    width: 65%;
+    width: 59%;
     display: flex;
     align-items: center;
     border: 1px solid #3b82f6;

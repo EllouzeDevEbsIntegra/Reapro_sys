@@ -2769,6 +2769,7 @@ const fetchKitItems = async (itemNo, page = 0) => {
 watch(() => props.line, () => {
     fetchDetails()
     fetchVerificationStatus()
+    activeRightPanel.value = 'history'
 }, { deep: true })
 
 // Watch for verification dialog close to refresh data if an article was created

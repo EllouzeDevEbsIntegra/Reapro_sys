@@ -392,6 +392,16 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 console.error('Check item in cart error:', err);
                 return 0;
             }
+        },
+
+        async updateCartItemStatus(lineNo, status) {
+            try {
+                const response = await axios.patch(`/api/bc/purchase-cart/${lineNo}`, { status });
+                return response.data;
+            } catch (err) {
+                console.error('Update cart item status error:', err);
+                throw err;
+            }
         }
     }
 })

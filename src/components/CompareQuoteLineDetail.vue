@@ -890,6 +890,22 @@
                                                 slotProps.data.status }}</span>
                                     </template>
                                 </Column>
+                                <Column header="Actions" v-if="isSidebarExpanded">
+                                    <template #body="slotProps">
+                                        <div class="flex gap-2 justify-center">
+                                            <button class="action-btn verify-btn" title="Vérifier" 
+                                                @click="updateCartStatus(slotProps.data.lineNo, 'Verified')"
+                                                :disabled="slotProps.data.status === 'Verified'">
+                                                <i class="pi pi-check-circle"></i>
+                                            </button>
+                                            <button class="action-btn cancel-btn" title="Annuler" 
+                                                @click="updateCartStatus(slotProps.data.lineNo, 'Cancelled')"
+                                                :disabled="slotProps.data.status === 'Cancelled'">
+                                                <i class="pi pi-times-circle"></i>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </Column>
                                 <template #empty>
                                     <div class="text-center p-4">
                                         <p class="text-slate-500">Votre panier est vide.</p>
@@ -1648,6 +1664,18 @@ const openCartForItem = (item) => {
     }
     
     applyFilters()
+}
+
+const updateCartStatus = async (lineNo, status) => {
+    try {
+        await store.updateCartItemStatus(lineNo, status)
+        toast.add({ severity: 'success', summary: 'Succès', detail: `Statut mis à jour: ${status}`, life: 2000 })
+        
+        // Refresh cart items
+        applyFilters()
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour du statut', life: 3000 })
+    }
 }
 const historyKpis = ref({
     stock: 0,
@@ -5325,4 +5353,43 @@ body .custom-toast .p-toast-detail {
     width: 65%;
     flex: unset;
 }
+
+/* Cart action buttons */
+.action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.verify-btn {
+    color: #10b981;
+}
+
+.verify-btn:hover:not(:disabled) {
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+.cancel-btn {
+    color: #ef4444;
+}
+
+.cancel-btn:hover:not(:disabled) {
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.cart-exists {
+    color: #3b82f6;
+}
+
 </style>

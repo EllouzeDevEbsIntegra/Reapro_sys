@@ -462,7 +462,7 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button class="validate-line-btn" title="Valider la ligne">
+                                            <button class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
                                                 <i class="pi pi-check"></i>
                                             </button>
                                         </div>
@@ -502,7 +502,7 @@
                         <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Composant</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
                                     <th :style="{ width: isSidebarExpanded ? '18%' : '12%' }">Réf / Desig
                                     </th>
                                     <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
@@ -634,7 +634,7 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button class="validate-line-btn" title="Valider la ligne">
+                                            <button class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
                                                 <i class="pi pi-check"></i>
                                             </button>
                                         </div>
@@ -814,8 +814,32 @@
                                 @click="activeRightPanel = 'history'" tooltip="Fermer" />
                         </div>
                     </div>
+                    <div class="cart-filters p-3 flex gap-2 align-items-center"
+                        style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                        
+                        <InputText v-model="cartFilters.vendorNo" placeholder="Frs" class="p-inputtext-sm"
+                            style="width: 85px; font-size: 0.85rem;" @input="debouncedFilter" />
 
-                    <div class="table-container history-container" style="margin-top: 10px; flex-grow: 1;">
+                        <InputText v-model="cartFilters.itemNo" placeholder="Référence" class="p-inputtext-sm"
+                            style="flex: 1; font-size: 0.85rem;" @input="debouncedFilter" />
+
+                        <InputText v-model="cartFilters.compareQuoteNo" placeholder="Comp" class="p-inputtext-sm"
+                            style="width: 150px; font-size: 0.85rem;" @input="debouncedFilter" />
+
+                        <Dropdown v-model="cartFilters.status" :options="['New', 'Verified', 'All']" placeholder="Statut"
+                            class="p-inputtext-sm custom-status-dropdown" panelClass="custom-status-dropdown-panel"
+                            style="width: 160px; font-size: 0.85rem;" @change="applyFilters">
+                            <template #value="slotProps">
+                                <span v-if="slotProps.value"
+                                    :class="'status-text-' + (slotProps.value ? slotProps.value.toLowerCase() : '')">{{
+                                        slotProps.value === 'All' ? 'Tous' : slotProps.value }}</span>
+                                <span v-else class="text-gray-400 flex align-items-center" style="height: 100%; display: flex; align-items: center;">{{ slotProps.placeholder
+                                    }}</span>
+                            </template>
+                        </Dropdown>
+                    </div>
+
+                    <div class="table-container history-container" style="margin-top: 0; flex-grow: 1;">
                         <div class="table-wrapper">
                             <DataTable :value="store.cartItems" responsiveLayout="scroll" class="p-datatable-sm"
                                 :loading="store.isLoading" scrollable scrollHeight="flex">
@@ -841,6 +865,12 @@
                                     <template #body="slotProps">
                                         <div class="cell-reference">{{ slotProps.data.compareQuoteNo }}</div>
                                         <div class="cell-description">{{ formatDate(slotProps.data.addedDate) }}</div>
+                                    </template>
+                                </Column>
+                                <Column field="comment" header="Commentaire" sortable v-if="isSidebarExpanded">
+                                    <template #body="slotProps">
+                                        <div class="cell-description" :title="slotProps.data.comment">{{
+                                            slotProps.data.comment }}</div>
                                     </template>
                                 </Column>
                                 <Column field="status" header="Statut" sortable>
@@ -1529,14 +1559,49 @@ const toggleCommentOverlay = (event, item) => {
 
 const saveComment = async () => {
     if (selectedCommentItem.value) {
-        try {
-            await store.updateQuoteLineComment(selectedCommentItem.value.id, commentText.value)
-            selectedCommentItem.value.quoteLineComment = commentText.value
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Commentaire enregistré', life: 2000 })
+        // For Equivalence/KIT items, just store locally
+        if (selectedCommentItem.value.no) {
+            selectedCommentItem.value.comment = commentText.value
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Commentaire enregistré localement', life: 2000 })
             commentOverlay.value.hide()
-        } catch (error) {
-            toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de l\'enregistrement', life: 3000 })
+        } else {
+            // For quote line items, update via API
+            try {
+                await store.updateQuoteLineComment(selectedCommentItem.value.id, commentText.value)
+                selectedCommentItem.value.quoteLineComment = commentText.value
+                toast.add({ severity: 'success', summary: 'Succès', detail: 'Commentaire enregistré', life: 2000 })
+                commentOverlay.value.hide()
+            } catch (error) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de l\'enregistrement', life: 3000 })
+            }
         }
+    }
+}
+
+const addToCart = async (item) => {
+    try {
+        const payload = {
+            buyFromVendorNo: item.vendorNo,
+            itemNo: item.no,
+            refMaster: props.line.itemNo,
+            quantity: item.quantityToOrder || 1,
+            directUnitCost: item.unitPrice,
+            compareQuoteNo: props.line.compareQuoteNo,
+            comment: item.comment || ''
+        }
+        
+        await store.addToCart(payload)
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Article ajouté au panier', life: 2000 })
+        
+        // Refresh cart count and items
+        if (props.line.compareQuoteNo) {
+            await store.fetchCartCount(props.line.compareQuoteNo)
+        }
+        if (activeRightPanel.value === 'cart') {
+            applyFilters()
+        }
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de l\'ajout au panier', life: 3000 })
     }
 }
 const historyKpis = ref({
@@ -2663,31 +2728,51 @@ watch(showVerificationDialog, (newValue) => {
 
 const activeRightPanel = ref('history') // 'history' or 'cart'
 const activeCartTab = ref('current') // 'current' or 'all'
+const cartFilters = ref({
+    compareQuoteNo: '',
+    status: null,
+    itemNo: '',
+    vendorNo: ''
+});
 
-const switchCartTab = async (tab) => {
-    activeCartTab.value = tab
+let debounceTimeout = null;
+const debouncedFilter = () => {
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        applyFilters();
+    }, 500);
+};
+
+const applyFilters = () => {
+    store.fetchCartItems(cartFilters.value);
+};
+
+const switchCartTab = (tab) => {
+    activeCartTab.value = tab;
     if (tab === 'current') {
-        if (props.line && props.line.compareQuoteNo) {
-            await store.fetchCartItems(props.line.compareQuoteNo)
-        }
+        cartFilters.value.compareQuoteNo = props.line ? props.line.compareQuoteNo : '';
     } else {
-        await store.fetchCartItems(null)
+        cartFilters.value.compareQuoteNo = '';
     }
-}
+    applyFilters();
+};
 
-const openCartSidebar = async () => {
+const openCartSidebar = () => {
     if (activeRightPanel.value === 'cart') {
-        activeRightPanel.value = 'history'
+        activeRightPanel.value = 'history';
     } else {
-        activeRightPanel.value = 'cart'
-        // Default to current tab when opening
-        activeCartTab.value = 'current'
-        if (props.line && props.line.compareQuoteNo) {
-            await store.fetchCartItems(props.line.compareQuoteNo)
-        }
+        activeRightPanel.value = 'cart';
+        activeCartTab.value = 'current';
+        // Reset filters
+        cartFilters.value = {
+            compareQuoteNo: props.line ? props.line.compareQuoteNo : '',
+            status: null,
+            itemNo: '',
+            vendorNo: ''
+        };
+        applyFilters();
     }
-}
-
+};
 onMounted(() => {
     window.addEventListener('keydown', handleKeyDown)
     fetchDetails()
@@ -4565,6 +4650,37 @@ const textRight = {
     outline: none !important;
     transition: border-color 0.2s !important;
 }
+
+/* Custom Status Dropdown Styles */
+.custom-status-dropdown .p-dropdown-label {
+    display: flex;
+    align-items: center;
+}
+
+.custom-status-dropdown-panel .p-dropdown-items {
+    padding: 4px !important;
+}
+
+.custom-status-dropdown-panel .p-dropdown-item {
+    border-radius: 6px !important;
+    margin-bottom: 2px !important;
+    padding: 8px 12px !important;
+    font-size: 0.85rem !important;
+    transition: all 0.2s !important;
+}
+
+.custom-status-dropdown-panel .p-dropdown-item:hover {
+    background-color: #f1f5f9 !important;
+    color: #3b82f6 !important;
+}
+
+.custom-status-dropdown-panel .p-dropdown-item.p-highlight {
+    background-color: #eff6ff !important;
+    color: #3b82f6 !important;
+    font-weight: 700 !important;
+}
+
+
 
 /* TecDoc Verification Styles */
 .status-dot-container {

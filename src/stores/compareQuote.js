@@ -88,10 +88,6 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        clearSelectedLines() {
-            this.selectedQuoteLines = []
-        },
-
         async fetchQuoteLineDetails(compareQuoteNo, referenceMaster) {
             this.isLoading = true
             this.error = null
@@ -337,6 +333,52 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             } catch (err) {
                 console.error('Fetch cart count error:', err)
                 this.isLoading = false
+            }
+        },
+
+        async fetchCartItems(filters = {}) {
+            this.isLoading = true;
+            try {
+                const params = {};
+
+                // Handle Status and other filters combined
+                let statusFilter = '';
+                if (filters.status && filters.status !== 'All') {
+                    statusFilter = `(status eq '${filters.status}')`;
+                } else {
+                    statusFilter = "(status eq 'New' or status eq 'Verified')";
+                }
+
+                if (filters.itemNo) {
+                    statusFilter += ` and itemNo eq '${filters.itemNo}'`;
+                }
+                if (filters.vendorNo) {
+                    statusFilter += ` and vendorNo eq '${filters.vendorNo}'`;
+                }
+
+                params.status = statusFilter;
+
+                // compareQuoteNo remains separate
+                if (filters.compareQuoteNo) params.compareQuoteNo = filters.compareQuoteNo;
+
+                const response = await axios.get('/api/bc/purchase-cart', { params });
+                this.cartItems = response.data.value || [];
+                return this.cartItems;
+            } catch (err) {
+                console.error('Fetch cart items error:', err);
+                this.cartItems = [];
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async addToCart(payload) {
+            try {
+                const response = await axios.post('/api/bc/purchase-cart', payload);
+                return response.data;
+            } catch (err) {
+                console.error('Add to cart error:', err);
+                throw err;
             }
         }
     }

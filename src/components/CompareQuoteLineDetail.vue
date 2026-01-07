@@ -1615,6 +1615,13 @@ const addToCart = async (item) => {
         }
         
         await store.addToCart(payload)
+        
+        // Update local item state immediately
+        item.existPurchaseCart = true
+        if (payload.comment) {
+            item.commentPurchaseCart = payload.comment
+        }
+        
         toast.add({ severity: 'success', summary: 'Succès', detail: 'Article ajouté au panier', life: 2000 })
         
         // Refresh cart count and items
@@ -2951,7 +2958,7 @@ const textRight = {
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
-    padding: 0 10px;
+    padding: 4px 15px;
     height: 100%;
     border: 1px solid #3b82f6;
     border-radius: 10px;

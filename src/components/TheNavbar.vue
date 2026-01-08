@@ -58,12 +58,12 @@ const handleLogout = () => {
     </template>
     <template #item="{ item, props, hasSubmenu }">
       <router-link v-if="item.route" v-slot="{ href, navigate }" :to="item.route" custom>
-        <a :href="href" v-bind="props.action" @click="navigate">
+        <a :href="href" v-bind="props.action" @click="navigate" class="nav-item-link">
           <span :class="item.icon" />
           <span class="ml-2">{{ item.label }}</span>
         </a>
       </router-link>
-      <a v-else :href="item.url" :target="item.target" v-bind="props.action">
+      <a v-else :href="item.url" :target="item.target" v-bind="props.action" class="nav-item-link">
         <span :class="item.icon" />
         <span class="ml-2">{{ item.label }}</span>
         <span v-if="hasSubmenu" class="pi pi-fw pi-angle-down ml-2" />
@@ -71,7 +71,7 @@ const handleLogout = () => {
     </template>
     <template #end>
       <div class="flex items-center gap-2">
-        <Button icon="pi pi-cog" text rounded aria-label="Settings" @click="router.push('/settings')" />
+        <Button icon="pi pi-cog" text rounded aria-label="Settings" />
         <div class="profile-menu-container">
           <Button @click="toggleMenu" class="profile-button" text plain>
             <Avatar icon="pi pi-user" style="background-color: #dee9fc; color: #1a2551" shape="circle" />
@@ -95,57 +95,63 @@ const handleLogout = () => {
 <style>
 /* Global styles to override PrimeVue defaults */
 .p-menubar {
-  background-color: #1e3a8a !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
   border: none !important;
   border-radius: 0 !important;
-  padding: 0.5rem 1rem !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  padding: 0.75rem 1.5rem !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
 }
 
 .p-menubar .p-menubar-root-list {
-  background-color: #1e3a8a !important;
+  background: transparent !important;
 }
 
-.p-menubar .p-menuitem-link {
-  color: rgba(255, 255, 255, 0.9) !important;
+/* Target our custom class for menu items */
+.nav-item-link {
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-radius: 8px !important;
+  padding: 0.6rem 1rem !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  text-decoration: none !important;
 }
 
-.p-menubar .p-menuitem-link .p-menuitem-text,
-.p-menubar .p-menuitem-link .p-menuitem-icon {
-  color: rgba(255, 255, 255, 0.9) !important;
+.nav-item-link .p-menuitem-text,
+.nav-item-link .p-menuitem-icon,
+.nav-item-link span {
+  color: rgba(255, 255, 255, 0.85) !important;
 }
 
-.p-menubar .p-menuitem-link:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+.nav-item-link:hover {
+  background-color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.p-menubar .p-menuitem-link:hover .p-menuitem-text,
-.p-menubar .p-menuitem-link:hover .p-menuitem-icon {
-  color: white !important;
-}
-
-/* Ensure all anchors in menubar are white */
-.p-menubar a {
-  color: rgba(255, 255, 255, 0.9) !important;
-}
-
-.p-menubar a:hover {
-  color: white !important;
+.nav-item-link:hover .p-menuitem-text,
+.nav-item-link:hover .p-menuitem-icon,
+.nav-item-link:hover span {
+  color: #1e3a8a !important;
+  font-weight: 600 !important;
 }
 
 /* Settings button */
 .p-menubar .p-button.p-button-icon-only.p-button-rounded.p-button-text {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  transition: all 0.2s ease;
 }
 
 .p-menubar .p-button.p-button-icon-only.p-button-rounded.p-button-text:hover {
   background-color: rgba(255, 255, 255, 0.1) !important;
-  color: white !important;
+  color: #ffffff !important;
+  transform: rotate(45deg);
 }
 
 /* User dropdown arrow */
 .p-menubar .pi-angle-down {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 0.8rem;
 }
 
 /* Ensure end section stays on the right */
@@ -155,72 +161,96 @@ const handleLogout = () => {
   align-items: center !important;
 }
 
-/* Profile dropdown menu styling - Override PrimeVue green completely */
-.p-menu .p-menuitem-link {
-  transition: background-color 0.2s, color 0.2s !important;
-  background-color: #eff6ff !important;
-  background: #eff6ff !important;
+/* Profile dropdown menu styling */
+.profile-dropdown-menu {
+  background: #ffffff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  padding: 0.5rem !important;
+  margin-top: 0.5rem !important;
+  min-width: 200px !important;
 }
 
-.p-menu .p-menuitem-link:not(.p-disabled):hover,
-.p-menu .p-menuitem-link:not(.p-disabled):focus,
-.p-menu .p-focus>.p-menuitem-link {
-  background-color: #dbeafe !important;
-  background: #dbeafe !important;
+.profile-dropdown-menu .p-menuitem-link {
+  border-radius: 8px !important;
+  margin: 0.25rem 0 !important;
+  padding: 0.75rem 1rem !important;
+  transition: all 0.2s ease !important;
 }
 
-.p-menu .p-menuitem-link:not(.p-disabled):hover .p-menuitem-text,
-.p-menu .p-menuitem-link:not(.p-disabled):hover .p-menuitem-icon,
-.p-menu .p-menuitem-link:not(.p-disabled):focus .p-menuitem-text,
-.p-menu .p-menuitem-link:not(.p-disabled):focus .p-menuitem-icon,
-.p-menu .p-focus>.p-menuitem-link .p-menuitem-text,
-.p-menu .p-focus>.p-menuitem-link .p-menuitem-icon {
-  color: #2563eb !important;
+.profile-dropdown-menu .p-menuitem-link:hover {
+  background-color: #f3f4f6 !important;
 }
 
-.p-menu .p-menuitem-icon {
-  color: #3b82f6 !important;
+.profile-dropdown-menu .p-menuitem-text {
+  color: #374151 !important;
+  font-weight: 500 !important;
 }
 
-.p-menu .p-menuitem-text {
-  color: #3b82f6 !important;
+.profile-dropdown-menu .p-menuitem-icon {
+  color: #6b7280 !important;
+  margin-right: 0.75rem !important;
 }
 
-/* Ensure no green anywhere in menu */
-.p-menu .p-menuitem:not(.p-disabled) .p-menuitem-link:hover {
-  background: #dbeafe !important;
+.profile-dropdown-menu .p-menuitem-link:hover .p-menuitem-text {
+  color: #1e40af !important;
+}
+
+.profile-dropdown-menu .p-menuitem-link:hover .p-menuitem-icon {
+  color: #1e40af !important;
+}
+
+.profile-dropdown-menu .p-submenu-header {
+  background: transparent !important;
+  color: #9ca3af !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.75rem 1rem 0.25rem !important;
+}
+
+.profile-dropdown-menu .p-menu-separator {
+  border-top: 1px solid #e5e7eb !important;
+  margin: 0.5rem 0 !important;
 }
 </style>
 
 <style scoped>
 .nav-logo {
-  height: 32px;
+  height: 36px;
   width: auto;
-  margin-right: 0.75rem;
+  margin-right: 1rem;
   object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .nav-brand {
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 800;
   color: white;
-}
-
-.card {
-  margin-bottom: 0;
+  letter-spacing: -0.025em;
+  background: linear-gradient(to right, #ffffff, #e0e7ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .profile-menu-container {
   display: inline-flex;
   align-items: center;
+  margin-left: 1rem;
 }
 
 .profile-button {
   display: inline-flex !important;
   align-items: center;
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem !important;
   color: white !important;
   white-space: nowrap;
+  border-radius: 9999px !important;
+  transition: background-color 0.2s ease !important;
 }
 
 .profile-button:hover {
@@ -228,7 +258,14 @@ const handleLogout = () => {
 }
 
 .profile-button .p-avatar {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
+  background-color: #eff6ff !important;
+  color: #1e40af !important;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  width: 36px;
+  height: 36px;
+}
+
+.profile-button:hover .p-avatar {
+  border-color: rgba(255, 255, 255, 0.4);
 }
 </style>

@@ -68,7 +68,7 @@
                                 <label>Société</label>
                                 <Dropdown v-model="profileForm.bcCompanyId" :options="authStore.companies"
                                     optionLabel="displayName" optionValue="id" placeholder="Sélectionner une société"
-                                    class="w-full" />
+                                    class="w-full company-dropdown" />
                             </div>
                         </div>
 
@@ -455,27 +455,42 @@ const handleChangePassword = async () => {
 }
 
 .form-group input,
-.form-group :deep(.p-inputtext),
-.form-group :deep(.p-dropdown) {
+.form-group :deep(.p-inputtext) {
     border-radius: 8px;
     padding: 0.75rem 1rem;
     border: 1px solid #ced4da;
     background-color: white;
     height: 48px !important;
-    /* Force height for consistency */
     display: flex;
     align-items: center;
 }
 
-.form-group :deep(.p-dropdown-label) {
+/* Specific fix for company dropdown */
+.form-group :deep(.company-dropdown) {
+    border-radius: 8px;
     padding: 0;
-    display: flex;
-    align-items: center;
-    height: 100%;
+    border: 1px solid #ced4da;
+    background-color: white;
+    height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
 }
 
-.form-group :deep(.p-dropdown-trigger) {
+.form-group :deep(.company-dropdown .p-dropdown-label) {
+    padding: 0 1rem;
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    line-height: normal !important;
+}
+
+.form-group :deep(.company-dropdown .p-dropdown-trigger) {
     width: 3rem;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .form-group input:focus,

@@ -127,7 +127,7 @@
                             </div>
 
                             <div class="flex items-center gap-3">
-                                <Dropdown v-model="compareStore.pageSize" :options="[10, 20, 50, 100]"
+                                <Select v-model="compareStore.pageSize" :options="[10, 20, 50, 100]"
                                     class="rows-dropdown" @change="handleSearch" />
                             </div>
                         </div>
@@ -171,7 +171,7 @@ import Button from 'primevue/button'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputSwitch from 'primevue/inputswitch'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import ConfirmDialog from 'primevue/confirmdialog'
 
 const compareStore = useCompareQuoteStore()

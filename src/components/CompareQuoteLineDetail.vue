@@ -819,7 +819,7 @@
                         <InputText v-model="cartFilters.compareQuoteNo" placeholder="Comp" class="p-inputtext-sm"
                             style="width: 150px; font-size: 0.85rem;" @input="debouncedFilter" />
 
-                        <Dropdown v-model="cartFilters.status" :options="['New', 'Verified', 'All']" placeholder="Statut"
+                        <Select v-model="cartFilters.status" :options="['New', 'Verified', 'All']" placeholder="Statut"
                             class="p-inputtext-sm custom-status-dropdown" panelClass="custom-status-dropdown-panel"
                             style="width: 160px; font-size: 0.85rem;" @change="applyFilters">
                             <template #value="slotProps">
@@ -829,7 +829,7 @@
                                 <span v-else class="text-gray-400 flex align-items-center" style="height: 100%; display: flex; align-items: center;">{{ slotProps.placeholder
                                     }}</span>
                             </template>
-                        </Dropdown>
+                        </Select>
                     </div>
 
                     <div class="table-container history-container" style="margin-top: 0; flex-grow: 1;">
@@ -902,7 +902,7 @@
         </div>
 
         <!-- Comment Overlay -->
-        <OverlayPanel ref="commentOverlay" class="comment-overlay" :showCloseIcon="false" :dismissable="true">
+        <Popover ref="commentOverlay" class="comment-overlay" :showCloseIcon="false" :dismissable="true">
             <div class="comment-content">
                 <div class="comment-header">
                     <span class="comment-title">Commentaire</span>
@@ -919,7 +919,7 @@
                     {{ commentText.length }}/250
                 </div>
             </div>
-        </OverlayPanel>
+        </Popover>
 
         <!-- Article Info Dialog -->
         <div v-if="showInfoDialog" class="info-dialog-overlay" @click.self="showInfoDialog = false">
@@ -1447,7 +1447,7 @@
                                     <div class="spec-label">Code Fournisseur (VendorNo) <span
                                             style="color: red;">*</span></div>
                                     <div class="spec-value">
-                                        <Dropdown v-model="selectedArticleMasterCandidate.vendorNo" :options="vendors"
+                                        <Select v-model="selectedArticleMasterCandidate.vendorNo" :options="vendors"
                                             optionLabel="fullLabel" optionValue="number" filter scrollHeight="400px"
                                             placeholder="Sélectionner un fournisseur"
                                             class="w-full vendor-dropdown-custom"
@@ -1469,7 +1469,7 @@
             </div>
         </Dialog>
         <!-- Comment Overlay -->
-        <OverlayPanel ref="commentOverlay" class="comment-overlay" appendTo="body"
+        <Popover ref="commentOverlay" class="comment-overlay" appendTo="body"
             :style="{ width: '25vw', minWidth: '25vw', maxWidth: '25vw', border: '1px solid #cbd5e1', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', background: 'white' }">
             <div class="comment-content"
                 style="width: 100%; display: flex; flex-direction: column; gap: 10px; padding: 10px 10px 0px 10px !important; box-sizing: border-box !important;">
@@ -1482,15 +1482,15 @@
                         title="Fermer" />
                 </div>
             </div>
-        </OverlayPanel>
+        </Popover>
     </div>
 </template>
 <script setup>
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
-import OverlayPanel from 'primevue/overlaypanel'
-import Dropdown from 'primevue/dropdown'
+import Popover from 'primevue/popover'
+import Select from 'primevue/select'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 
@@ -2223,10 +2223,7 @@ const openInfoDialog = async (item) => {
     expandedBrands.value.clear()
 
     // Debug: Log the item to verify fields are present
-    console.log('openInfoDialog called with item:', item)
-    console.log('VendorItemNo:', item.VendorItemNo)
-    console.log('ManufacturerTecdocId:', item.ManufacturerTecdocId ||
-        item.manufacturerTecdocId)
+
 
     // Initialize with basic item data
     selectedInfoItem.value = {
@@ -2255,7 +2252,7 @@ const openInfoDialog = async (item) => {
             return
         }
 
-        console.log('Fetching TecDoc details for:', { articleRef, manufacturerId })
+
         const response = await store.fetchTecdocArticleDetails(articleRef, manufacturerId)
 
         if (response && response.articles && response.articles.length > 0) {
@@ -2420,7 +2417,7 @@ const fetchHistory = async (page = 0) => {
             null // Global history for sidebar
         )
 
-        console.log('History Data:', data)
+
 
         if (data && data.content) {
             historyEntries.value = data.content
@@ -2690,7 +2687,7 @@ const fetchDetails = async (silent = false) => {
 }
 
 const fetchEquivalenceItems = async (detail, page = 0) => {
-    if (!detail || !detail.ReferenceMaster || !detail.no) return
+    if (!detail || !props.line.itemNo || !detail.no) return
 
     // Prevent duplicate calls if already loading
     if (isLoadingEquivalence.value) return
@@ -2698,7 +2695,7 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
     isLoadingEquivalence.value = true
     try {
         const data = await store.fetchEquivalenceItems(
-            detail.ReferenceMaster,
+            props.line.itemNo,
             detail.no,
             page,
             equivalencePagination.value.size,
@@ -2971,10 +2968,11 @@ const textRight = {
     font-weight: 800;
     margin: 0;
     color: #1e293b;
-    line-height: 1.1;
+    line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding-bottom: 2px;
 }
 
 .item-desc {
@@ -2984,7 +2982,7 @@ const textRight = {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-top: 8px;
+    margin-top: 2px;
 }
 
 .info-right {

@@ -66,7 +66,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Société</label>
-                                <Dropdown v-model="profileForm.bcCompanyId" :options="authStore.companies"
+                                <Select v-model="profileForm.bcCompanyId" :options="authStore.companies"
                                     optionLabel="displayName" optionValue="id" placeholder="Sélectionner une société"
                                     class="w-full company-dropdown" />
                             </div>
@@ -90,12 +90,12 @@
                             <div class="form-group full-width">
                                 <label>Mot de passe actuel</label>
                                 <Password v-model="passwordForm.oldPassword" :feedback="false" toggleMask
-                                    placeholder="••••••••" inputClass="w-full" />
+                                    placeholder="••••••••" inputClass="w-full" autocomplete="current-password" />
                             </div>
                             <div class="form-group">
                                 <label>Nouveau mot de passe</label>
                                 <Password v-model="passwordForm.newPassword" toggleMask placeholder="••••••••"
-                                    inputClass="w-full">
+                                    inputClass="w-full" autocomplete="new-password">
                                     <template #header>
                                         <h6 class="mb-2">Suggestions</h6>
                                     </template>
@@ -111,7 +111,7 @@
                             <div class="form-group">
                                 <label>Confirmer le mot de passe</label>
                                 <Password v-model="passwordForm.confirmPassword" :feedback="false" toggleMask
-                                    placeholder="••••••••" inputClass="w-full" />
+                                    placeholder="••••••••" inputClass="w-full" autocomplete="new-password" />
                             </div>
                         </div>
 
@@ -136,7 +136,7 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Divider from 'primevue/divider';
 import Avatar from 'primevue/avatar';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 
 const props = defineProps({
     visible: {
@@ -477,7 +477,7 @@ const handleChangePassword = async () => {
     box-sizing: border-box !important;
 }
 
-.form-group :deep(.company-dropdown .p-dropdown-label) {
+.form-group :deep(.company-dropdown .p-select-label) {
     padding: 0 1rem;
     display: flex !important;
     align-items: center !important;
@@ -485,7 +485,7 @@ const handleChangePassword = async () => {
     line-height: normal !important;
 }
 
-.form-group :deep(.company-dropdown .p-dropdown-trigger) {
+.form-group :deep(.company-dropdown .p-select-dropdown) {
     width: 3rem;
     height: 100% !important;
     display: flex !important;

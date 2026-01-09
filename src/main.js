@@ -30,7 +30,7 @@ app.component('InputText', InputText)
 app.component('Button', Button)
 app.component('IconField', IconField)
 app.component('InputIcon', InputIcon)
-app.component('InputIcon', InputIcon)
+
 app.component('Dropdown', Dropdown)
 app.component('Drawer', Drawer)
 

@@ -62,7 +62,7 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <Dropdown v-model="pageSize" :options="[10, 20, 50, 100]" class="rows-dropdown-sm"
+                <Select v-model="pageSize" :options="[10, 20, 50, 100]" class="rows-dropdown-sm"
                     @change="loadLines" />
             </div>
         </div>
@@ -76,7 +76,7 @@ import { useCompareQuoteStore } from '../stores/compareQuote'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import ProgressSpinner from 'primevue/progressspinner'
 
 const props = defineProps({

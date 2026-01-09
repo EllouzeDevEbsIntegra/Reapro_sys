@@ -15,13 +15,13 @@
           <div class="form-group">
             <label for="email">Email</label>
             <InputText id="email" v-model="form.email" type="email" placeholder="admin@reapro.tn" class="w-full"
-              :class="{ 'p-invalid': authStore.error }" />
+              :class="{ 'p-invalid': authStore.error }" autocomplete="username" />
           </div>
 
           <div class="form-group">
             <label for="password">Mot de passe</label>
             <Password id="password" v-model="form.password" :feedback="false" toggleMask placeholder="••••••••"
-              inputClass="w-full" class="w-full" :class="{ 'p-invalid': authStore.error }" />
+              inputClass="w-full" class="w-full" :class="{ 'p-invalid': authStore.error }" :inputProps="{ autocomplete: 'current-password' }" />
           </div>
 
           <div class="form-actions">

@@ -1585,6 +1585,69 @@ const saveComment = async () => {
     if (selectedCommentItem.value) {
         // For Equivalence/KIT items, just store locally
         if (selectedCommentItem.value.no) {
+            // If item is already in cart, update the comment via API
+            if (selectedCommentItem.value.existPurchaseCart) {
+                let lineNo = selectedCommentItem.value.purchaseCartLineNo;
+
+                // Fallback: Try to find the line number in the store's cart items if not present on the item
+                if (!lineNo) {
+                    // First check existing store items
+                    if (store.cartItems && store.cartItems.length > 0) {
+                        const cartItem = store.cartItems.find(ci => 
+                            ci.itemNo === selectedCommentItem.value.no && 
+                            ci.buyFromVendorNo === selectedCommentItem.value.vendorNo
+                        );
+                        if (cartItem) {
+                            lineNo = cartItem.lineNo;
+                        }
+                    }
+
+                    // If still not found, fetch from API specifically for this item
+                    if (!lineNo) {
+                        try {
+                            const fetchedItems = await store.fetchCartItems({
+                                itemNo: selectedCommentItem.value.no,
+                                vendorNo: selectedCommentItem.value.vendorNo,
+                                compareQuoteNo: props.line.compareQuoteNo,
+                                status: 'All'
+                            });
+                            
+                            if (fetchedItems && fetchedItems.length > 0) {
+                                // Find the exact match (though filters should have narrowed it down)
+                                const match = fetchedItems.find(ci => 
+                                    ci.itemNo === selectedCommentItem.value.no && 
+                                    ci.buyFromVendorNo === selectedCommentItem.value.vendorNo
+                                );
+                                if (match) {
+                                    lineNo = match.lineNo;
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Error fetching cart item for comment update:', err);
+                        }
+                    }
+
+                    // Cache it if found
+                    if (lineNo) {
+                        selectedCommentItem.value.purchaseCartLineNo = lineNo;
+                    }
+                }
+
+                if (lineNo) {
+                    try {
+                        await store.updateCartItemComment(lineNo, commentText.value)
+                        selectedCommentItem.value.commentPurchaseCart = commentText.value
+                        toast.add({ severity: 'success', summary: 'Succès', detail: 'Commentaire mis à jour dans le panier', life: 2000 })
+                        commentOverlay.value.hide()
+                        return
+                    } catch (error) {
+                        console.error('Failed to update cart comment:', error)
+                        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour du commentaire', life: 3000 })
+                        return
+                    }
+                }
+            }
+
             selectedCommentItem.value.comment = commentText.value
             toast.add({ severity: 'success', summary: 'Succès', detail: 'Commentaire enregistré localement', life: 2000 })
             commentOverlay.value.hide()
@@ -1614,10 +1677,15 @@ const addToCart = async (item) => {
             comment: item.comment || ''
         }
         
-        await store.addToCart(payload)
+        const response = await store.addToCart(payload)
         
         // Update local item state immediately
         item.existPurchaseCart = true
+        // Capture the line number from the response
+        if (response && response.lineNo) {
+            item.purchaseCartLineNo = response.lineNo
+        }
+
         if (payload.comment) {
             item.commentPurchaseCart = payload.comment
         }

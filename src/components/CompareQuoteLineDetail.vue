@@ -697,29 +697,10 @@
                         <div class="stats-column">Rupt : {{ historyKpis.rupt }}</div>
                     </div>
 
-                    <div class="table-footer top-pagination">
-                        <div class="pagination-info" v-if="historyEntries.length > 0">
-                            {{ historyPagination.page * historyPagination.size + 1 }}-{{
-                                Math.min((historyPagination.page + 1) *
-                                    historyPagination.size, historyPagination.totalElements) }} sur {{
-                                historyPagination.totalElements }}
-                        </div>
-                        <div class="pagination-controls">
-                            <button class="p-btn" :disabled="historyPagination.page === 0"
-                                @click="fetchHistory(historyPagination.page - 1)">
-                                <i class="pi pi-angle-left"></i>
-                            </button>
-                            <span class="p-current">{{ historyPagination.page + 1 }}</span>
-                            <button class="p-btn"
-                                :disabled="historyPagination.page >= historyPagination.totalPages - 1"
-                                @click="fetchHistory(historyPagination.page + 1)">
-                                <i class="pi pi-angle-right"></i>
-                            </button>
-                        </div>
-                    </div>
+
 
                     <div class="table-container history-container">
-                        <div class="table-wrapper">
+                        <div class="table-wrapper" ref="historyTableWrapper" @scroll="onHistoryScroll">
                             <table class="modern-table history-table">
                                 <thead>
                                     <tr>
@@ -742,7 +723,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-if="isLoadingHistory">
+                                    <tr v-if="isLoadingHistory && historyEntries.length === 0">
                                         <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">
                                             Chargement...</td>
                                     </tr>
@@ -774,6 +755,9 @@
                                     </tr>
                                 </tbody>
                             </table>
+                            <div v-if="isLoadingHistory && historyEntries.length > 0" class="loading-more">
+                                <i class="pi pi-spin pi-spinner"></i> Chargement...
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -1112,7 +1096,7 @@
 
         <!-- Stock History Dialog -->
         <Dialog v-model:visible="showHistoryDialog" modal :style="{ width: '50vw' }" class="history-dialog"
-            :showHeader="false">
+            :showHeader="false" dismissableMask>
             <div class="dialog-content-wrapper">
                 <div class="sidebar-header dialog-header">
                     <div class="header-actions">
@@ -1146,31 +1130,10 @@
                     <div class="stats-column">Rupt : {{ dialogHistoryKpis.rupt }}</div>
                 </div>
 
-                <div class="table-footer centered-footer top-pagination">
-                    <div class="pagination-info" v-if="dialogHistoryEntries.length > 0">
-                        {{ dialogHistoryPagination.page * dialogHistoryPagination.size + 1 }}-{{
-                            Math.min((dialogHistoryPagination.page +
-                                1) *
-                                dialogHistoryPagination.size, dialogHistoryPagination.totalElements) }} sur {{
-                            dialogHistoryPagination.totalElements
-                        }}
-                    </div>
-                    <div class="pagination-controls centered">
-                        <button class="p-btn" :disabled="dialogHistoryPagination.page === 0"
-                            @click="fetchDialogHistory(dialogHistoryPagination.page - 1)">
-                            <i class="pi pi-angle-left"></i>
-                        </button>
-                        <span class="p-current">{{ dialogHistoryPagination.page + 1 }}</span>
-                        <button class="p-btn"
-                            :disabled="dialogHistoryPagination.page >= dialogHistoryPagination.totalPages - 1"
-                            @click="fetchDialogHistory(dialogHistoryPagination.page + 1)">
-                            <i class="pi pi-angle-right"></i>
-                        </button>
-                    </div>
-                </div>
+
 
                 <div class="table-container dialog-history-container">
-                    <div class="table-wrapper">
+                    <div class="table-wrapper" ref="dialogHistoryTableWrapper" @scroll="onDialogHistoryScroll">
                         <table class="modern-table">
                             <thead>
                                 <tr>
@@ -1186,7 +1149,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-if="isLoadingDialogHistory">
+                                <tr v-if="isLoadingDialogHistory && dialogHistoryEntries.length === 0">
                                     <td colspan="9" class="text-center p-4">Chargement...</td>
                                 </tr>
                                 <tr v-else-if="dialogHistoryEntries.length === 0">
@@ -1209,13 +1172,16 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <div v-if="isLoadingDialogHistory && dialogHistoryEntries.length > 0" class="loading-more">
+                            <i class="pi pi-spin pi-spinner"></i> Chargement...
+                        </div>
                     </div>
                 </div>
             </div>
         </Dialog>
 
         <Dialog v-model:visible="showPurchasePriceDialog" modal :style="{ width: '50vw' }" class="history-dialog"
-            :showHeader="false">
+            :showHeader="false" dismissableMask>
             <div class="dialog-content-wrapper">
                 <div class="sidebar-header dialog-header">
                     <div class="header-actions">
@@ -1274,7 +1240,7 @@
 
         <!-- TecDoc Verification Dialog -->
         <Dialog v-model:visible="showVerificationDialog" modal :style="{ width: '70vw' }" class="history-dialog"
-            :showHeader="false">
+            :showHeader="false" dismissableMask>
             <div class="dialog-content-wrapper">
                 <div class="sidebar-header dialog-header">
                     <div class="header-actions">
@@ -1372,7 +1338,7 @@
 
         <!-- Create Article Master Dialog -->
         <Dialog v-model:visible="showCreateArticleMasterDialog" modal :style="{ width: '50vw' }" class="history-dialog"
-            :showHeader="false">
+            :showHeader="false" dismissableMask>
             <div class="dialog-content-wrapper">
                 <div class="sidebar-header dialog-header">
                     <div class="header-actions">
@@ -1486,7 +1452,7 @@
     </div>
 </template>
 <script setup>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Popover from 'primevue/popover'
@@ -2472,8 +2438,24 @@ const selectKitItem = (item) => {
     historyKpis.value.stock = item.qtyStock || 0
 }
 
+const historyTableWrapper = ref(null)
+
+const checkAndLoadMore = async () => {
+    await nextTick()
+    if (historyTableWrapper.value) {
+        const { scrollHeight, clientHeight } = historyTableWrapper.value
+        // If content fits (no scrollbar) and we have more pages, load next page
+        if (scrollHeight <= clientHeight && historyPagination.value.page < historyPagination.value.totalPages - 1) {
+            fetchHistory(historyPagination.value.page + 1)
+        }
+    }
+}
+
 const fetchHistory = async (page = 0) => {
     if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+
+    // Prevent duplicate calls if already loading
+    if (isLoadingHistory.value) return
 
     isLoadingHistory.value = true
     try {
@@ -2485,10 +2467,13 @@ const fetchHistory = async (page = 0) => {
             null // Global history for sidebar
         )
 
-
-
         if (data && data.content) {
-            historyEntries.value = data.content
+            if (page === 0) {
+                historyEntries.value = data.content
+            } else {
+                historyEntries.value = [...historyEntries.value, ...data.content]
+            }
+            
             historyPagination.value = {
                 ...historyPagination.value,
                 page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number
@@ -2506,21 +2491,63 @@ const fetchHistory = async (page = 0) => {
                 }
             }
         } else {
-            historyEntries.value = Array.isArray(data) ? data : []
+            const items = Array.isArray(data) ? data : []
+            if (page === 0) {
+                historyEntries.value = items
+            } else {
+                historyEntries.value = [...historyEntries.value, ...items]
+            }
             historyPagination.value.totalElements = historyEntries.value.length
             historyPagination.value.page = 0
             historyPagination.value.totalPages = 1
         }
     } catch (error) {
         console.error('Error fetching sidebar history:', error)
-        historyEntries.value = []
+        if (page === 0) historyEntries.value = []
     } finally {
         isLoadingHistory.value = false
+        checkAndLoadMore()
+    }
+}
+
+const onHistoryScroll = (event) => {
+    const { scrollTop, clientHeight, scrollHeight } = event.target
+    // Load more when user is near bottom (20px threshold)
+    if (scrollTop + clientHeight >= scrollHeight - 20) {
+        if (!isLoadingHistory.value && historyPagination.value.page < historyPagination.value.totalPages - 1) {
+            fetchHistory(historyPagination.value.page + 1)
+        }
+    }
+}
+
+const dialogHistoryTableWrapper = ref(null)
+
+const checkAndLoadMoreDialog = async () => {
+    await nextTick()
+    if (dialogHistoryTableWrapper.value) {
+        const { scrollHeight, clientHeight } = dialogHistoryTableWrapper.value
+        // If content fits (no scrollbar) and we have more pages, load next page
+        if (scrollHeight <= clientHeight && dialogHistoryPagination.value.page < dialogHistoryPagination.value.totalPages - 1) {
+            fetchDialogHistory(dialogHistoryPagination.value.page + 1)
+        }
+    }
+}
+
+const onDialogHistoryScroll = (event) => {
+    const { scrollTop, clientHeight, scrollHeight } = event.target
+    // Load more when user is near bottom (20px threshold)
+    if (scrollTop + clientHeight >= scrollHeight - 20) {
+        if (!isLoadingDialogHistory.value && dialogHistoryPagination.value.page < dialogHistoryPagination.value.totalPages - 1) {
+            fetchDialogHistory(dialogHistoryPagination.value.page + 1)
+        }
     }
 }
 
 const fetchDialogHistory = async (page = 0) => {
     if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+
+    // Prevent duplicate calls if already loading
+    if (isLoadingDialogHistory.value) return
 
     isLoadingDialogHistory.value = true
     try {
@@ -2533,7 +2560,12 @@ const fetchDialogHistory = async (page = 0) => {
         )
 
         if (data && data.content) {
-            dialogHistoryEntries.value = data.content
+            if (page === 0) {
+                dialogHistoryEntries.value = data.content
+            } else {
+                dialogHistoryEntries.value = [...dialogHistoryEntries.value, ...data.content]
+            }
+
             dialogHistoryPagination.value = {
                 ...dialogHistoryPagination.value,
                 page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number
@@ -2551,16 +2583,22 @@ const fetchDialogHistory = async (page = 0) => {
                 }
             }
         } else {
-            dialogHistoryEntries.value = Array.isArray(data) ? data : []
+            const items = Array.isArray(data) ? data : []
+            if (page === 0) {
+                dialogHistoryEntries.value = items
+            } else {
+                dialogHistoryEntries.value = [...dialogHistoryEntries.value, ...items]
+            }
             dialogHistoryPagination.value.totalElements = dialogHistoryEntries.value.length
             dialogHistoryPagination.value.page = 0
             dialogHistoryPagination.value.totalPages = 1
         }
     } catch (error) {
         console.error('Error fetching dialog history:', error)
-        dialogHistoryEntries.value = []
+        if (page === 0) dialogHistoryEntries.value = []
     } finally {
         isLoadingDialogHistory.value = false
+        checkAndLoadMoreDialog()
     }
 }
 
@@ -4011,6 +4049,7 @@ const textRight = {
     height: 40px;
     overflow: hidden;
     background-color: #fff7ed;
+    flex-shrink: 0; /* Prevent shrinking */
 }
 
 .stats-column {
@@ -4045,7 +4084,8 @@ const textRight = {
 
 .history-container .table-wrapper {
     max-height: none !important;
-    height: 100%;
+    flex: 1;
+    height: 0; /* Force flex child to respect container height */
     overflow-y: auto;
 }
 
@@ -4071,11 +4111,24 @@ const textRight = {
 
 .dialog-stats-bar {
     margin-bottom: 5px;
+    flex-shrink: 0; /* Prevent shrinking */
 }
 
 .dialog-history-container {
     border: 1px solid #e2e8f0;
     background: white;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.dialog-history-container .table-wrapper {
+    max-height: none !important;
+    flex: 1;
+    height: 0;
+    overflow-y: auto;
 }
 
 .centered-footer {
@@ -5104,6 +5157,20 @@ const textRight = {
     to {
         transform: rotate(360deg);
     }
+}
+
+.loading-more {
+    text-align: center;
+    padding: 10px;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
 }
 </style>
 

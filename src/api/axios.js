@@ -26,7 +26,7 @@ apiClient.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config
 
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
             const refreshToken = localStorage.getItem('refreshToken')
 
             if (refreshToken && !originalRequest._retry) {
@@ -54,12 +54,6 @@ apiClient.interceptors.response.use(
                 localStorage.removeItem('refreshToken')
                 router.push('/?sessionExpired=true')
             }
-        }
-
-        if (error.response?.status === 403) {
-            localStorage.removeItem('accessToken')
-            localStorage.removeItem('refreshToken')
-            router.push('/?sessionExpired=true')
         }
 
         return Promise.reject(error)

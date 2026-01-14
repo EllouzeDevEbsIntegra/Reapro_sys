@@ -1,7 +1,7 @@
 <template>
     <Dialog :visible="visible" @update:visible="emit('update:visible', $event)" modal :header="null"
         :style="{ width: '900px', maxWidth: '90vw' }" class="p-fluid profile-dialog-modern"
-        :breakpoints="{ '960px': '95vw' }" :showHeader="false" :contentStyle="{ padding: '0', borderRadius: '16px' }">
+        :breakpoints="{ '960px': '95vw' }" :showHeader="false" :contentStyle="{ padding: '0', borderRadius: '16px' }" dismissableMask>
 
         <div class="profile-container">
             <!-- Header Section -->

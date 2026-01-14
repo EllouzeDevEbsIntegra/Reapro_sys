@@ -328,7 +328,7 @@
                     <div class="table-header-row">
                         <span class="table-title">Equivalence</span>
                     </div>
-                    <div class="table-wrapper" @scroll="onEquivalenceScroll">
+                    <div class="table-wrapper" @scroll="onEquivalenceScroll" ref="equivalenceTableWrapper">
                         <table class="modern-table">
                             <thead>
                                 <tr>
@@ -355,7 +355,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-if="isLoadingEquivalence">
+                                <tr v-if="isLoadingEquivalence && equivalenceItems.length === 0">
                                     <td colspan="14" class="text-center p-4">Chargement...</td>
                                 </tr>
                                 <tr v-else-if="equivalenceItems.length === 0">
@@ -2439,6 +2439,7 @@ const selectKitItem = (item) => {
 }
 
 const historyTableWrapper = ref(null)
+const equivalenceTableWrapper = ref(null)
 
 const checkAndLoadMore = async () => {
     await nextTick()
@@ -2797,6 +2798,11 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
 
     // Prevent duplicate calls if already loading
     if (isLoadingEquivalence.value) return
+
+    // Reset scroll position if loading first page
+    if (page === 0 && equivalenceTableWrapper.value) {
+        equivalenceTableWrapper.value.scrollTop = 0
+    }
 
     isLoadingEquivalence.value = true
     try {
@@ -3829,6 +3835,9 @@ const textRight = {
     padding: 18px 15px;
     border-bottom: 2px solid #e2e8f0;
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .modern-table td {
@@ -5469,27 +5478,6 @@ body .custom-toast .p-toast-detail {
     /* Add padding to prevent text touching borders */
 }
 
-/* Dialog Specs Table Styles */
-.specs-table {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.spec-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    /* Increased vertical padding */
-    border-bottom: 1px solid #f1f5f9;
-    background: white;
-    min-height: 44px;
-    /* Increased min-height */
-}
 
 .spec-row:last-child {
     border-bottom: none;

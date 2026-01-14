@@ -422,12 +422,12 @@
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
-                                        <div class="cell-reference">{{ item.acheteCurrYear || 0 }}</div>
-                                        <div class="cell-description">{{ item.totalAchete || 0 }}</div>
+                                        <div class="cell-reference" :class="{ 'status-favorable': (item.acheteCurrYear || 0) > 0 }">{{ item.acheteCurrYear || 0 }}</div>
+                                        <div class="cell-description" :class="{ 'status-favorable': (item.totalAchete || 0) > 0 }">{{ item.totalAchete || 0 }}</div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
-                                        <div class="cell-reference">{{ item.venduCurrYear || 0 }}</div>
-                                        <div class="cell-description">{{ item.totalVendu || 0 }}</div>
+                                        <div class="cell-reference" :class="{ 'status-favorable': (item.venduCurrYear || 0) > 0 }">{{ item.venduCurrYear || 0 }}</div>
+                                        <div class="cell-description" :class="{ 'status-favorable': (item.totalVendu || 0) > 0 }">{{ item.totalVendu || 0 }}</div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
@@ -580,12 +580,12 @@
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
-                                        <div class="cell-reference">{{ item.acheteCurrYear || 0 }}</div>
-                                        <div class="cell-description">{{ item.totalAchete || 0 }}</div>
+                                        <div class="cell-reference" :class="{ 'text-green-600': (item.acheteCurrYear || 0) > 0 }">{{ item.acheteCurrYear || 0 }}</div>
+                                        <div class="cell-description" :class="{ 'text-green-600': (item.totalAchete || 0) > 0 }">{{ item.totalAchete || 0 }}</div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
-                                        <div class="cell-reference">{{ item.venduCurrYear || 0 }}</div>
-                                        <div class="cell-description">{{ item.totalVendu || 0 }}</div>
+                                        <div class="cell-reference" :class="{ 'text-green-600': (item.venduCurrYear || 0) > 0 }">{{ item.venduCurrYear || 0 }}</div>
+                                        <div class="cell-description" :class="{ 'text-green-600': (item.totalVendu || 0) > 0 }">{{ item.totalVendu || 0 }}</div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">

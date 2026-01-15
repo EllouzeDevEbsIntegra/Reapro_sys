@@ -8,7 +8,11 @@
             <!-- 10% -->
             <div class="item-info">
                 <div class="info-left">
-                    <h1 class="item-no">{{ line.itemNo }}</h1>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h1 class="item-no">{{ line.itemNo }}</h1>
+                        <i v-if="isLoadingMasterData" class="pi pi-spin pi-spinner" style="color: #3b82f6; font-size: 1.2rem;" title="Chargement en cours..."></i>
+                        <i v-else class="pi pi-check-circle" style="color: #22c55e; font-size: 1.2rem;" title="Chargement terminé"></i>
+                    </div>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
                             }}</span>
@@ -170,18 +174,18 @@
                                     <td>
                                         <div class="cell-reference">
                                             {{
-                                                formatNumber(getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedDirectCost,
+                                                formatNumber(getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.lastInvoicedDirectCost,
                                                     2) }}
-                                            <span v-if="getLastInvoicedData(detail.buyFromVendorNo)?.quantity"
+                                            <span v-if="getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.quantity"
                                                 class="qty-badge">
                                                 {{
-                                                    Math.round(getLastInvoicedData(detail.buyFromVendorNo)?.quantity)
+                                                    Math.round(getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.quantity)
                                                 }}
                                             </span>
                                         </div>
                                         <div class="cell-description">
                                             {{
-                                                formatDate(getLastInvoicedData(detail.buyFromVendorNo)?.lastInvoicedCostDate)
+                                                formatDate(getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.lastInvoicedCostDate)
                                             }}
                                         </div>
                                     </td>
@@ -195,11 +199,11 @@
                                         </div>
                                         <div class="cell-description">
                                             <span
-                                                v-if="calculatePercentageChange(detail.directUnitCost, getSecondLastPurchasePrice(detail.buyFromVendorNo))"
-                                                :class="getPercentageClass(calculatePercentageChange(detail.directUnitCost, getSecondLastPurchasePrice(detail.buyFromVendorNo)))"
+                                                v-if="calculatePercentageChange(detail.directUnitCost, getSecondLastPurchasePrice(detail.buyFromVendorNo, detail.no))"
+                                                :class="getPercentageClass(calculatePercentageChange(detail.directUnitCost, getSecondLastPurchasePrice(detail.buyFromVendorNo, detail.no)))"
                                                 class="percentage-indicator">
                                                 {{ calculatePercentageChange(detail.directUnitCost,
-                                                    getSecondLastPurchasePrice(detail.buyFromVendorNo)) }}
+                                                    getSecondLastPurchasePrice(detail.buyFromVendorNo, detail.no)) }}
                                             </span>
                                         </div>
                                     </td>
@@ -238,8 +242,10 @@
                                             <span class="initial-tag" title="Prix Initial">{{
                                                 formatNumber(detail.initialVendorPrice, 2) }}</span>
                                             <input type="number" v-model.number="detail.askingPrice"
+                                                :id="`askingPrice-${detail.id}`"
                                                 class="qty-input mini" placeholder="Prix Nég"
-                                                @change="updateLine(detail, false)" :disabled="detail.isUpdating" />
+                                                @change="updateLine(detail, false)" 
+                                                @keydown.tab.prevent="focusNextField('askingPrice', detail.id)" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
@@ -247,14 +253,18 @@
                                             <span class="initial-tag" title="Quantité Initiale">{{
                                                 detail.initialQuantity }}</span>
                                             <input type="number" v-model.number="detail.askingQty"
+                                                :id="`askingQty-${detail.id}`"
                                                 class="qty-input mini" placeholder="Qte Nég"
-                                                @change="updateLine(detail, false)" :disabled="detail.isUpdating" />
+                                                @change="updateLine(detail, false)" 
+                                                @keydown.tab.prevent="focusNextField('askingQty', detail.id)" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="detail.quantity" class="qty-input"
-                                                min="0" @change="updateLine(detail, true)" :disabled="detail.isUpdating" />
+                                                :id="`quantity-${detail.id}`"
+                                                min="0" @change="updateLine(detail, true)" 
+                                                @keydown.tab.prevent="focusNextField('quantity', detail.id)" />
                                             <i v-if="detail.treated" class="pi pi-check-circle"
                                                 style="color: #22c55e; margin-left: 8px; font-size: 1.1rem;"
                                                 title="Ligne traitée"></i>
@@ -266,7 +276,7 @@
                                     <td v-if="!isSidebarExpanded">
                                         <div class="reason-select-container">
                                             <select v-model="detail.quoteLineReason" class="reason-select"
-                                                @change="updateLine(detail, false)" :disabled="detail.isUpdating">
+                                                @change="updateLine(detail, false)">
                                                 <option value=""></option>
                                                 <option v-for="reason in orderReasons" :key="reason.value"
                                                     :value="reason.value">
@@ -296,7 +306,8 @@
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <button class="validate-line-btn" title="Valider la ligne"
-                                                @click="updateLine(detail, true)" :disabled="detail.isUpdating">
+                                                :id="`validateBtn-${detail.id}`"
+                                                @click="updateLine(detail, true)">
                                                 <i class="pi"
                                                     :class="detail.isUpdating ? 'pi-spin pi-spinner' : 'pi-check'"></i>
                                             </button>
@@ -1327,6 +1338,9 @@
                                     <td>
                                         <Button v-if="item.status !== 'CREATED'" label="Ajouter AM" icon="pi pi-plus"
                                             class="p-button-sm create-am-btn" @click="createArticleMaster(item)" />
+                                        <Button v-if="item.status === 'CREATED'" label="A Vérifier" icon="pi pi-check-circle"
+                                            class="p-button-sm verify-btn ml-2" @click="markAsToVerify(item)" 
+                                            :loading="item.isVerifying" />
                                     </td>
                                 </tr>
                             </tbody>
@@ -1369,13 +1383,19 @@
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Groupe</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.groupName }}
+                                    <div class="spec-value">
+                                        <Select v-model="selectedArticleMasterCandidate.groupCode" :options="groups"
+                                            optionLabel="displayName" optionValue="code" filter placeholder="Sélectionner un groupe"
+                                            class="w-full vendor-dropdown-custom" @change="onGroupChange" />
                                     </div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Sous-Groupe</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.subGroupName
-                                    }}</div>
+                                    <div class="spec-value">
+                                        <Select v-model="selectedArticleMasterCandidate.subGroupCode" :options="subGroups"
+                                            optionLabel="displayName" optionValue="code" filter placeholder="Sélectionner un sous-groupe"
+                                            class="w-full vendor-dropdown-custom" />
+                                    </div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Marque (MakeCode)</div>
@@ -1384,7 +1404,9 @@
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Champ Libre</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.champsLibre }}
+                                    <div class="spec-value">
+                                        <input type="text" v-model="selectedArticleMasterCandidate.champsLibre"
+                                            class="qty-input w-full" placeholder="Champ Libre" />
                                     </div>
                                 </div>
                             </div>
@@ -1405,9 +1427,16 @@
                                         selectedArticleMasterCandidate.manufacturerName }}</div>
                                 </div>
                                 <div class="spec-row">
-                                    <div class="spec-label">Référence Article</div>
+                                    <div class="spec-label">Référence Fournisseur</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber
                                     }}</div>
+                                </div>
+                                <div class="spec-row" style="align-items: center;">
+                                    <div class="spec-label">Référence BC <span style="color: red;">*</span></div>
+                                    <div class="spec-value">
+                                        <input type="text" v-model="selectedArticleMasterCandidate.bcReference"
+                                            class="qty-input w-full" placeholder="Référence BC" />
+                                    </div>
                                 </div>
                                 <div class="spec-row" style="align-items: center;">
                                     <div class="spec-label">Code Fournisseur (VendorNo) <span
@@ -1430,7 +1459,7 @@
                     <Button label="Annuler" icon="pi pi-times" class="p-button-text p-button-secondary dialog-btn"
                         @click="showCreateArticleMasterDialog = false" />
                     <Button label="Valider la création" icon="pi pi-check" class="p-button-primary dialog-btn"
-                        @click="confirmCreateArticleMaster" :disabled="!selectedArticleMasterCandidate?.vendorNo" />
+                        @click="confirmCreateArticleMaster" :disabled="!selectedArticleMasterCandidate?.vendorNo || !selectedArticleMasterCandidate?.bcReference" />
                 </div>
             </div>
         </Dialog>
@@ -1715,6 +1744,15 @@ const dialogHistoryKpis = ref({
 })
 const intercompanyStocks = ref([])
 const isLoadingIntercompanyStock = ref(false)
+const isLoadingSecondaryData = ref(false)
+
+const isLoadingMasterData = computed(() => {
+    return isLoadingDetails.value || 
+           isLoadingEquivalence.value || 
+           isLoadingKit.value || 
+           isLoadingIntercompanyStock.value ||
+           isLoadingSecondaryData.value
+})
 
 // Article Info Dialog State
 const showInfoDialog = ref(false)
@@ -1736,6 +1774,7 @@ const isLoadingPurchasePrices = ref(false)
 const selectedPurchasePriceItem = ref(null)
 const purchasePriceVendorFilter = ref('')
 const allPurchasePrices = ref([])
+const purchasePricesByItem = ref(new Map())
 const totalAmount = ref(null)
 const selectedDocumentNo = ref(null)
 
@@ -1788,27 +1827,37 @@ const equivalenceLastInvoicedCosts = ref(new Map())
 const kitLastInvoicedCosts = ref(new Map())
 
 const fetchLastInvoicedCosts = async () => {
-    if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+    if (!quoteLineDetails.value || quoteLineDetails.value.length === 0) return
 
-    try {
-        const data = await store.fetchLastInvoicedCost(selectedHistoryItem.value.no)
-        if (Array.isArray(data)) {
-            const costMap = new Map()
-            data.forEach(item => {
-                if (item.frs) {
-                    costMap.set(item.frs, item)
-                }
-            })
-            lastInvoicedCosts.value = costMap
+    // Get unique item numbers from the details list
+    const uniqueItems = [...new Set(quoteLineDetails.value.map(d => d.no))].filter(Boolean)
+    
+    // Clear existing map
+    lastInvoicedCosts.value = new Map()
+
+    for (const itemNo of uniqueItems) {
+        try {
+            const data = await store.fetchLastInvoicedCost(itemNo)
+            if (Array.isArray(data)) {
+                const costMap = new Map()
+                data.forEach(item => {
+                    if (item.frs) {
+                        costMap.set(item.frs, item)
+                    }
+                })
+                lastInvoicedCosts.value.set(itemNo, costMap)
+            }
+        } catch (error) {
+            console.error(`Error fetching last invoiced costs for item ${itemNo}:`, error)
         }
-    } catch (error) {
-        console.error('Error fetching last invoiced costs:', error)
     }
 }
 
-const getLastInvoicedData = (vendorNo) => {
-    if (!vendorNo) return null
-    return lastInvoicedCosts.value.get(vendorNo)
+const getLastInvoicedData = (vendorNo, itemNo) => {
+    if (!vendorNo || !itemNo) return null
+    const itemMap = lastInvoicedCosts.value.get(itemNo)
+    if (!itemMap) return null
+    return itemMap.get(vendorNo)
 }
 
 const getEquivalenceLastInvoicedData = (itemNo, vendorNo) => {
@@ -1872,11 +1921,15 @@ const fetchKitLastInvoicedCosts = async () => {
     }
 }
 
-const getSecondLastPurchasePrice = (vendorNo) => {
-    if (!vendorNo || !allPurchasePrices.value.length) return null
+const getSecondLastPurchasePrice = (vendorNo, itemNo) => {
+    if (!vendorNo || !itemNo) return null
+    
+    // Get prices for this specific item
+    const itemPrices = purchasePricesByItem.value.get(itemNo)
+    if (!itemPrices || !itemPrices.length) return null
 
     // Filter by vendor (use loose equality to handle string/number differences)
-    const vendorPrices = allPurchasePrices.value.filter(p => p.vendorNo == vendorNo)
+    const vendorPrices = itemPrices.filter(p => p.vendorNo == vendorNo)
 
     // Sort by startingDate descending
     vendorPrices.sort((a, b) => new Date(b.startingDate) - new Date(a.startingDate))
@@ -2121,6 +2174,37 @@ const changeVerificationPage = (newPage) => {
 const showCreateArticleMasterDialog = ref(false)
 const selectedArticleMasterCandidate = ref(null)
 const vendors = ref([])
+const groups = ref([])
+const subGroups = ref([])
+
+const fetchGroups = async () => {
+    try {
+        const fetchedGroups = await store.fetchCategories(1, 'PR')
+        groups.value = fetchedGroups
+    } catch (error) {
+        console.error('Error fetching groups:', error)
+    }
+}
+
+const fetchSubGroups = async (parentGroupCode) => {
+    if (!parentGroupCode) {
+        subGroups.value = []
+        return
+    }
+    try {
+        const fetchedSubGroups = await store.fetchCategories(2, parentGroupCode)
+        subGroups.value = fetchedSubGroups
+    } catch (error) {
+        console.error('Error fetching sub-groups:', error)
+    }
+}
+
+const onGroupChange = async () => {
+    if (selectedArticleMasterCandidate.value) {
+        selectedArticleMasterCandidate.value.subGroupCode = null
+        await fetchSubGroups(selectedArticleMasterCandidate.value.groupCode)
+    }
+}
 
 onMounted(async () => {
     try {
@@ -2129,8 +2213,9 @@ onMounted(async () => {
             ...v,
             fullLabel: `${v.number} - ${v.displayName}`
         }))
+        await fetchGroups()
     } catch (error) {
-        console.error('Error fetching vendors:', error)
+        console.error('Error fetching initial data:', error)
     }
 })
 
@@ -2162,8 +2247,14 @@ const createArticleMaster = (item) => {
         // Candidate Info from item
         manufacturerName: item.bcManufacturerName || item.manufacturerName,
         manufacturerCode: item.bcManufacturerCode,
+        manufacturerCode: item.bcManufacturerCode,
         articleNumber: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : '',
+        bcReference: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : '',
         vendorNo: initialVendor
+    }
+
+    if (props.line.itemProductCode) {
+        fetchSubGroups(props.line.itemProductCode)
     }
 
     showCreateArticleMasterDialog.value = true
@@ -2177,7 +2268,7 @@ const confirmCreateArticleMaster = async () => {
 
     const candidate = selectedArticleMasterCandidate.value
     const payload = {
-        ref: candidate.articleNumber,
+        ref: candidate.bcReference,
         frs: candidate.vendorNo,
         refTecdoc: candidate.articleNumber,
         refMaster: candidate.masterItemNo,
@@ -2204,6 +2295,23 @@ const confirmCreateArticleMaster = async () => {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la création de l\'Article Master', life: 3000 })
     } finally {
         isCreatingArticleMaster.value = false
+    }
+}
+
+const markAsToVerify = async (item) => {
+    if (!item || !item.bcItemNo) return
+
+    item.isVerifying = true
+    try {
+        await store.markAsToVerify(item.bcItemNo)
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Article marqué à vérifier', life: 2000 })
+        // Refresh verification status to update the list
+        await fetchVerificationStatus()
+    } catch (error) {
+        console.error('Failed to mark as to verify:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Echec de mettre l\'article à vérifier', life: 3000 })
+    } finally {
+        item.isVerifying = false
     }
 }
 
@@ -2735,7 +2843,10 @@ const fetchDetails = async (silent = false) => {
     if (!props.line || !props.line.compareQuoteNo || !props.line.itemNo)
         return
 
-    if (!silent) isLoadingDetails.value = true
+    if (!silent) {
+        isLoadingDetails.value = true
+        isLoadingSecondaryData.value = true
+    }
     try {
         const data = await
             store.fetchQuoteLineDetails(props.line.compareQuoteNo,
@@ -2773,21 +2884,43 @@ const fetchDetails = async (silent = false) => {
             }
 
             // 4. Load secondary data (Intercompany Stock, Last Invoiced, Prices)
-            fetchIntercompanyStock()
-            fetchLastInvoicedCosts()
-
-            // Fetch all purchase prices for comparison
+            // isLoadingSecondaryData.value = true // Already set at start
             try {
-                const itemNoToFetch = firstDetail.no || props.line.itemNo
-                const prices = await store.fetchPurchasePrices(itemNoToFetch)
-                allPurchasePrices.value = prices || []
-            } catch (err) {
-                console.error('Error fetching all purchase prices:', err)
-                allPurchasePrices.value = []
+                const secondaryPromises = [
+                    fetchIntercompanyStock(),
+                    fetchLastInvoicedCosts()
+                ]
+
+                // Fetch all purchase prices for comparison for ALL unique items
+                purchasePricesByItem.value = new Map()
+                const uniqueItems = [...new Set(quoteLineDetails.value.map(d => d.no))].filter(Boolean)
+                
+                const pricePromises = uniqueItems.map(async (itemNo) => {
+                    try {
+                        const prices = await store.fetchPurchasePrices(itemNo)
+                        purchasePricesByItem.value.set(itemNo, prices || [])
+                        
+                        // Keep backward compatibility for single item view if needed
+                        if (itemNo === (firstDetail.no || props.line.itemNo)) {
+                            allPurchasePrices.value = prices || []
+                        }
+                    } catch (err) {
+                        console.error(`Error fetching purchase prices for item ${itemNo}:`, err)
+                    }
+                })
+
+                await Promise.all([...secondaryPromises, ...pricePromises])
+            } catch (error) {
+                console.error('Error loading secondary data:', error)
+            } finally {
+                isLoadingSecondaryData.value = false
             }
+        } else {
+            isLoadingSecondaryData.value = false
         }
     } catch (error) {
         console.error('Error fetching details:', error)
+        isLoadingSecondaryData.value = false
     } finally {
         if (!silent) isLoadingDetails.value = false
     }
@@ -2999,6 +3132,30 @@ const openHistory = (company, companyId = null, stock = 0) => {
 
 const textRight = {
     textAlign: 'right'
+}
+
+const focusNextField = (currentField, detailId) => {
+    let nextFieldId = ''
+    
+    if (currentField === 'askingPrice') {
+        nextFieldId = `askingQty-${detailId}`
+    } else if (currentField === 'askingQty') {
+        nextFieldId = `quantity-${detailId}`
+    } else if (currentField === 'quantity') {
+        nextFieldId = `validateBtn-${detailId}`
+    }
+
+    if (nextFieldId) {
+        const element = document.getElementById(nextFieldId)
+        if (element) {
+            element.focus()
+            if (currentField !== 'quantity') { // Don't select text for button
+                 if (element instanceof HTMLInputElement) {
+                    element.select()
+                 }
+            }
+        }
+    }
 }
 </script>
 
@@ -5353,6 +5510,23 @@ const textRight = {
     background-color: #eff6ff !important;
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
+}
+
+.verify-btn {
+    background-color: white !important;
+    color: #f59e0b !important;
+    border: 1px solid #f59e0b !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    padding: 6px 12px !important;
+    transition: all 0.2s ease !important;
+}
+
+.verify-btn:hover {
+    background-color: #fffbeb !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.15);
 }
 
 .header-actions {

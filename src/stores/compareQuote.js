@@ -246,12 +246,36 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
+        async markAsToVerify(bcItemNo) {
+            try {
+                const response = await axios.patch(`/api/bc/itemsEqv/${bcItemNo}/toVerify`)
+                return response.data
+            } catch (err) {
+                console.error('Mark as to verify error:', err)
+                throw err
+            }
+        },
+
         async createArticleMaster(payload) {
             try {
                 const response = await axios.post('/api/bc/items/copy', payload)
                 return response.data
             } catch (err) {
                 console.error('Create Article Master error:', err)
+                throw err
+            }
+        },
+
+        async fetchCategories(indentation, parentCategory) {
+            try {
+                const params = { indentation }
+                if (parentCategory) {
+                    params.parentCategory = parentCategory
+                }
+                const response = await axios.get('/api/bc/categories', { params })
+                return response.data
+            } catch (err) {
+                console.error('Fetch categories error:', err)
                 throw err
             }
         },

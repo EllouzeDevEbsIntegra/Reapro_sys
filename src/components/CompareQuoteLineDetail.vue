@@ -10,12 +10,14 @@
                 <div class="info-left">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <h1 class="item-no">{{ line.itemNo }}</h1>
-                        <i v-if="isLoadingMasterData" class="pi pi-spin pi-spinner" style="color: #3b82f6; font-size: 1.2rem;" title="Chargement en cours..."></i>
-                        <i v-else class="pi pi-check-circle" style="color: #22c55e; font-size: 1.2rem;" title="Chargement terminé"></i>
+                        <i v-if="isLoadingMasterData" class="pi pi-spin pi-spinner"
+                            style="color: #3b82f6; font-size: 1.2rem;" title="Chargement en cours..."></i>
+                        <i v-else class="pi pi-check-circle" style="color: #22c55e; font-size: 1.2rem;"
+                            title="Chargement terminé"></i>
                     </div>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                            }}</span>
+                        }}</span>
                     </div>
                 </div>
                 <div class="info-right">
@@ -59,7 +61,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -174,18 +176,22 @@
                                     <td>
                                         <div class="cell-reference">
                                             {{
-                                                formatNumber(getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.lastInvoicedDirectCost,
+                                                formatNumber(getLastInvoicedData(detail.buyFromVendorNo,
+                                                    detail.no)?.lastInvoicedDirectCost,
                                                     2) }}
-                                            <span v-if="getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.quantity"
+                                            <span
+                                                v-if="getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.quantity"
                                                 class="qty-badge">
                                                 {{
-                                                    Math.round(getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.quantity)
+                                                    Math.round(getLastInvoicedData(detail.buyFromVendorNo,
+                                                        detail.no)?.quantity)
                                                 }}
                                             </span>
                                         </div>
                                         <div class="cell-description">
                                             {{
-                                                formatDate(getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.lastInvoicedCostDate)
+                                                formatDate(getLastInvoicedData(detail.buyFromVendorNo,
+                                                    detail.no)?.lastInvoicedCostDate)
                                             }}
                                         </div>
                                     </td>
@@ -242,9 +248,8 @@
                                             <span class="initial-tag" title="Prix Initial">{{
                                                 formatNumber(detail.initialVendorPrice, 2) }}</span>
                                             <input type="number" v-model.number="detail.askingPrice"
-                                                :id="`askingPrice-${detail.id}`"
-                                                class="qty-input mini" placeholder="Prix Nég"
-                                                @change="updateLine(detail, false)" 
+                                                :id="`askingPrice-${detail.id}`" class="qty-input mini"
+                                                placeholder="Prix Nég" @change="updateLine(detail, false)"
                                                 @keydown.tab.prevent="focusNextField('askingPrice', detail.id)" />
                                         </div>
                                     </td>
@@ -253,17 +258,15 @@
                                             <span class="initial-tag" title="Quantité Initiale">{{
                                                 detail.initialQuantity }}</span>
                                             <input type="number" v-model.number="detail.askingQty"
-                                                :id="`askingQty-${detail.id}`"
-                                                class="qty-input mini" placeholder="Qte Nég"
-                                                @change="updateLine(detail, false)" 
+                                                :id="`askingQty-${detail.id}`" class="qty-input mini"
+                                                placeholder="Qte Nég" @change="updateLine(detail, false)"
                                                 @keydown.tab.prevent="focusNextField('askingQty', detail.id)" />
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
                                             <input type="number" v-model.number="detail.quantity" class="qty-input"
-                                                :id="`quantity-${detail.id}`"
-                                                min="0" @change="updateLine(detail, true)" 
+                                                :id="`quantity-${detail.id}`" min="0" @change="updateLine(detail, true)"
                                                 @keydown.tab.prevent="focusNextField('quantity', detail.id)" />
                                             <i v-if="detail.treated" class="pi pi-check-circle"
                                                 style="color: #22c55e; margin-left: 8px; font-size: 1.1rem;"
@@ -306,8 +309,7 @@
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
                                             <button class="validate-line-btn" title="Valider la ligne"
-                                                :id="`validateBtn-${detail.id}`"
-                                                @click="updateLine(detail, true)">
+                                                :id="`validateBtn-${detail.id}`" @click="updateLine(detail, true)">
                                                 <i class="pi"
                                                     :class="detail.isUpdating ? 'pi-spin pi-spinner' : 'pi-check'"></i>
                                             </button>
@@ -424,7 +426,7 @@
                                     </td>
                                     <td>
                                         <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3)
-                                        }}</div>
+                                            }}</div>
                                         <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
                                         </div>
                                     </td>
@@ -433,12 +435,20 @@
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
-                                        <div class="cell-reference" :class="{ 'status-favorable': (item.acheteCurrYear || 0) > 0 }">{{ item.acheteCurrYear || 0 }}</div>
-                                        <div class="cell-description" :class="{ 'status-favorable': (item.totalAchete || 0) > 0 }">{{ item.totalAchete || 0 }}</div>
+                                        <div class="cell-reference"
+                                            :class="{ 'status-favorable': (item.acheteCurrYear || 0) > 0 }">{{
+                                                item.acheteCurrYear || 0 }}</div>
+                                        <div class="cell-description"
+                                            :class="{ 'status-favorable': (item.totalAchete || 0) > 0 }">{{
+                                                item.totalAchete || 0 }}</div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
-                                        <div class="cell-reference" :class="{ 'status-favorable': (item.venduCurrYear || 0) > 0 }">{{ item.venduCurrYear || 0 }}</div>
-                                        <div class="cell-description" :class="{ 'status-favorable': (item.totalVendu || 0) > 0 }">{{ item.totalVendu || 0 }}</div>
+                                        <div class="cell-reference"
+                                            :class="{ 'status-favorable': (item.venduCurrYear || 0) > 0 }">{{
+                                                item.venduCurrYear || 0 }}</div>
+                                        <div class="cell-description"
+                                            :class="{ 'status-favorable': (item.totalVendu || 0) > 0 }">{{
+                                                item.totalVendu || 0 }}</div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
@@ -477,10 +487,12 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart" title="Voir dans le panier" @click.stop="openCartForItem(item)">
+                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart"
+                                                title="Voir dans le panier" @click.stop="openCartForItem(item)">
                                                 <i class="pi pi-shopping-cart"></i>
                                             </button>
-                                            <button v-else class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
+                                            <button v-else class="validate-line-btn" title="Valider la ligne"
+                                                @click.stop="addToCart(item)">
                                                 <i class="pi pi-check"></i>
                                             </button>
                                         </div>
@@ -591,12 +603,20 @@
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
-                                        <div class="cell-reference" :class="{ 'text-green-600': (item.acheteCurrYear || 0) > 0 }">{{ item.acheteCurrYear || 0 }}</div>
-                                        <div class="cell-description" :class="{ 'text-green-600': (item.totalAchete || 0) > 0 }">{{ item.totalAchete || 0 }}</div>
+                                        <div class="cell-reference"
+                                            :class="{ 'text-green-600': (item.acheteCurrYear || 0) > 0 }">{{
+                                                item.acheteCurrYear || 0 }}</div>
+                                        <div class="cell-description"
+                                            :class="{ 'text-green-600': (item.totalAchete || 0) > 0 }">{{
+                                                item.totalAchete || 0 }}</div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
-                                        <div class="cell-reference" :class="{ 'text-green-600': (item.venduCurrYear || 0) > 0 }">{{ item.venduCurrYear || 0 }}</div>
-                                        <div class="cell-description" :class="{ 'text-green-600': (item.totalVendu || 0) > 0 }">{{ item.totalVendu || 0 }}</div>
+                                        <div class="cell-reference"
+                                            :class="{ 'text-green-600': (item.venduCurrYear || 0) > 0 }">{{
+                                                item.venduCurrYear || 0 }}</div>
+                                        <div class="cell-description"
+                                            :class="{ 'text-green-600': (item.totalVendu || 0) > 0 }">{{ item.totalVendu
+                                                || 0 }}</div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="qty-input-wrapper">
@@ -635,10 +655,12 @@
                                     </td>
                                     <td v-if="!isSidebarExpanded">
                                         <div class="flex justify-center items-center h-full">
-                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart" title="Voir dans le panier" @click.stop="openCartForItem(item)">
+                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart"
+                                                title="Voir dans le panier" @click.stop="openCartForItem(item)">
                                                 <i class="pi pi-shopping-cart"></i>
                                             </button>
-                                            <button v-else class="validate-line-btn" title="Valider la ligne" @click.stop="addToCart(item)">
+                                            <button v-else class="validate-line-btn" title="Valider la ligne"
+                                                @click.stop="addToCart(item)">
                                                 <i class="pi pi-check"></i>
                                             </button>
                                         </div>
@@ -780,19 +802,15 @@
                             <Button :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text
                                 rounded @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
                             <span class="table-title" style="font-size: 1.1rem; margin-left: 8px;">Panier d'Achat</span>
-                            
+
                             <div style="flex-grow: 1;"></div>
 
                             <div class="cart-tabs">
-                                <button 
-                                    class="cart-tab-btn" 
-                                    :class="{ 'active': activeCartTab === 'current' }"
+                                <button class="cart-tab-btn" :class="{ 'active': activeCartTab === 'current' }"
                                     @click="switchCartTab('current')">
                                     {{ line.compareQuoteNo }}
                                 </button>
-                                <button 
-                                    class="cart-tab-btn" 
-                                    :class="{ 'active': activeCartTab === 'all' }"
+                                <button class="cart-tab-btn" :class="{ 'active': activeCartTab === 'all' }"
                                     @click="switchCartTab('all')">
                                     Tous
                                 </button>
@@ -804,7 +822,7 @@
                     </div>
                     <div class="cart-filters p-3 flex gap-2 align-items-center"
                         style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                        
+
                         <InputText v-model="cartFilters.vendorNo" placeholder="Frs" class="p-inputtext-sm"
                             style="width: 85px; font-size: 0.85rem;" @input="debouncedFilter" />
 
@@ -821,7 +839,8 @@
                                 <span v-if="slotProps.value"
                                     :class="'status-text-' + (slotProps.value ? slotProps.value.toLowerCase() : '')">{{
                                         slotProps.value === 'All' ? 'Tous' : slotProps.value }}</span>
-                                <span v-else class="text-gray-400 flex align-items-center" style="height: 100%; display: flex; align-items: center;">{{ slotProps.placeholder
+                                <span v-else class="text-gray-400 flex align-items-center"
+                                    style="height: 100%; display: flex; align-items: center;">{{ slotProps.placeholder
                                     }}</span>
                             </template>
                         </Select>
@@ -831,7 +850,8 @@
                         <div class="table-wrapper">
                             <DataTable :value="store.cartItems" responsiveLayout="scroll" class="p-datatable-sm"
                                 :loading="store.isLoading" scrollable scrollHeight="flex">
-                                <Column field="buyFromVendorNo" header="FRS" sortable :style="{ width: isSidebarExpanded ? '9%' : '15%' }">
+                                <Column field="buyFromVendorNo" header="FRS" sortable
+                                    :style="{ width: isSidebarExpanded ? '9%' : '15%' }">
                                     <template #body="slotProps">
                                         <div class="cell-reference">{{ slotProps.data.buyFromVendorNo }}</div>
                                     </template>
@@ -842,7 +862,8 @@
                                         <div class="cell-description">{{ slotProps.data.description }}</div>
                                     </template>
                                 </Column>
-                                <Column field="refMaster" header="Ref Master" sortable v-if="isSidebarExpanded"></Column>
+                                <Column field="refMaster" header="Ref Master" sortable v-if="isSidebarExpanded">
+                                </Column>
                                 <Column field="quantity" header="Qté" sortable></Column>
                                 <Column field="directUnitCost" header="Coût" sortable>
                                     <template #body="slotProps">
@@ -863,20 +884,19 @@
                                 </Column>
                                 <Column field="status" header="Statut" sortable>
                                     <template #body="slotProps">
-                                        <span
-                                            :class="'status-badge status-' + slotProps.data.status.toLowerCase()">{{
-                                                slotProps.data.status }}</span>
+                                        <span :class="'status-badge status-' + slotProps.data.status.toLowerCase()">{{
+                                            slotProps.data.status }}</span>
                                     </template>
                                 </Column>
                                 <Column header="Actions" v-if="isSidebarExpanded">
                                     <template #body="slotProps">
                                         <div class="flex gap-2 justify-center">
-                                            <button class="action-btn verify-btn" title="Vérifier" 
+                                            <button class="action-btn verify-btn" title="Vérifier"
                                                 @click="updateCartStatus(slotProps.data.lineNo, 'Verified')"
                                                 :disabled="slotProps.data.status === 'Verified'">
                                                 <i class="pi pi-check-circle"></i>
                                             </button>
-                                            <button class="action-btn cancel-btn" title="Annuler" 
+                                            <button class="action-btn cancel-btn" title="Annuler"
                                                 @click="updateCartStatus(slotProps.data.lineNo, 'Cancelled')"
                                                 :disabled="slotProps.data.status === 'Cancelled'">
                                                 <i class="pi pi-times-circle"></i>
@@ -1118,7 +1138,7 @@
                                 selectedHistoryItem.structuredDescription ||
                                 selectedHistoryItem.description || 'Temoins de freins' }}
                             <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany
-                            }})</span>
+                                }})</span>
                         </div>
                         <div class="year-selector">
                             <button class="year-arrow" @click="changeDialogYear(-1)">
@@ -1338,9 +1358,9 @@
                                     <td>
                                         <Button v-if="item.status !== 'CREATED'" label="Ajouter AM" icon="pi pi-plus"
                                             class="p-button-sm create-am-btn" @click="createArticleMaster(item)" />
-                                        <Button v-if="item.status === 'CREATED'" label="A Vérifier" icon="pi pi-check-circle"
-                                            class="p-button-sm verify-btn ml-2" @click="markAsToVerify(item)" 
-                                            :loading="item.isVerifying" />
+                                        <Button v-if="item.status === 'CREATED'" label="A Vérifier"
+                                            icon="pi pi-check-circle" class="p-button-sm verify-btn ml-2"
+                                            @click="markAsToVerify(item)" :loading="item.isVerifying" />
                                     </td>
                                 </tr>
                             </tbody>
@@ -1374,7 +1394,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Master</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo
-                                    }}</div>
+                                        }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Description</div>
@@ -1385,15 +1405,17 @@
                                     <div class="spec-label">Groupe</div>
                                     <div class="spec-value">
                                         <Select v-model="selectedArticleMasterCandidate.groupCode" :options="groups"
-                                            optionLabel="displayName" optionValue="code" filter placeholder="Sélectionner un groupe"
-                                            class="w-full vendor-dropdown-custom" @change="onGroupChange" />
+                                            optionLabel="displayName" optionValue="code" filter
+                                            placeholder="Sélectionner un groupe" class="w-full vendor-dropdown-custom"
+                                            @change="onGroupChange" />
                                     </div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Sous-Groupe</div>
                                     <div class="spec-value">
-                                        <Select v-model="selectedArticleMasterCandidate.subGroupCode" :options="subGroups"
-                                            optionLabel="displayName" optionValue="code" filter placeholder="Sélectionner un sous-groupe"
+                                        <Select v-model="selectedArticleMasterCandidate.subGroupCode"
+                                            :options="subGroups" optionLabel="displayName" optionValue="code" filter
+                                            placeholder="Sélectionner un sous-groupe"
                                             class="w-full vendor-dropdown-custom" />
                                     </div>
                                 </div>
@@ -1429,7 +1451,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Fournisseur</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber
-                                    }}</div>
+                                        }}</div>
                                 </div>
                                 <div class="spec-row" style="align-items: center;">
                                     <div class="spec-label">Référence BC <span style="color: red;">*</span></div>
@@ -1459,7 +1481,8 @@
                     <Button label="Annuler" icon="pi pi-times" class="p-button-text p-button-secondary dialog-btn"
                         @click="showCreateArticleMasterDialog = false" />
                     <Button label="Valider la création" icon="pi pi-check" class="p-button-primary dialog-btn"
-                        @click="confirmCreateArticleMaster" :disabled="!selectedArticleMasterCandidate?.vendorNo || !selectedArticleMasterCandidate?.bcReference" />
+                        @click="confirmCreateArticleMaster"
+                        :disabled="!selectedArticleMasterCandidate?.vendorNo || !selectedArticleMasterCandidate?.bcReference" />
                 </div>
             </div>
         </Dialog>
@@ -1588,8 +1611,8 @@ const saveComment = async () => {
                 if (!lineNo) {
                     // First check existing store items
                     if (store.cartItems && store.cartItems.length > 0) {
-                        const cartItem = store.cartItems.find(ci => 
-                            ci.itemNo === selectedCommentItem.value.no && 
+                        const cartItem = store.cartItems.find(ci =>
+                            ci.itemNo === selectedCommentItem.value.no &&
                             ci.buyFromVendorNo === selectedCommentItem.value.vendorNo
                         );
                         if (cartItem) {
@@ -1606,11 +1629,11 @@ const saveComment = async () => {
                                 compareQuoteNo: props.line.compareQuoteNo,
                                 status: 'All'
                             });
-                            
+
                             if (fetchedItems && fetchedItems.length > 0) {
                                 // Find the exact match (though filters should have narrowed it down)
-                                const match = fetchedItems.find(ci => 
-                                    ci.itemNo === selectedCommentItem.value.no && 
+                                const match = fetchedItems.find(ci =>
+                                    ci.itemNo === selectedCommentItem.value.no &&
                                     ci.buyFromVendorNo === selectedCommentItem.value.vendorNo
                                 );
                                 if (match) {
@@ -1671,9 +1694,9 @@ const addToCart = async (item) => {
             compareQuoteNo: props.line.compareQuoteNo,
             comment: item.comment || ''
         }
-        
+
         const response = await store.addToCart(payload)
-        
+
         // Update local item state immediately
         item.existPurchaseCart = true
         // Capture the line number from the response
@@ -1684,9 +1707,9 @@ const addToCart = async (item) => {
         if (payload.comment) {
             item.commentPurchaseCart = payload.comment
         }
-        
+
         toast.add({ severity: 'success', summary: 'Succès', detail: 'Article ajouté au panier', life: 2000 })
-        
+
         // Refresh cart count and items
         if (props.line.compareQuoteNo) {
             await store.fetchCartCount(props.line.compareQuoteNo)
@@ -1694,7 +1717,7 @@ const addToCart = async (item) => {
         if (activeRightPanel.value === 'cart') {
             applyFilters()
         }
-        
+
 
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de l\'ajout au panier', life: 3000 })
@@ -1709,7 +1732,7 @@ const updateCartStatus = async (lineNo, status) => {
     try {
         await store.updateCartItemStatus(lineNo, status)
         toast.add({ severity: 'success', summary: 'Succès', detail: `Statut mis à jour: ${status}`, life: 2000 })
-        
+
         // Refresh cart count and items
         if (props.line.compareQuoteNo) {
             await store.fetchCartCount(props.line.compareQuoteNo)
@@ -1747,11 +1770,11 @@ const isLoadingIntercompanyStock = ref(false)
 const isLoadingSecondaryData = ref(false)
 
 const isLoadingMasterData = computed(() => {
-    return isLoadingDetails.value || 
-           isLoadingEquivalence.value || 
-           isLoadingKit.value || 
-           isLoadingIntercompanyStock.value ||
-           isLoadingSecondaryData.value
+    return isLoadingDetails.value ||
+        isLoadingEquivalence.value ||
+        isLoadingKit.value ||
+        isLoadingIntercompanyStock.value ||
+        isLoadingSecondaryData.value
 })
 
 // Article Info Dialog State
@@ -1831,7 +1854,7 @@ const fetchLastInvoicedCosts = async () => {
 
     // Get unique item numbers from the details list
     const uniqueItems = [...new Set(quoteLineDetails.value.map(d => d.no))].filter(Boolean)
-    
+
     // Clear existing map
     lastInvoicedCosts.value = new Map()
 
@@ -1923,7 +1946,7 @@ const fetchKitLastInvoicedCosts = async () => {
 
 const getSecondLastPurchasePrice = (vendorNo, itemNo) => {
     if (!vendorNo || !itemNo) return null
-    
+
     // Get prices for this specific item
     const itemPrices = purchasePricesByItem.value.get(itemNo)
     if (!itemPrices || !itemPrices.length) return null
@@ -2081,10 +2104,26 @@ const orderReasons = [
 const handleKeyDown = (event) => {
     if (event.key === 'F8') {
         event.preventDefault()
-        emit('prev')
+        if (event.ctrlKey) {
+            emit('prev')
+        } else {
+            if (showHistoryDialog.value) {
+                changeDialogYear(-1)
+            } else {
+                changeYear(-1)
+            }
+        }
     } else if (event.key === 'F9') {
         event.preventDefault()
-        emit('next')
+        if (event.ctrlKey) {
+            emit('next')
+        } else {
+            if (showHistoryDialog.value) {
+                changeDialogYear(1)
+            } else {
+                changeYear(1)
+            }
+        }
     } else if (event.key === 'F7') {
         event.preventDefault()
         if (selectedHistoryItem.value) {
@@ -2582,7 +2621,7 @@ const fetchHistory = async (page = 0) => {
             } else {
                 historyEntries.value = [...historyEntries.value, ...data.content]
             }
-            
+
             historyPagination.value = {
                 ...historyPagination.value,
                 page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number
@@ -2852,7 +2891,7 @@ const fetchDetails = async (silent = false) => {
             store.fetchQuoteLineDetails(props.line.compareQuoteNo,
                 props.line.itemNo)
         quoteLineDetails.value = Array.isArray(data) ? data : [data]
-        
+
         // Show Suppliers table immediately
         if (!silent) isLoadingDetails.value = false
 
@@ -2861,10 +2900,10 @@ const fetchDetails = async (silent = false) => {
             selectedDetail.value = firstDetail
             selectedHistoryItem.value = firstDetail
             historyKpis.value.stock = firstDetail.inventoryWithoutImport || 0
-            
+
             // 2. Load Equivalence
             await fetchEquivalenceItems(firstDetail)
-            
+
             // 3. Load Kit
             await fetchKitItems(firstDetail.no)
 
@@ -2894,12 +2933,12 @@ const fetchDetails = async (silent = false) => {
                 // Fetch all purchase prices for comparison for ALL unique items
                 purchasePricesByItem.value = new Map()
                 const uniqueItems = [...new Set(quoteLineDetails.value.map(d => d.no))].filter(Boolean)
-                
+
                 const pricePromises = uniqueItems.map(async (itemNo) => {
                     try {
                         const prices = await store.fetchPurchasePrices(itemNo)
                         purchasePricesByItem.value.set(itemNo, prices || [])
-                        
+
                         // Keep backward compatibility for single item view if needed
                         if (itemNo === (firstDetail.no || props.line.itemNo)) {
                             allPurchasePrices.value = prices || []
@@ -2952,7 +2991,7 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
                 ...item,
                 quantityToOrder: 1
             }))
-            
+
             if (page === 0) {
                 equivalenceItems.value = newItems
             } else {
@@ -2973,7 +3012,7 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
                 ...item,
                 quantityToOrder: 1
             }))
-            
+
             if (page === 0) {
                 equivalenceItems.value = newItems
             } else {
@@ -3136,7 +3175,7 @@ const textRight = {
 
 const focusNextField = (currentField, detailId) => {
     let nextFieldId = ''
-    
+
     if (currentField === 'askingPrice') {
         nextFieldId = `askingQty-${detailId}`
     } else if (currentField === 'askingQty') {
@@ -3150,9 +3189,9 @@ const focusNextField = (currentField, detailId) => {
         if (element) {
             element.focus()
             if (currentField !== 'quantity') { // Don't select text for button
-                 if (element instanceof HTMLInputElement) {
+                if (element instanceof HTMLInputElement) {
                     element.select()
-                 }
+                }
             }
         }
     }
@@ -4215,7 +4254,8 @@ const focusNextField = (currentField, detailId) => {
     height: 40px;
     overflow: hidden;
     background-color: #fff7ed;
-    flex-shrink: 0; /* Prevent shrinking */
+    flex-shrink: 0;
+    /* Prevent shrinking */
 }
 
 .stats-column {
@@ -4251,7 +4291,8 @@ const focusNextField = (currentField, detailId) => {
 .history-container .table-wrapper {
     max-height: none !important;
     flex: 1;
-    height: 0; /* Force flex child to respect container height */
+    height: 0;
+    /* Force flex child to respect container height */
     overflow-y: auto;
 }
 
@@ -4277,7 +4318,8 @@ const focusNextField = (currentField, detailId) => {
 
 .dialog-stats-bar {
     margin-bottom: 5px;
-    flex-shrink: 0; /* Prevent shrinking */
+    flex-shrink: 0;
+    /* Prevent shrinking */
 }
 
 .dialog-history-container {
@@ -5737,5 +5779,4 @@ body .custom-toast .p-toast-detail {
     background: #f8fafc;
     border-top: 1px solid #e2e8f0;
 }
-
 </style>

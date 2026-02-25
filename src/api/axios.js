@@ -33,7 +33,7 @@ apiClient.interceptors.response.use(
                 originalRequest._retry = true
 
                 try {
-                    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/refresh-token?refreshToken=${refreshToken}`)
+                    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh-token?refreshToken=${refreshToken}`)
                     const { accessToken, refreshToken: newRefreshToken } = response.data
 
                     localStorage.setItem('accessToken', accessToken)

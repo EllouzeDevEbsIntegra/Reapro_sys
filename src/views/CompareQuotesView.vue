@@ -32,6 +32,32 @@
 
                         <div class="spacer"></div>
 
+                        <!-- Lignes Pagination Controls -->
+                        <div class="flex items-center gap-2 mr-4">
+                            <Button icon="pi pi-angle-double-left" text rounded size="small"
+                                :disabled="compareStore.currentLinesPage === 0"
+                                @click="loadQuoteLines(0, compareStore.linesPageSize)" />
+                            <Button icon="pi pi-angle-left" text rounded size="small"
+                                :disabled="compareStore.currentLinesPage === 0"
+                                @click="loadQuoteLines(compareStore.currentLinesPage - 1, compareStore.linesPageSize)" />
+
+                            <div class="flex items-center gap-1 mx-1">
+                                <InputText v-model="manualPage" class="w-12 text-center p-1 text-sm page-input"
+                                    @keydown.enter="handlePageInput" @blur="handlePageInput" />
+                            </div>
+
+                            <Button icon="pi pi-angle-right" text rounded size="small"
+                                :disabled="compareStore.currentLinesPage >= totalLinesPages - 1"
+                                @click="loadQuoteLines(compareStore.currentLinesPage + 1, compareStore.linesPageSize)" />
+                            <Button icon="pi pi-angle-double-right" text rounded size="small"
+                                :disabled="compareStore.currentLinesPage >= totalLinesPages - 1"
+                                @click="loadQuoteLines(totalLinesPages - 1, compareStore.linesPageSize)" />
+
+                            <Select :modelValue="compareStore.linesPageSize" :options="[10, 20, 50, 100]"
+                                class="rows-dropdown-sm w-[70px]"
+                                @update:modelValue="(val) => loadQuoteLines(0, val)" />
+                        </div>
+
                         <div class="flex items-center gap-4 flex-shrink-0" style="min-width: max-content;">
                             <span class="text-sm font-medium text-slate-700 inline-block text-left"
                                 style="white-space: nowrap; width: 5rem;">
@@ -181,10 +207,17 @@ const linesSearchQuery = ref('')
 const linesTreatedFilter = ref(null)  // null = all, false = only non-treated
 const selectedQuote = ref(null)
 const selectedLine = ref(null)
+const manualPage = ref(1)
 
 const totalPages = computed(() => {
     const total = compareStore.totalElements || 0
     const size = compareStore.pageSize || 10
+    return Math.max(1, Math.ceil(total / size))
+})
+
+const totalLinesPages = computed(() => {
+    const total = compareStore.totalLinesElements || 0
+    const size = compareStore.linesPageSize || 20
     return Math.max(1, Math.ceil(total / size))
 })
 
@@ -200,8 +233,57 @@ const handleSearch = () => {
 }
 
 const handleLinesSearch = () => {
-    // The search is handled by passing the prop to CompareQuoteLines
+    loadQuoteLines(0, compareStore.linesPageSize)
 }
+
+const handlePageInput = () => {
+    let page = parseInt(manualPage.value)
+    if (isNaN(page) || page < 1) {
+        page = 1
+    } else if (page > totalLinesPages.value) {
+        page = totalLinesPages.value
+    }
+
+    manualPage.value = page
+    if (page - 1 !== compareStore.currentLinesPage) {
+        loadQuoteLines(page - 1, compareStore.linesPageSize)
+    }
+}
+
+const loadQuoteLines = (page = 0, size = 20) => {
+    if (!selectedQuote.value) return
+
+    const apiFilters = {
+        page,
+        size,
+        search: linesSearchQuery.value
+    }
+
+    if (linesTreatedFilter.value === false) {
+        apiFilters.treated = false
+    }
+
+    compareStore.fetchCompareQuoteLines(selectedQuote.value.no, apiFilters)
+}
+
+// Watchers for lines filter/search
+watch([linesSearchQuery, linesTreatedFilter], () => {
+    loadQuoteLines(0, compareStore.linesPageSize)
+})
+
+watch(() => compareStore.currentLinesPage, (newPage) => {
+    manualPage.value = newPage + 1
+})
+
+// Watch selectedQuote to load its lines
+watch(selectedQuote, (newQuote) => {
+    if (newQuote) {
+        // Reset to page 0 when changing quote
+        loadQuoteLines(0, compareStore.linesPageSize)
+    } else {
+        compareStore.selectedQuoteLines = []
+    }
+}, { immediate: true })
 
 const onRowSelect = (event) => {
     selectedQuote.value = event.data
@@ -275,6 +357,11 @@ const handlePrevLine = async () => {
                 size: currentPageSize,
                 search: linesSearchQuery.value
             }
+
+            if (linesTreatedFilter.value === false) {
+                apiFilters.treated = false
+            }
+
             await compareStore.fetchCompareQuoteLines(selectedQuote.value.no, apiFilters)
 
             // After loading, select the last line of the newly loaded page
@@ -325,6 +412,11 @@ const handleNextLine = async () => {
                 size: currentPageSize,
                 search: linesSearchQuery.value
             }
+
+            if (linesTreatedFilter.value === false) {
+                apiFilters.treated = false
+            }
+
             await compareStore.fetchCompareQuoteLines(selectedQuote.value.no, apiFilters)
 
             // After loading, select the first line of the newly loaded page

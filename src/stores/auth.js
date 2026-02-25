@@ -8,7 +8,8 @@ export const useAuthStore = defineStore('auth', {
         refreshToken: localStorage.getItem('refreshToken') || null,
         companies: [],
         isLoading: false,
-        error: null
+        error: null,
+        version: null
     }),
 
     getters: {
@@ -148,6 +149,18 @@ export const useAuthStore = defineStore('auth', {
                 return response.data
             } catch (error) {
                 throw error
+            }
+        },
+
+        async fetchVersion() {
+            try {
+                const response = await apiClient.get('/api/version')
+                console.log('API Version Response:', response.data)
+                this.version = response.data
+                return this.version
+            } catch (error) {
+                console.error('Failed to fetch version', error)
+                return null
             }
         }
     }

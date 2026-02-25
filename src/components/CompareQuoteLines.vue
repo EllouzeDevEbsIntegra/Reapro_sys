@@ -42,41 +42,15 @@
             </Column>
         </DataTable>
 
-        <!-- Custom Pagination Bar - CENTERED -->
-        <div class="custom-pagination-bar mt-auto justify-center gap-4">
-            <div class="flex items-center gap-1">
-                <Button icon="pi pi-angle-double-left" text rounded size="small" :disabled="filters.page === 0"
-                    @click="onPage({ page: 0, rows: pageSize })" />
-                <Button icon="pi pi-angle-left" text rounded size="small" :disabled="filters.page === 0"
-                    @click="onPage({ page: filters.page - 1, rows: pageSize })" />
 
-                <div class="flex items-center gap-1 mx-1">
-                    <Button :label="(filters.page + 1).toString()" size="small" class="page-num-btn active-page" />
-                </div>
-
-                <Button icon="pi pi-angle-right" text rounded size="small" :disabled="filters.page >= totalPages - 1"
-                    @click="onPage({ page: filters.page + 1, rows: pageSize })" />
-                <Button icon="pi pi-angle-double-right" text rounded size="small"
-                    :disabled="filters.page >= totalPages - 1"
-                    @click="onPage({ page: totalPages - 1, rows: pageSize })" />
-            </div>
-
-            <div class="flex items-center gap-2">
-                <Select v-model="pageSize" :options="[10, 20, 50, 100]" class="rows-dropdown-sm"
-                    @change="loadLines" />
-            </div>
-        </div>
     </div>
 
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
 import { useCompareQuoteStore } from '../stores/compareQuote'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import Button from 'primevue/button'
-import Select from 'primevue/select'
 import ProgressSpinner from 'primevue/progressspinner'
 
 const props = defineProps({
@@ -96,48 +70,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'line-selected'])
 const compareStore = useCompareQuoteStore()
-
-const filters = ref({
-    itemNo: '',
-    pageNumber: '',
-    page: 0,
-    treated: null  // null = all, false = only non-treated
-})
-
-const pageSize = ref(20)
-
-const totalPages = computed(() => {
-    const total = compareStore.totalLinesElements || 0
-    const size = pageSize.value || 10
-    return Math.max(1, Math.ceil(total / size))
-})
-
-const loadLines = () => {
-    const apiFilters = {
-        page: filters.value.page,
-        size: pageSize.value,
-        search: props.search
-    }
-
-    // Add treated filter if it's specifically set to false (non-treated only)
-    if (props.treatedFilter === false) {
-        apiFilters.treated = false
-    }
-
-    compareStore.fetchCompareQuoteLines(props.compareQuoteNo, apiFilters)
-}
-
-watch([() => props.compareQuoteNo, () => props.search, () => props.treatedFilter], ([newNo, newSearch]) => {
-    if (newNo) {
-        loadLines()
-    }
-}, { immediate: true })
-
-const onPage = (event) => {
-    filters.value.page = event.page
-    pageSize.value = event.rows
-    loadLines()
-}
 
 const onRowClick = (event) => {
     emit('line-selected', event.data)

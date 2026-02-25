@@ -17,7 +17,7 @@
                     </div>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
-                        }}</span>
+                            }}</span>
                     </div>
                 </div>
                 <div class="info-right">
@@ -61,7 +61,7 @@
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
                         <span class="stock-label-mini">Stock</span>
                         <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="stock-part purchase">
                         <span class="stock-label-mini">Dernier Achat</span>
@@ -426,7 +426,7 @@
                                     </td>
                                     <td>
                                         <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3)
-                                            }}</div>
+                                        }}</div>
                                         <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
                                         </div>
                                     </td>
@@ -1045,15 +1045,31 @@
                         <div class="info-sections-container">
                             <!-- OEM Numbers Section -->
                             <div class="info-section" v-if="selectedInfoItem?.oemNumbers?.length > 0">
-                                <div class="info-section-header">
-                                    <i class="pi pi-list"></i>
-                                    <span>Numéros OEM</span>
+                                <div class="info-section-header cursor-pointer"
+                                    @click="isOemSectionExpanded = !isOemSectionExpanded">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <i class="pi pi-list"></i>
+                                        <span>Numéros OEM</span>
+                                    </div>
+                                    <i class="pi"
+                                        :class="isOemSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
                                 </div>
-                                <div class="info-section-content">
-                                    <div class="oe-numbers-list">
-                                        <div v-for="(num, index) in selectedInfoItem?.oemNumbers" :key="index"
-                                            class="oe-number-item">
-                                            {{ num }}
+                                <div class="info-section-content" v-if="isOemSectionExpanded">
+                                    <div class="vehicles-list-container">
+                                        <div v-for="(group, index) in groupedOemNumbers" :key="index"
+                                            class="brand-group">
+                                            <div class="brand-toggle-row" @click="toggleOemBrand(group.brand)">
+                                                <i class="pi"
+                                                    :class="expandedOemBrands.has(group.brand) ? 'pi-minus' : 'pi-plus'"></i>
+                                                <span class="brand-name">{{ group.brand }}</span>
+                                            </div>
+                                            <div v-if="expandedOemBrands.has(group.brand)" class="oe-numbers-list"
+                                                style="padding: 10px 10px 10px 30px;">
+                                                <div v-for="(oem, oIndex) in group.numbers" :key="oIndex"
+                                                    class="oe-number-item">
+                                                    {{ oem.articleNumber }}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1061,11 +1077,16 @@
 
                             <!-- PDFs Section -->
                             <div class="info-section" v-if="selectedInfoItem?.pdfs?.length > 0">
-                                <div class="info-section-header">
-                                    <i class="pi pi-file-pdf"></i>
-                                    <span>Documents PDF</span>
+                                <div class="info-section-header cursor-pointer"
+                                    @click="isPdfSectionExpanded = !isPdfSectionExpanded">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <i class="pi pi-file-pdf"></i>
+                                        <span>Documents PDF</span>
+                                    </div>
+                                    <i class="pi"
+                                        :class="isPdfSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
                                 </div>
-                                <div class="info-section-content">
+                                <div class="info-section-content" v-if="isPdfSectionExpanded">
                                     <div class="pdfs-list">
                                         <a v-for="(pdf, index) in selectedInfoItem?.pdfs" :key="index" :href="pdf.url"
                                             target="_blank" rel="noopener noreferrer" class="pdf-item">
@@ -1081,11 +1102,16 @@
 
                             <!-- Vehicles Section -->
                             <div class="info-section" v-if="selectedInfoItem?.vehicles?.length > 0">
-                                <div class="info-section-header">
-                                    <i class="pi pi-car"></i>
-                                    <span>Véhicules concernés</span>
+                                <div class="info-section-header cursor-pointer"
+                                    @click="isVehiclesSectionExpanded = !isVehiclesSectionExpanded">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <i class="pi pi-car"></i>
+                                        <span>Véhicules concernés</span>
+                                    </div>
+                                    <i class="pi"
+                                        :class="isVehiclesSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
                                 </div>
-                                <div class="info-section-content">
+                                <div class="info-section-content" v-if="isVehiclesSectionExpanded">
                                     <div class="vehicles-list-container">
                                         <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
                                             <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
@@ -1138,7 +1164,7 @@
                                 selectedHistoryItem.structuredDescription ||
                                 selectedHistoryItem.description || 'Temoins de freins' }}
                             <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany
-                                }})</span>
+                            }})</span>
                         </div>
                         <div class="year-selector">
                             <button class="year-arrow" @click="changeDialogYear(-1)">
@@ -1394,7 +1420,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Master</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo
-                                        }}</div>
+                                    }}</div>
                                 </div>
                                 <div class="spec-row">
                                     <div class="spec-label">Description</div>
@@ -1451,7 +1477,7 @@
                                 <div class="spec-row">
                                     <div class="spec-label">Référence Fournisseur</div>
                                     <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber
-                                        }}</div>
+                                    }}</div>
                                 </div>
                                 <div class="spec-row" style="align-items: center;">
                                     <div class="spec-label">Référence BC <span style="color: red;">*</span></div>
@@ -1501,6 +1527,7 @@
                 </div>
             </div>
         </Popover>
+        <TheFooter />
     </div>
 </template>
 <script setup>
@@ -1514,6 +1541,7 @@ import { useToast } from 'primevue/usetoast'
 
 import { useCompareQuoteStore } from '../stores/compareQuote'
 import { useAuthStore } from '../stores/auth'
+import TheFooter from './TheFooter.vue'
 
 
 const props = defineProps({
@@ -1574,6 +1602,36 @@ const historyPagination = ref({
     size: 20,
     totalElements: 0,
     totalPages: 0
+})
+
+// OEM Grouping State
+const expandedOemBrands = ref(new Set())
+
+const toggleOemBrand = (brand) => {
+    if (expandedOemBrands.value.has(brand)) {
+        expandedOemBrands.value.delete(brand)
+    } else {
+        expandedOemBrands.value.add(brand)
+    }
+}
+
+const groupedOemNumbers = computed(() => {
+    if (!selectedInfoItem.value?.oemNumbers?.length) return []
+
+    const groups = {}
+    selectedInfoItem.value.oemNumbers.forEach(oem => {
+        const brand = oem.mfrName || 'Autre'
+        if (!groups[brand]) {
+            groups[brand] = []
+        }
+        groups[brand].push(oem)
+    })
+
+    // Sort brands alphabetically
+    return Object.keys(groups).sort().map(brand => ({
+        brand,
+        numbers: groups[brand]
+    }))
 })
 
 // Comment State
@@ -1970,6 +2028,11 @@ const currentImageIndex = ref(0)
 const isViewing360 = ref(false)
 const current360Frame = ref(0)
 const expandedBrands = ref(new Set())
+
+// Info Section Collapse State
+const isOemSectionExpanded = ref(true)
+const isPdfSectionExpanded = ref(true)
+const isVehiclesSectionExpanded = ref(true)
 
 // TecDoc Verification Computed Properties
 const masterItemNo = computed(() => {
@@ -2459,9 +2522,10 @@ const openInfoDialog = async (item) => {
             })) || []
 
             // Map OEM numbers
-            const oemNumbers = article.oemNumbers?.map(oem =>
-                `${oem.mfrName} ${oem.articleNumber}`
-            ) || []
+            const oemNumbers = article.oemNumbers?.map(oem => ({
+                mfrName: oem.mfrName,
+                articleNumber: oem.articleNumber
+            })) || []
 
             // Map PDFs
             const pdfs = article.pdfs || []
@@ -3087,6 +3151,8 @@ const fetchKitItems = async (itemNo, page = 0) => {
 
 // Watch for line changes to refetch data
 watch(() => props.line, async () => {
+    selectedHistoryItem.value = null
+    selectedYear.value = new Date().getFullYear()
     await fetchDetails()
     fetchVerificationStatus()
     activeRightPanel.value = 'history'
@@ -4711,6 +4777,29 @@ const focusNextField = (currentField, detailId) => {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    max-height: 350px;
+    overflow-y: auto;
+    padding-right: 5px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.specs-table::-webkit-scrollbar {
+    width: 6px;
+}
+
+.specs-table::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.specs-table::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.specs-table::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
 }
 
 .spec-row {

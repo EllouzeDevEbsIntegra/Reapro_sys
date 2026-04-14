@@ -1,4 +1,4 @@
-﻿<template>
+<template>
     <div class="line-detail-container">
         <!-- Section 1: Full-width Header -->
         <div class="top-header">
@@ -4059,6 +4059,7 @@ const focusNextField = (currentField, detailId) => {
     display: flex;
     flex-direction: column;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    flex-shrink: 0;
 }
 
 .table-header-row {

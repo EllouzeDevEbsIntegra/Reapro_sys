@@ -2949,6 +2949,10 @@ const fetchDetails = async (silent = false) => {
     if (!silent) {
         isLoadingDetails.value = true
         isLoadingSecondaryData.value = true
+        // Clear previous state before fetching to prevent mixing old data
+        quoteLineDetails.value = []
+        equivalenceItems.value = []
+        kitItems.value = []
     }
     try {
         const data = await

@@ -548,7 +548,7 @@
                                     class="cursor-pointer transition-colors hover:bg-blue-50"
                                     :class="{ 'bg-blue-100': isItemSelected(item) }">
                                     <td>
-                                        <div class="cell-reference">{{ item.no }}</div>
+                                        <div class="cell-reference">{{ item.vendorNo }}</div>
                                     </td>
                                     <td>
                                         <div class="cell-reference">{{ item.no }}</div>

@@ -2440,21 +2440,27 @@ const updateLine = async (detail, markAsTreated = false) => {
     }
 
     try {
-        await store.updateQuoteLine(detail.id, detail['@odata.etag'], payload, userCompanyId)
+        const response = await store.updateQuoteLine(detail.id, detail['@odata.etag'], payload, userCompanyId)
         if (markAsTreated) {
             detail.treated = true
         }
+        
+        // Merge the backend response (which includes the new ETag) directly into this row's object
+        // This avoids calling fetchDetails(true) which would overwrite ongoing edits in other rows!
+        if (response && response.data) {
+            Object.assign(detail, response.data)
+        }
+        
         toast.add({ severity: 'success', summary: 'Succès', detail: 'Ligne mise à jour', life: 2000 })
-        // Silent refresh to get new ETag without global loading
-        await fetchDetails(true)
     } catch (error) {
         console.error('Update line error:', error)
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour', life: 3000 })
-        detail.isUpdating = false // Reset loading state on error
         if (error.response && error.response.status === 412) {
             // ETag mismatch, refresh data
             await fetchDetails(true)
         }
+    } finally {
+        detail.isUpdating = false // Always reset loading state
     }
 }
 

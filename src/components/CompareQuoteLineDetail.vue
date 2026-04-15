@@ -293,9 +293,12 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="flex justify-center items-center h-full">
+                                        <div class="flex justify-center items-center gap-4 h-full">
                                             <i class="pi pi-info-circle info-icon cursor-pointer"
                                                 @click.stop="openInfoDialog(detail)"></i>
+                                            <i v-if="!detail.isVerifying" class="pi pi-check-circle cursor-pointer text-indigo-500 hover:text-indigo-700" style="font-size: 1.1rem;"
+                                                @click.stop="markAsToVerify(detail)" title="A vérifier"></i>
+                                            <i v-else class="pi pi-spin pi-spinner text-indigo-500" style="font-size: 1.1rem;"></i>
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
@@ -472,9 +475,12 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="flex justify-center items-center h-full">
+                                        <div class="flex justify-center items-center gap-4 h-full">
                                             <i class="pi pi-info-circle info-icon cursor-pointer"
                                                 @click.stop="openInfoDialog(item)"></i>
+                                            <i v-if="!item.isVerifying" class="pi pi-check-circle cursor-pointer text-indigo-500 hover:text-indigo-700" style="font-size: 1.1rem;"
+                                                @click.stop="markAsToVerify(item)" title="A vérifier"></i>
+                                            <i v-else class="pi pi-spin pi-spinner text-indigo-500" style="font-size: 1.1rem;"></i>
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
@@ -640,9 +646,12 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="flex justify-center items-center h-full">
+                                        <div class="flex justify-center items-center gap-4 h-full">
                                             <i class="pi pi-info-circle info-icon cursor-pointer"
                                                 @click.stop="openInfoDialog(item)"></i>
+                                            <i v-if="!item.isVerifying" class="pi pi-check-circle cursor-pointer text-indigo-500 hover:text-indigo-700" style="font-size: 1.1rem;"
+                                                @click.stop="markAsToVerify(item)" title="A vérifier"></i>
+                                            <i v-else class="pi pi-spin pi-spinner text-indigo-500" style="font-size: 1.1rem;"></i>
                                         </div>
                                     </td>
                                     <td v-if="!isSidebarExpanded">
@@ -942,8 +951,8 @@
                 <!-- Header -->
                 <div class="info-dialog-header">
                     <div class="header-title">
-                        Informations Article . {{ selectedInfoItem?.no }} . {{
-                            selectedInfoItem?.descriptionStructured
+                        Informations Article . {{ selectedInfoItem?.no || selectedInfoItem?.articleNumber }} . {{
+                            selectedInfoItem?.descriptionStructured || selectedInfoItem?.manufacturerName
                         }}
                     </div>
                     <div class="header-right">
@@ -1353,19 +1362,20 @@
                         <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 25%">Fabricant</th>
-                                    <th style="width: 20%">Référence</th>
+                                    <th style="width: 20%">Fabricant</th>
+                                    <th style="width: 15%">Référence</th>
                                     <th style="width: 15%">MASTER ERP</th>
                                     <th style="width: 15%">Statut</th>
-                                    <th style="width: 25%">Action</th>
+                                    <th style="width: 20%">Action</th>
+                                    <th style="width: 15%" class="text-center">Information Tecdoc</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-if="isLoadingVerification">
-                                    <td colspan="4" class="text-center p-4">Chargement...</td>
+                                    <td colspan="6" class="text-center p-4">Chargement...</td>
                                 </tr>
                                 <tr v-else-if="paginatedVerificationItems.length === 0">
-                                    <td colspan="4" class="text-center p-4">Aucun article trouvé</td>
+                                    <td colspan="6" class="text-center p-4">Aucun article trouvé</td>
                                 </tr>
                                 <tr v-else v-for="(item, index) in paginatedVerificationItems" :key="index">
                                     <td>{{ item.manufacturerName }}</td>
@@ -1387,6 +1397,9 @@
                                         <Button v-if="item.status === 'CREATED'" label="A Vérifier"
                                             icon="pi pi-check-circle" class="p-button-sm verify-btn ml-2"
                                             @click="markAsToVerify(item)" :loading="item.isVerifying" />
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="pi pi-info-circle info-icon cursor-pointer text-blue-500 hover:text-blue-700" style="font-size: 1.2rem;" @click="openInfoDialog(item)" title="Infos TecDoc"></i>
                                     </td>
                                 </tr>
                             </tbody>
@@ -1538,6 +1551,7 @@ import Popover from 'primevue/popover'
 import Select from 'primevue/select'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 
 import { useCompareQuoteStore } from '../stores/compareQuote'
 import { useAuthStore } from '../stores/auth'
@@ -1564,6 +1578,7 @@ const emit = defineEmits(['back', 'prev', 'next'])
 const store = useCompareQuoteStore()
 const authStore = useAuthStore()
 const toast = useToast()
+const confirm = useConfirm()
 const isSidebarExpanded = ref(false)
 const showHistoryDialog = ref(false)
 const selectedCompany = ref('')
@@ -2401,20 +2416,32 @@ const confirmCreateArticleMaster = async () => {
 }
 
 const markAsToVerify = async (item) => {
-    if (!item || !item.bcItemNo) return
+    const itemNo = item.bcItemNo || item.no
+    if (!itemNo) return
 
-    item.isVerifying = true
-    try {
-        await store.markAsToVerify(item.bcItemNo)
-        toast.add({ severity: 'success', summary: 'Succès', detail: 'Article marqué à vérifier', life: 2000 })
-        // Refresh verification status to update the list
-        await fetchVerificationStatus()
-    } catch (error) {
-        console.error('Failed to mark as to verify:', error)
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Echec de mettre l\'article à vérifier', life: 3000 })
-    } finally {
-        item.isVerifying = false
-    }
+    confirm.require({
+        message: `Voulez-vous vraiment marquer la référence ${itemNo} comme "À Vérifier" ?`,
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Oui',
+        rejectLabel: 'Non',
+        acceptClass: 'p-button-danger',
+        rejectClass: 'p-button-success',
+        accept: async () => {
+            item.isVerifying = true
+            try {
+                await store.markAsToVerify(itemNo)
+                toast.add({ severity: 'success', summary: 'Succès', detail: 'Article marqué à vérifier', life: 2000 })
+                // Refresh verification status to update the list
+                await fetchVerificationStatus()
+            } catch (error) {
+                console.error('Failed to mark as to verify:', error)
+                toast.add({ severity: 'error', summary: 'Erreur', detail: 'Echec de mettre l\'article à vérifier', life: 3000 })
+            } finally {
+                item.isVerifying = false
+            }
+        }
+    })
 }
 
 
@@ -2491,9 +2518,9 @@ const openInfoDialog = async (item) => {
 
     // Fetch TecDoc data
     try {
-        // Support both possible field name casings
-        const articleRef = item.VendorItemNo || item.vendorItemNo
-        const manufacturerId = item.ManufacturerTecdocId || item.manufacturerTecdocId
+        // Support both possible field name casings and Verification Table payload
+        const articleRef = item.VendorItemNo || item.vendorItemNo || item.articleNumber
+        const manufacturerId = item.ManufacturerTecdocId || item.manufacturerTecdocId || item.dataSupplierId || item.manufacturerId
 
         if (!articleRef || !manufacturerId) {
             console.error('Missing article reference or manufacturer ID')

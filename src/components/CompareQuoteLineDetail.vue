@@ -4096,6 +4096,9 @@ const focusNextField = (currentField, detailId) => {
     display: flex;
     flex-direction: column;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.left-column .table-container {
     flex-shrink: 0;
 }
 
@@ -4257,6 +4260,7 @@ const focusNextField = (currentField, detailId) => {
     background-color: #f8fafc;
     padding: 15px;
     border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
 }
 
 .header-actions {

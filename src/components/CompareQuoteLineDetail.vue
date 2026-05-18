@@ -42,8 +42,9 @@
 
             <!-- 7% -->
             <div class="header-middle">
-                <div class="count-badge">
-                    Count : {{ line.countItemManual || 0 }}
+                <div class="count-badge" :class="{ 'clickable': !isLoadingOemCount }" :style="!isLoadingOemCount ? 'cursor: pointer; transition: all 0.2s;' : ''" @click="openOemCountDialog" :title="isLoadingOemCount ? 'Calcul du count en cours...' : 'Voir les détails du count'">
+                    <span v-if="isLoadingOemCount" class="pi pi-spin pi-spinner" style="font-size: 1.1rem; margin-right: 6px;"></span>
+                    Count : {{ isLoadingOemCount ? '...' : (oemCount !== null ? oemCount : (line.countItemManual || 0)) }}
                 </div>
             </div>
 
@@ -167,7 +168,8 @@
                                                 <span>{{ detail.importInventory }}</span>
                                             </span>
                                             <span class="stock-tag tag-cmd"
-                                                :class="getQteCmdStyleClass(detail.qtyOnPurchOrder)">
+                                                :class="[getQteCmdStyleClass(detail.qtyOnPurchOrder), { 'cursor-pointer hover:opacity-80': detail.qtyOnPurchOrder > 0 }]"
+                                                @click="openPurchaseLinesDialog(detail.no, detail.qtyOnPurchOrder)">
                                                 <span>Cmd :</span>
                                                 <span>{{ detail.qtyOnPurchOrder }}</span>
                                             </span>
@@ -400,7 +402,8 @@
                                                 <span>{{ item.qtyImport }}</span>
                                             </span>
                                             <span class="stock-tag tag-cmd"
-                                                :class="getQteCmdStyleClass(item.qtyOnPurchOrder)">
+                                                :class="[getQteCmdStyleClass(item.qtyOnPurchOrder), { 'cursor-pointer hover:opacity-80': item.qtyOnPurchOrder > 0 }]"
+                                                @click="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder)">
                                                 <span>Cmd :</span>
                                                 <span>{{ item.qtyOnPurchOrder }}</span>
                                             </span>
@@ -571,7 +574,8 @@
                                                 <span>{{ item.qtyImport || 0 }}</span>
                                             </span>
                                             <span class="stock-tag tag-cmd"
-                                                :class="getQteCmdStyleClass(item.qtyOnPurchOrder || 0)">
+                                                :class="[getQteCmdStyleClass(item.qtyOnPurchOrder || 0), { 'cursor-pointer hover:opacity-80': (item.qtyOnPurchOrder || 0) > 0 }]"
+                                                @click="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder || 0)">
                                                 <span>Cmd :</span>
                                                 <span>{{ item.qtyOnPurchOrder || 0 }}</span>
                                             </span>
@@ -919,6 +923,25 @@
                                     </div>
                                 </template>
                             </DataTable>
+                        </div>
+                        <div class="table-footer" v-if="store.cartItems.length > 0">
+                            <div class="pagination-info">
+                                {{ store.cartPagination.page * store.cartPagination.size + 1 }}-{{
+                                    Math.min((store.cartPagination.page + 1) *
+                                        store.cartPagination.size, store.cartPagination.totalElements) }} sur {{
+                                    store.cartPagination.totalElements }}
+                            </div>
+                            <div class="pagination-controls">
+                                <button class="p-btn" :disabled="store.cartPagination.page === 0"
+                                    @click="applyFilters(store.cartPagination.page - 1)">
+                                    <i class="pi pi-angle-left"></i>
+                                </button>
+                                <span class="p-current">{{ store.cartPagination.page + 1 }}</span>
+                                <button class="p-btn" :disabled="store.cartPagination.page >= store.cartPagination.totalPages - 1"
+                                    @click="applyFilters(store.cartPagination.page + 1)">
+                                    <i class="pi pi-angle-right"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -1525,6 +1548,127 @@
                 </div>
             </div>
         </Dialog>
+        <!-- Purchase Lines Dialog -->
+        <Dialog v-model:visible="showPurchaseLinesDialog" modal :style="{ width: '65vw' }" class="history-dialog"
+            :showHeader="false" dismissableMask>
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Lignes de Commande Achat</button>
+                        <div class="item-title-inline" v-if="selectedPurchaseLineNo">
+                            Réf: {{ selectedPurchaseLineNo }}
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showPurchaseLinesDialog = false"
+                            class="close-dialog-btn" />
+                    </div>
+                </div>
+
+                <div class="table-container dialog-history-container" style="margin-top: 20px;">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th v-for="col in purchaseLinesColumns" :key="col.field"
+                                        :class="[{ 'text-right': col.isNumber, 'text-center': col.isDate }, 'cursor-pointer select-none hover:bg-slate-200']"
+                                        @click="onSortPurchaseLines(col.field)">
+                                        <div class="flex items-center gap-1" :class="{ 'justify-end': col.isNumber, 'justify-center': col.isDate }">
+                                            <span>{{ col.header }}</span>
+                                            <i v-if="purchaseLinesSort.field === col.field"
+                                                :class="purchaseLinesSort.direction === 'asc' ? 'pi pi-sort-amount-up-alt text-primary' : 'pi pi-sort-amount-down text-primary'"></i>
+                                            <i v-else class="pi pi-sort text-slate-400 opacity-50"></i>
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingPurchaseLines">
+                                    <td :colspan="purchaseLinesColumns.length" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="purchaseLines.length === 0">
+                                    <td :colspan="purchaseLinesColumns.length" class="text-center p-4">Aucune ligne de commande disponible</td>
+                                </tr>
+                                <tr v-else v-for="(line, index) in purchaseLines" :key="index">
+                                    <td v-for="col in purchaseLinesColumns" :key="col.field"
+                                        :class="{ 'font-bold': col.isBold, 'text-right': col.isNumber, 'text-center': col.isDate }"
+                                        :style="col.isBold ? 'font-weight: 700 !important;' : ''">
+                                        <template v-if="col.isDate">
+                                            {{ formatPurchaseLineDate(getPurchaseLineValue(line, col)) }}
+                                        </template>
+                                        <template v-else>
+                                            {{ getPurchaseLineValue(line, col) }}
+                                        </template>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer" v-if="purchaseLines.length > 0">
+                        <div class="pagination-info">
+                            {{ purchaseLinesPagination.page * purchaseLinesPagination.size + 1 }}-{{
+                                Math.min((purchaseLinesPagination.page + 1) *
+                                    purchaseLinesPagination.size, purchaseLinesPagination.totalElements) }} sur {{
+                                purchaseLinesPagination.totalElements }}
+                        </div>
+                        <div class="pagination-controls">
+                            <button class="p-btn" :disabled="purchaseLinesPagination.page === 0"
+                                @click="loadPurchaseLines(selectedPurchaseLineNo, purchaseLinesPagination.page - 1)">
+                                <i class="pi pi-angle-left"></i>
+                            </button>
+                            <span class="p-current">{{ purchaseLinesPagination.page + 1 }}</span>
+                            <button class="p-btn" :disabled="purchaseLinesPagination.page >= purchaseLinesPagination.totalPages - 1"
+                                @click="loadPurchaseLines(selectedPurchaseLineNo, purchaseLinesPagination.page + 1)">
+                                <i class="pi pi-angle-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- OEM Count Details Dialog -->
+        <Dialog v-model:visible="showOemCountDialog" modal :style="{ width: '45vw' }" class="history-dialog"
+            :showHeader="false" dismissableMask>
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Détails des équivalences OEM</button>
+                        <div class="item-title-inline" v-if="masterItemNo">
+                            Réf Master: {{ masterItemNo }}
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showOemCountDialog = false"
+                            class="close-dialog-btn" />
+                    </div>
+                </div>
+
+                <div class="table-container dialog-history-container" style="margin-top: 20px;">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-left" style="padding: 12px 16px;">Référence Équivalente</th>
+                                    <th class="text-right" style="width: 30%; padding: 12px 16px;">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="oemCountDetails.length === 0">
+                                    <td colspan="2" class="text-center p-4">Aucun détail disponible</td>
+                                </tr>
+                                <tr v-else v-for="(detailItem, index) in sortedOemCountDetails" :key="index" class="hover:bg-slate-50">
+                                    <td class="font-bold" style="font-weight: 700 !important; padding: 12px 16px;">{{ detailItem.reference }}</td>
+                                    <td class="text-right font-bold text-primary" style="font-weight: 700 !important; padding: 12px 16px;">{{ detailItem.count }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer" v-if="oemCountDetails.length > 0" style="padding: 12px 16px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 8px 8px;">
+                        <div class="pagination-info" style="width: 100%; text-align: right; font-weight: 700; font-size: 1.1rem; color: #1e293b;">
+                            Total : {{ oemCount !== null ? oemCount : 0 }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
         <!-- Comment Overlay -->
         <Popover ref="commentOverlay" class="comment-overlay" appendTo="body"
             :style="{ width: '25vw', minWidth: '25vw', maxWidth: '25vw', border: '1px solid #cbd5e1', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', background: 'white' }">
@@ -1842,12 +1986,50 @@ const intercompanyStocks = ref([])
 const isLoadingIntercompanyStock = ref(false)
 const isLoadingSecondaryData = ref(false)
 
+const oemCount = ref(null)
+const oemCountDetails = ref([])
+const isLoadingOemCount = ref(false)
+const showOemCountDialog = ref(false)
+
+const fetchOemCount = async () => {
+    if (!props.line?.itemNo) return
+
+    isLoadingOemCount.value = true
+    oemCount.value = null
+    oemCountDetails.value = []
+    try {
+        const response = await store.fetchOemEquivalenceCount(props.line.itemNo)
+        oemCount.value = response?.totalCount !== undefined ? response.totalCount : (response || 0)
+        oemCountDetails.value = response?.details || []
+    } catch (error) {
+        console.error('Failed to fetch OEM equivalence count:', error)
+        oemCount.value = props.line?.countItemManual || 0
+        oemCountDetails.value = []
+    } finally {
+        isLoadingOemCount.value = false
+    }
+}
+
+const openOemCountDialog = () => {
+    if (!isLoadingOemCount.value && oemCountDetails.value.length > 0) {
+        showOemCountDialog.value = true
+    } else if (!isLoadingOemCount.value && oemCountDetails.value.length === 0) {
+        toast.add({ severity: 'info', summary: 'Information', detail: 'Aucun détail de count disponible', life: 2000 })
+    }
+}
+
+const sortedOemCountDetails = computed(() => {
+    if (!oemCountDetails.value) return []
+    return [...oemCountDetails.value].sort((a, b) => (b.count || 0) - (a.count || 0))
+})
+
 const isLoadingMasterData = computed(() => {
     return isLoadingDetails.value ||
         isLoadingEquivalence.value ||
         isLoadingKit.value ||
         isLoadingIntercompanyStock.value ||
-        isLoadingSecondaryData.value
+        isLoadingSecondaryData.value ||
+        isLoadingOemCount.value
 })
 
 // Article Info Dialog State
@@ -1862,6 +2044,126 @@ const verificationPagination = ref({
     page: 0,
     size: 10
 })
+
+// Purchase Lines Dialog State
+const showPurchaseLinesDialog = ref(false)
+const purchaseLines = ref([])
+const isLoadingPurchaseLines = ref(false)
+const selectedPurchaseLineNo = ref(null)
+
+const purchaseLinesPagination = ref({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 1
+})
+
+const purchaseLinesSort = ref({
+    field: '',
+    direction: ''
+})
+
+const purchaseLinesColumns = [
+    { field: 'documentNo', altField: 'Document No', header: 'N° Commande' },
+    { field: 'buyFromVendorNo', altField: 'Buy From Vendor No', header: 'Fournisseur', isBold: true },
+    { field: 'no', altField: 'No', header: 'Référence' },
+    { field: 'locationCode', altField: 'Location Code', header: 'Magasin' },
+    { field: 'orderDate', altField: 'Order Date', header: 'Date Commande', isDate: true },
+    { field: 'description', altField: 'Description', header: 'Description' },
+    { field: 'quantity', altField: 'Quantity', header: 'Qté Commande', isNumber: true },
+    { field: 'outstandingQuantity', altField: 'Outstanding Quantity', header: 'Qté Cmd Restante', isBold: true, isNumber: true }
+]
+
+const getPurchaseLineValue = (line, col) => {
+    if (!line) return ''
+    if (line[col.field] !== undefined) return line[col.field]
+    if (line[col.altField] !== undefined) return line[col.altField]
+    
+    const normalizedField = col.field.toLowerCase().replace(/[^a-z0-9]/g, '')
+    for (const key of Object.keys(line)) {
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (normalizedKey === normalizedField || normalizedKey === normalizedField + '_') {
+            return line[key]
+        }
+    }
+    return ''
+}
+
+const formatPurchaseLineDate = (dateString) => {
+    if (!dateString || dateString === '0001-01-01' || dateString.startsWith('1753-01-01')) return '-'
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return dateString
+
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+
+    return `${day}/${month}/${year}`
+}
+
+const loadPurchaseLines = async (no, page = 0) => {
+    if (!no) return
+    selectedPurchaseLineNo.value = no
+    isLoadingPurchaseLines.value = true
+    
+    let sortParam = ''
+    if (purchaseLinesSort.value.field) {
+        sortParam = `${purchaseLinesSort.value.field},${purchaseLinesSort.value.direction}`
+    }
+
+    try {
+        const data = await store.fetchPurchaseLines(no, page, purchaseLinesPagination.value.size, sortParam)
+        if (data && data.content) {
+            purchaseLines.value = data.content
+            purchaseLinesPagination.value = {
+                ...purchaseLinesPagination.value,
+                page: data.page?.number ?? data.number ?? page,
+                size: data.page?.size ?? data.size ?? purchaseLinesPagination.value.size,
+                totalElements: data.page?.totalElements ?? data.totalElements ?? data.content.length,
+                totalPages: data.page?.totalPages ?? data.totalPages ?? 1
+            }
+        } else {
+            const items = Array.isArray(data) ? data : (data ? [data] : [])
+            purchaseLines.value = items
+            purchaseLinesPagination.value = {
+                ...purchaseLinesPagination.value,
+                page: 0,
+                totalElements: items.length,
+                totalPages: 1
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching purchase lines:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la récupération des lignes de commande', life: 3000 })
+        purchaseLines.value = []
+    } finally {
+        isLoadingPurchaseLines.value = false
+    }
+}
+
+const onSortPurchaseLines = (field) => {
+    if (purchaseLinesSort.value.field === field) {
+        if (purchaseLinesSort.value.direction === 'asc') {
+            purchaseLinesSort.value.direction = 'desc'
+        } else if (purchaseLinesSort.value.direction === 'desc') {
+            purchaseLinesSort.value.field = ''
+            purchaseLinesSort.value.direction = ''
+        }
+    } else {
+        purchaseLinesSort.value.field = field
+        purchaseLinesSort.value.direction = 'asc'
+    }
+    loadPurchaseLines(selectedPurchaseLineNo.value, 0)
+}
+
+const openPurchaseLinesDialog = async (no, qtyCmd) => {
+    if (!qtyCmd || qtyCmd <= 0) return
+    selectedPurchaseLineNo.value = no
+    showPurchaseLinesDialog.value = true
+    purchaseLinesSort.value = { field: '', direction: '' }
+    purchaseLinesPagination.value.page = 0
+    await loadPurchaseLines(no, 0)
+}
 
 // Purchase Price Dialog State
 const showPurchasePriceDialog = ref(false)
@@ -3069,8 +3371,8 @@ const fetchDetails = async (silent = false) => {
 const fetchEquivalenceItems = async (detail, page = 0) => {
     if (!detail || !props.line.itemNo || !detail.no) return
 
-    // Prevent duplicate calls if already loading
-    if (isLoadingEquivalence.value) return
+    // Prevent duplicate calls only for pagination (not for initial load)
+    if (page > 0 && isLoadingEquivalence.value) return
 
     // Reset scroll position if loading first page
     if (page === 0 && equivalenceTableWrapper.value) {
@@ -3086,6 +3388,11 @@ const fetchEquivalenceItems = async (detail, page = 0) => {
             equivalencePagination.value.size,
             props.line.compareQuoteNo
         )
+
+        // Prevent stale results from overwriting if we switched items
+        if (detail.no !== (selectedDetail.value ? selectedDetail.value.no : null)) {
+            return
+        }
 
         if (data && data.content) {
             const newItems = data.content.map(item => ({
@@ -3155,6 +3462,11 @@ const fetchKitItems = async (itemNo, page = 0) => {
             props.line.compareQuoteNo
         )
 
+        // Prevent stale results from overwriting if we switched items
+        if (itemNo !== (selectedDetail.value ? selectedDetail.value.no : null)) {
+            return
+        }
+
         if (data && data.content) {
             kitItems.value = data.content.map(item => ({
                 ...item,
@@ -3190,6 +3502,7 @@ const fetchKitItems = async (itemNo, page = 0) => {
 watch(() => props.line, async () => {
     selectedHistoryItem.value = null
     selectedYear.value = new Date().getFullYear()
+    fetchOemCount()
     await fetchDetails()
     fetchVerificationStatus()
     activeRightPanel.value = 'history'
@@ -3221,8 +3534,9 @@ const debouncedFilter = () => {
     }, 500);
 };
 
-const applyFilters = () => {
-    store.fetchCartItems(cartFilters.value);
+const applyFilters = (page = 0) => {
+    const pageNum = typeof page === 'number' ? page : 0;
+    store.fetchCartItems(cartFilters.value, pageNum);
 };
 
 const switchCartTab = (tab) => {
@@ -3256,6 +3570,7 @@ onMounted(async () => {
     if (props.line && props.line.compareQuoteNo) {
         store.fetchCartCount(props.line.compareQuoteNo)
     }
+    fetchOemCount()
     await fetchDetails()
     fetchVerificationStatus()
 })
@@ -3469,6 +3784,13 @@ const focusNextField = (currentField, detailId) => {
     width: 100%;
     border: 3px solid #3b82f6;
     margin: 10px;
+}
+
+.count-badge.clickable:hover {
+    background-color: #eff6ff;
+    border-color: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
 }
 
 .header-stocks {

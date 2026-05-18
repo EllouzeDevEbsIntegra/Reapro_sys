@@ -15,7 +15,13 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
         linesPageSize: 20,
         currentLineGlobalIndex: null,
         cartCount: 0,
-        cartItems: []
+        cartItems: [],
+        cartPagination: {
+            page: 0,
+            size: 20,
+            totalElements: 0,
+            totalPages: 0
+        }
     }),
 
     actions: {
@@ -368,33 +374,45 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        async fetchCartItems(filters = {}) {
+        async fetchCartItems(filters = {}, page = 0, size = 20) {
             this.isLoading = true;
             try {
-                const params = {};
+                const params = { page, size };
 
-                // Handle Status and other filters combined
-                let statusFilter = '';
+                // Handle Status filter (OData syntax)
                 if (filters.status && filters.status !== 'All') {
-                    statusFilter = `(status eq '${filters.status}')`;
+                    params.status = `(status eq '${filters.status}')`;
                 } else {
-                    statusFilter = "(status eq 'New' or status eq 'Verified')";
+                    params.status = "(status eq 'New' or status eq 'Verified')";
                 }
 
                 if (filters.itemNo) {
-                    statusFilter += ` and itemNo eq '${filters.itemNo}'`;
+                    params.itemNo = filters.itemNo;
                 }
                 if (filters.vendorNo) {
-                    statusFilter += ` and vendorNo eq '${filters.vendorNo}'`;
+                    params.vendorNo = filters.vendorNo;
+                }
+                if (filters.compareQuoteNo) {
+                    params.compareQuoteNo = filters.compareQuoteNo;
                 }
 
-                params.status = statusFilter;
-
-                // compareQuoteNo remains separate
-                if (filters.compareQuoteNo) params.compareQuoteNo = filters.compareQuoteNo;
-
                 const response = await axios.get('/api/bc/purchase-cart', { params });
-                this.cartItems = response.data.value || [];
+                
+                if (response.data && response.data.content !== undefined) {
+                    this.cartItems = response.data.content || [];
+                    const pageMeta = response.data.page || response.data;
+                    this.cartPagination = {
+                        page: pageMeta.number !== undefined ? pageMeta.number : page,
+                        size: pageMeta.size !== undefined ? pageMeta.size : size,
+                        totalElements: pageMeta.totalElements !== undefined ? pageMeta.totalElements : 0,
+                        totalPages: pageMeta.totalPages !== undefined ? pageMeta.totalPages : 1
+                    };
+                } else {
+                    this.cartItems = response.data?.value || response.data || [];
+                    this.cartPagination = {
+                        page: 0, size: size, totalElements: this.cartItems.length, totalPages: 1
+                    };
+                }
                 return this.cartItems;
             } catch (err) {
                 console.error('Fetch cart items error:', err);
@@ -434,6 +452,31 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 console.error('Update cart item comment error:', err);
                 throw err;
             }
+        },
+
+        async fetchPurchaseLines(no, page = 0, size = 10, sort = '') {
+            try {
+                const params = { page, size };
+                if (sort) {
+                    params.sort = sort;
+                }
+                const response = await axios.get(`/api/sqlserver/purchase-lines/${no}`, { params });
+                return response.data;
+            } catch (err) {
+                console.error('Fetch purchase lines error:', err);
+                throw err;
+            }
+        },
+
+        async fetchOemEquivalenceCount(masterItemNo) {
+            try {
+                const response = await axios.get(`/api/sqlserver/oem-equivalence-count/${masterItemNo}`);
+                return response.data;
+            } catch (err) {
+                console.error('Fetch OEM equivalence count error:', err);
+                throw err;
+            }
         }
     }
 })
+

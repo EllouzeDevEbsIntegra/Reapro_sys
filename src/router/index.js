@@ -31,8 +31,55 @@ const routes = [
     path: '/comparateur/:compareQuoteNo',
     name: 'comparateur-detail',
     component: () => import('../views/CompareQuoteDetailView.vue')
+  },
+  {
+    path: '/b2b',
+    name: 'b2b',
+    component: () => import('../views/B2BView.vue')
+  },
+  {
+    path: '/search-opportunities',
+    name: 'SearchOpportunities',
+    component: () => import('../views/SearchOpportunitiesView.vue'),
+    meta: {
+      title: 'Analyse Recherches B2B'
+    }
+  },
+  {
+    path: '/admin/search-exclusions',
+    name: 'SearchExclusions',
+    component: () => import('../views/SearchExclusionsView.vue'),
+    meta: {
+      title: 'Exclusions Recherches B2B'
+    }
+  },
+  {
+    path: '/admin/settings',
+    name: 'Settings',
+    component: () => import('../views/SettingsView.vue'),
+    meta: {
+      title: 'Paramètres'
+    }
+  },
+  {
+    path: '/sync-adaptable',
+    name: 'SyncAdaptable',
+    component: () => import('../views/SyncAdaptableView.vue'),
+    meta: {
+      title: 'Synchronisation Adaptable'
+    }
+  },
+  {
+    path: '/partslink',
+    name: 'partslink',
+    component: () => import('../views/PartslinkView.vue'),
+    meta: {
+      title: 'Catalogue Partslink'
+    }
   }
 ]
+
+
 
 const router = createRouter({
   history: createWebHistory(),

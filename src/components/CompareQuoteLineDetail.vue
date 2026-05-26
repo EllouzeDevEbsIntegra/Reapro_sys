@@ -9,7 +9,9 @@
             <div class="item-info">
                 <div class="info-left">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <h1 class="item-no">{{ line.itemNo }}</h1>
+                        <h1 class="item-no">
+                            {{ formatReference(line.itemNo) }}
+                        </h1>
                         <i v-if="isLoadingMasterData" class="pi pi-spin pi-spinner"
                             style="color: #3b82f6; font-size: 1.2rem;" title="Chargement en cours..."></i>
                         <i v-else class="pi pi-check-circle" style="color: #22c55e; font-size: 1.2rem;"
@@ -387,7 +389,9 @@
                                         <div class="cell-reference">{{ item.vendorNo }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ item.no }}</div>
+                                        <div class="cell-reference">
+                                            {{ formatReference(item.no) }}
+                                        </div>
                                         <div class="cell-description">{{ item.descriptionStructured }}</div>
                                     </td>
                                     <td>
@@ -560,7 +564,9 @@
                                         <div class="cell-reference">{{ item.vendorNo }}</div>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">{{ item.no }}</div>
+                                        <div class="cell-reference">
+                                            {{ formatReference(item.no) }}
+                                        </div>
                                         <div class="cell-description">{{ item.descriptionStructured }}</div>
                                     </td>
                                     <td>
@@ -714,13 +720,15 @@
                                 rounded @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
                             <button class="history-btn">Historique</button>
                             <div class="item-title-inline" v-if="selectedHistoryItem">
-                                {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
+                                {{ formatReference(selectedHistoryItem.no || selectedHistoryItem.itemNo) }}
+                                • {{
                                     selectedHistoryItem.descriptionStructured ||
                                     selectedHistoryItem.structuredDescription ||
                                     selectedHistoryItem.description || 'Temoins de freins' }}
                             </div>
                             <div class="item-title-inline" v-else>
-                                {{ line.itemNo }} • {{ line.structuredDescription || line.description ||
+                                {{ formatReference(line.itemNo) }}
+                                • {{ line.structuredDescription || line.description ||
                                     'Temoins de freins'
                                 }}
                             </div>
@@ -860,9 +868,9 @@
                     </div>
 
                     <div class="table-container history-container" style="margin-top: 0; flex-grow: 1;">
-                        <div class="table-wrapper">
+                        <div class="table-wrapper cart-table-wrapper">
                             <DataTable :value="store.cartItems" responsiveLayout="scroll" class="p-datatable-sm"
-                                :loading="store.isLoading" scrollable scrollHeight="flex">
+                                :loading="store.isLoading">
                                 <Column field="buyFromVendorNo" header="FRS" sortable
                                     :style="{ width: isSidebarExpanded ? '9%' : '15%' }">
                                     <template #body="slotProps">
@@ -973,12 +981,12 @@
             <div class="info-dialog-container">
                 <!-- Header -->
                 <div class="info-dialog-header">
-                    <div class="header-title">
+                    <div class="info-dialog-header-title">
                         Informations Article . {{ selectedInfoItem?.no || selectedInfoItem?.articleNumber }} . {{
                             selectedInfoItem?.descriptionStructured || selectedInfoItem?.manufacturerName
                         }}
                     </div>
-                    <div class="header-right">
+                    <div class="info-dialog-header-right">
                         <img src="/images/articles/tecalliance_partner.png" alt="TecAlliance" class="tecalliance-logo">
                         <button class="close-info-btn" @click="showInfoDialog = false">
                             <i class="pi pi-times"></i>
@@ -1132,6 +1140,43 @@
 
 
 
+                            <!-- Composants du Kit Section -->
+                            <div class="info-section" v-if="selectedInfoItem?.articleParts?.length > 0">
+                                <div class="info-section-header cursor-pointer"
+                                    @click="isKitPartsSectionExpanded = !isKitPartsSectionExpanded">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <i class="pi pi-briefcase"></i>
+                                        <span>Composants du Kit</span>
+                                    </div>
+                                    <i class="pi"
+                                        :class="isKitPartsSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                                </div>
+                                <div class="info-section-content" v-if="isKitPartsSectionExpanded">
+                                    <div class="table-responsive" style="overflow-x: auto; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                        <table class="w-full text-left border-collapse" style="font-size: 0.9rem; min-width: 500px;">
+                                            <thead>
+                                                <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
+                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Référence</th>
+                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Désignation</th>
+                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Fabricant</th>
+                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;" class="text-center">Quantité</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="(part, pIndex) in selectedInfoItem.articleParts" :key="pIndex"
+                                                    style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;"
+                                                    class="hover:bg-slate-50">
+                                                    <td style="padding: 12px 16px; font-weight: 600; color: #0f172a;">{{ part.articleNo || part.articleNumber || '—' }}</td>
+                                                    <td style="padding: 12px 16px; color: #334155;">{{ part.articleName || '—' }}</td>
+                                                    <td style="padding: 12px 16px; color: #475569;">{{ part.brandName || '—' }}</td>
+                                                    <td style="padding: 12px 16px; color: #0f172a; font-weight: 500;" class="text-center">{{ part.quantity || 1 }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Vehicles Section -->
                             <div class="info-section" v-if="selectedInfoItem?.vehicles?.length > 0">
                                 <div class="info-section-header cursor-pointer"
@@ -1191,7 +1236,8 @@
                     <div class="header-actions">
                         <button class="history-btn">Historique</button>
                         <div class="item-title-inline" v-if="selectedHistoryItem">
-                            {{ selectedHistoryItem.no || selectedHistoryItem.itemNo }} • {{
+                            {{ formatReference(selectedHistoryItem.no || selectedHistoryItem.itemNo) }}
+                            • {{
                                 selectedHistoryItem.descriptionStructured ||
                                 selectedHistoryItem.structuredDescription ||
                                 selectedHistoryItem.description || 'Temoins de freins' }}
@@ -1433,121 +1479,11 @@
         </Dialog>
 
         <!-- Create Article Master Dialog -->
-        <Dialog v-model:visible="showCreateArticleMasterDialog" modal :style="{ width: '50vw' }" class="history-dialog"
-            :showHeader="false" dismissableMask>
-            <div class="dialog-content-wrapper">
-                <div class="sidebar-header dialog-header">
-                    <div class="header-actions">
-                        <button class="history-btn">Créer Article Adaptable</button>
-                        <Button icon="pi pi-times" text rounded @click="showCreateArticleMasterDialog = false"
-                            class="close-dialog-btn" />
-                    </div>
-                </div>
-
-                <div class="info-dialog-body" v-if="selectedArticleMasterCandidate">
-                    <!-- Master Info Section -->
-                    <div class="info-section">
-                        <div class="info-section-header">
-                            <i class="pi pi-box"></i>
-                            <span>Informations Master</span>
-                        </div>
-                        <div class="info-section-content">
-                            <div class="specs-table">
-                                <div class="spec-row">
-                                    <div class="spec-label">Référence Master</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.masterItemNo
-                                    }}</div>
-                                </div>
-                                <div class="spec-row">
-                                    <div class="spec-label">Description</div>
-                                    <div class="spec-value">{{
-                                        selectedArticleMasterCandidate.masterDescription }}</div>
-                                </div>
-                                <div class="spec-row">
-                                    <div class="spec-label">Groupe</div>
-                                    <div class="spec-value">
-                                        <Select v-model="selectedArticleMasterCandidate.groupCode" :options="groups"
-                                            optionLabel="displayName" optionValue="code" filter
-                                            placeholder="Sélectionner un groupe" class="w-full vendor-dropdown-custom"
-                                            @change="onGroupChange" />
-                                    </div>
-                                </div>
-                                <div class="spec-row">
-                                    <div class="spec-label">Sous-Groupe</div>
-                                    <div class="spec-value">
-                                        <Select v-model="selectedArticleMasterCandidate.subGroupCode"
-                                            :options="subGroups" optionLabel="displayName" optionValue="code" filter
-                                            placeholder="Sélectionner un sous-groupe"
-                                            class="w-full vendor-dropdown-custom" />
-                                    </div>
-                                </div>
-                                <div class="spec-row">
-                                    <div class="spec-label">Marque (MakeCode)</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.makeCode }}
-                                    </div>
-                                </div>
-                                <div class="spec-row">
-                                    <div class="spec-label">Champ Libre</div>
-                                    <div class="spec-value">
-                                        <input type="text" v-model="selectedArticleMasterCandidate.champsLibre"
-                                            class="qty-input w-full" placeholder="Champ Libre" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Candidate Info Section -->
-                    <div class="info-section">
-                        <div class="info-section-header">
-                            <i class="pi pi-plus-circle"></i>
-                            <span>Nouvel Article (Candidat)</span>
-                        </div>
-                        <div class="info-section-content">
-                            <div class="specs-table">
-                                <div class="spec-row">
-                                    <div class="spec-label">Fabricant</div>
-                                    <div class="spec-value">{{
-                                        selectedArticleMasterCandidate.manufacturerName }}</div>
-                                </div>
-                                <div class="spec-row">
-                                    <div class="spec-label">Référence Fournisseur</div>
-                                    <div class="spec-value">{{ selectedArticleMasterCandidate.articleNumber
-                                    }}</div>
-                                </div>
-                                <div class="spec-row" style="align-items: center;">
-                                    <div class="spec-label">Référence BC <span style="color: red;">*</span></div>
-                                    <div class="spec-value">
-                                        <input type="text" v-model="selectedArticleMasterCandidate.bcReference"
-                                            class="qty-input w-full" placeholder="Référence BC" />
-                                    </div>
-                                </div>
-                                <div class="spec-row" style="align-items: center;">
-                                    <div class="spec-label">Code Fournisseur (VendorNo) <span
-                                            style="color: red;">*</span></div>
-                                    <div class="spec-value">
-                                        <Select v-model="selectedArticleMasterCandidate.vendorNo" :options="vendors"
-                                            optionLabel="fullLabel" optionValue="number" filter scrollHeight="400px"
-                                            placeholder="Sélectionner un fournisseur"
-                                            class="w-full vendor-dropdown-custom"
-                                            :class="{ 'p-invalid': !selectedArticleMasterCandidate.vendorNo }" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dialog-footer"
-                    style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                    <Button label="Annuler" icon="pi pi-times" class="p-button-text p-button-secondary dialog-btn"
-                        @click="showCreateArticleMasterDialog = false" />
-                    <Button label="Valider la création" icon="pi pi-check" class="p-button-primary dialog-btn"
-                        @click="confirmCreateArticleMaster"
-                        :disabled="!selectedArticleMasterCandidate?.vendorNo || !selectedArticleMasterCandidate?.bcReference" />
-                </div>
-            </div>
-        </Dialog>
+        <CreateArticleMasterDialog
+            v-model:visible="showCreateArticleMasterDialog"
+            :candidate="selectedArticleMasterCandidate"
+            @success="onArticleMasterCreated"
+        />
         <!-- Purchase Lines Dialog -->
         <Dialog v-model:visible="showPurchaseLinesDialog" modal :style="{ width: '65vw' }" class="history-dialog"
             :showHeader="false" dismissableMask>
@@ -1700,6 +1636,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useCompareQuoteStore } from '../stores/compareQuote'
 import { useAuthStore } from '../stores/auth'
 import TheFooter from './TheFooter.vue'
+import CreateArticleMasterDialog from '@/components/CreateArticleMasterDialog.vue'
 
 
 const props = defineProps({
@@ -1721,6 +1658,17 @@ const emit = defineEmits(['back', 'prev', 'next'])
 
 const store = useCompareQuoteStore()
 const authStore = useAuthStore()
+
+const formatReference = (refVal) => {
+    if (!refVal) return ''
+    return refVal.replace(/MASTER/gi, '').trim()
+}
+
+const isProductItem = (item) => {
+    if (!item) return false
+    const p = item.produit !== undefined ? item.produit : item.Produit
+    return p === true || p === 'true' || p === 1 || p === '1'
+}
 const toast = useToast()
 const confirm = useConfirm()
 const isSidebarExpanded = ref(false)
@@ -2350,6 +2298,7 @@ const expandedBrands = ref(new Set())
 const isOemSectionExpanded = ref(true)
 const isPdfSectionExpanded = ref(true)
 const isVehiclesSectionExpanded = ref(true)
+const isKitPartsSectionExpanded = ref(true)
 
 // TecDoc Verification Computed Properties
 const masterItemNo = computed(() => {
@@ -2591,38 +2540,13 @@ const changeVerificationPage = (newPage) => {
 }
 
 const showCreateArticleMasterDialog = ref(false)
+const hasCreatedArticleMaster = ref(false)
 const selectedArticleMasterCandidate = ref(null)
 const vendors = ref([])
-const groups = ref([])
-const subGroups = ref([])
 
-const fetchGroups = async () => {
-    try {
-        const fetchedGroups = await store.fetchCategories(1, 'PR')
-        groups.value = fetchedGroups
-    } catch (error) {
-        console.error('Error fetching groups:', error)
-    }
-}
-
-const fetchSubGroups = async (parentGroupCode) => {
-    if (!parentGroupCode) {
-        subGroups.value = []
-        return
-    }
-    try {
-        const fetchedSubGroups = await store.fetchCategories(2, parentGroupCode)
-        subGroups.value = fetchedSubGroups
-    } catch (error) {
-        console.error('Error fetching sub-groups:', error)
-    }
-}
-
-const onGroupChange = async () => {
-    if (selectedArticleMasterCandidate.value) {
-        selectedArticleMasterCandidate.value.subGroupCode = null
-        await fetchSubGroups(selectedArticleMasterCandidate.value.groupCode)
-    }
+const onArticleMasterCreated = () => {
+    hasCreatedArticleMaster.value = true
+    fetchVerificationStatus()
 }
 
 onMounted(async () => {
@@ -2632,7 +2556,6 @@ onMounted(async () => {
             ...v,
             fullLabel: `${v.number} - ${v.displayName}`
         }))
-        await fetchGroups()
     } catch (error) {
         console.error('Error fetching initial data:', error)
     }
@@ -2666,55 +2589,12 @@ const createArticleMaster = (item) => {
         // Candidate Info from item
         manufacturerName: item.bcManufacturerName || item.manufacturerName,
         manufacturerCode: item.bcManufacturerCode,
-        manufacturerCode: item.bcManufacturerCode,
         articleNumber: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : '',
         bcReference: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : '',
         vendorNo: initialVendor
     }
 
-    if (props.line.itemProductCode) {
-        fetchSubGroups(props.line.itemProductCode)
-    }
-
     showCreateArticleMasterDialog.value = true
-}
-
-const isCreatingArticleMaster = ref(false)
-const hasCreatedArticleMaster = ref(false)
-
-const confirmCreateArticleMaster = async () => {
-    if (!selectedArticleMasterCandidate.value) return
-
-    const candidate = selectedArticleMasterCandidate.value
-    const payload = {
-        ref: candidate.bcReference,
-        frs: candidate.vendorNo,
-        refTecdoc: candidate.articleNumber,
-        refMaster: candidate.masterItemNo,
-        group: candidate.groupCode,
-        subGroup: candidate.subGroupCode,
-        champsLibre: candidate.champsLibre,
-        manufacturer: candidate.manufacturerCode,
-        marque: candidate.makeCode
-    }
-
-    isCreatingArticleMaster.value = true
-    try {
-        await store.createArticleMaster(payload)
-        // Success handling
-        hasCreatedArticleMaster.value = true
-        showCreateArticleMasterDialog.value = false
-        // Refresh verification status to update the list
-        await fetchVerificationStatus()
-        // Optional: Show success toast/notification
-        toast.add({ severity: 'success', summary: 'Succès', detail: 'Article Master créé avec succès', life: 3000 })
-    } catch (error) {
-        console.error('Failed to create article master:', error)
-        // Optional: Show error toast/notification
-        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la création de l\'Article Master', life: 3000 })
-    } finally {
-        isCreatingArticleMaster.value = false
-    }
 }
 
 const markAsToVerify = async (item) => {
@@ -2727,8 +2607,8 @@ const markAsToVerify = async (item) => {
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Oui',
         rejectLabel: 'Non',
-        acceptClass: 'p-button-danger',
-        rejectClass: 'p-button-success',
+        acceptClass: 'p-button-success',
+        rejectClass: 'p-button-secondary',
         accept: async () => {
             item.isVerifying = true
             try {
@@ -2815,7 +2695,8 @@ const openInfoDialog = async (item) => {
         specs: [],
         oemNumbers: [],
         vehicles: [],
-        pdfs: []
+        pdfs: [],
+        articleParts: []
     }
 
     // Fetch TecDoc data
@@ -2888,7 +2769,8 @@ const openInfoDialog = async (item) => {
                     id: v.manuId,
                     models: []
                 })) || [],
-                gtins: article.gtins || []
+                gtins: article.gtins || [],
+                articleParts: article.articleParts || []
             }
         } else {
             // No data found
@@ -4726,6 +4608,14 @@ const focusNextField = (currentField, detailId) => {
     overflow-y: auto;
 }
 
+/* Panier d'achat : hauteur fixe pour garantir le scroll du DataTable PrimeVue */
+.cart-table-wrapper {
+    max-height: calc(100vh - 280px) !important;
+    overflow-y: auto;
+    overflow-x: auto;
+    flex: 1;
+}
+
 /* Dialog Specific Styles */
 .history-dialog :deep(.p-dialog-content) {
     padding: 20px !important;
@@ -4864,14 +4754,14 @@ const focusNextField = (currentField, detailId) => {
     align-items: center;
 }
 
-.header-title {
+.info-dialog-header-title {
     color: #1e293b;
     /* Noir / Slate 900 */
     font-size: 1.4rem;
     font-weight: 700;
 }
 
-.header-right {
+.info-dialog-header-right {
     display: flex;
     align-items: center;
     gap: 20px;
@@ -6053,20 +5943,7 @@ const focusNextField = (currentField, detailId) => {
     font-size: 1.1rem !important;
 }
 
-/* Custom Toast Styles */
-body .custom-toast {
-    width: 400px !important;
-}
 
-body .custom-toast .p-toast-message .p-toast-message-content {
-    padding: 10px !important;
-    gap: 5px !important;
-}
-
-body .custom-toast .p-toast-detail {
-    margin-top: 8px !important;
-    line-height: 1.5 !important;
-}
 
 .master-erp-match {
     color: #16a34a;
@@ -6231,5 +6108,12 @@ body .custom-toast .p-toast-detail {
     gap: 8px;
     background: #f8fafc;
     border-top: 1px solid #e2e8f0;
+}
+.product-flag {
+    color: #3b82f6; /* master reference blue */
+    margin-left: 6px;
+    font-size: 0.85rem;
+    vertical-align: middle;
+    display: inline-block;
 }
 </style>

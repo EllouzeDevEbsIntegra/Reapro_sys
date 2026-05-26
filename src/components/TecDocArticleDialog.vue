@@ -1,741 +1,4 @@
 <template>
-    <div class="page-layout">
-        <TheNavbar />
-
-        <main class="main-content">
-
-            <!-- ─── HEADER BAR ──────────────────────────────────────────────── -->
-            <div class="header-bar mb-5" :class="{ 'expanded': isAdvancedSearchExpanded }">
-                <div class="header-main-row">
-                    <div class="header-left">
-                        <h1>B2B</h1>
-
-                        <!-- Sélecteur Client -->
-                        <div class="client-select-wrapper">
-                            <i class="pi pi-users select-icon"></i>
-                            <Select
-                                v-model="selectedClient"
-                                :options="customers"
-                                :optionLabel="clientLabel"
-                                optionValue="extId"
-                                placeholder="Sélectionner un client..."
-                                :loading="isLoadingCustomers"
-                                filter
-                                autoFilterFocus
-                                filterPlaceholder="Rechercher par code ou nom..."
-                                class="client-select"
-                                showClear
-                                panelClass="b2b-client-panel"
-                            >
-                                <template #option="{ option }">
-                                    <div class="option-row">
-                                        <span class="option-code">{{ option.extId }}</span>
-                                        <span class="option-sep">—</span>
-                                        <span class="option-name">{{ option.companyName }}</span>
-                                    </div>
-                                </template>
-                                <template #value="{ value }">
-                                    <div v-if="value" class="selected-row">
-                                        <span class="option-code">{{ selectedCustomerObj?.extId }}</span>
-                                        <span class="option-sep">—</span>
-                                        <span class="selected-name">{{ selectedCustomerObj?.companyName }}</span>
-                                    </div>
-                                    <span v-else class="select-ph">Sélectionner un client...</span>
-                                </template>
-                            </Select>
-                        </div>
-
-                        <!-- Bouton info client -->
-                        <Transition name="fade-slide">
-                            <button
-                                v-if="selectedCustomerObj"
-                                class="info-btn"
-                                :class="{ 'is-contre': customerFinancials?.contreRemboursement }"
-                                @click="showClientDialog = true"
-                                title="Voir les détails du client"
-                            >
-                                <i class="pi pi-info-circle"></i>
-                            </button>
-                        </Transition>
-
-                        <!-- Barre de recherche -->
-                        <div class="search-wrapper" :class="{ 'disabled-wrapper': !selectedClient }">
-                            <i class="pi pi-search search-input-icon"></i>
-                            <input
-                                v-model="searchQuery"
-                                type="text"
-                                class="search-input"
-                                placeholder="Rechercher une référence, un article..."
-                                @keyup.enter="handleSearch"
-                                :disabled="!selectedClient"
-                            />
-                        </div>
-
-                        <!-- Icone Recherche Avancée -->
-                        <button
-                            class="adv-search-btn"
-                            :class="{ 'active': isAdvancedSearchExpanded }"
-                            @click="toggleAdvancedSearch"
-                            title="Recherche avancée"
-                            type="button"
-                            :disabled="!selectedClient"
-                        >
-                            <i class="pi pi-sliders-h"></i>
-                        </button>
-                    </div>
-
-                    <div class="header-right">
-                        <!-- KPI chips -->
-                        <div class="header-kpis" v-if="selectedClient">
-                            
-                            <!-- 1er KPI : Encours Commercial / Plafond -->
-                            <div class="kpi-card kpi-blue-theme" title="Encours Commercial / Plafond">
-                                <div v-if="isLoadingFinancials" class="kpi-loading-skeleton">
-                                    <div class="skeleton-line w-2/3 mb-2" style="width: 70%;"></div>
-                                    <div class="skeleton-line w-1/2" style="width: 50%;"></div>
-                                </div>
-                                <div v-else class="kpi-card-inner">
-                                    <!-- Left: Icon Badge -->
-                                    <div class="kpi-icon-container blue" title="Encours Commercial">
-                                        <i class="pi pi-credit-card"></i>
-                                    </div>
-                                    
-                                    <!-- Divider -->
-                                    <div class="kpi-divider blue"></div>
-                                    
-                                    <!-- Right: Main Content (2 lines) -->
-                                    <div class="kpi-main-content">
-                                        <!-- Line 1: Value & Percent Badge -->
-                                        <div class="kpi-val-row">
-                                            <span class="kpi-main-value blue">
-                                                {{ formatPrice(customerFinancials?.encoursCommercial) }} TND
-                                            </span>
-                                            <span class="kpi-mini-percent blue">{{ encoursCommercialPercent }}%</span>
-                                        </div>
-                                        
-                                        <!-- Line 2: Gauge -->
-                                        <div class="kpi-gauge-row">
-                                            <span class="kpi-gauge-min">0</span>
-                                            <div class="kpi-gauge-bar-bg">
-                                                <div class="kpi-gauge-bar-fill blue" :style="{ width: Math.min(100, encoursCommercialPercent) + '%' }"></div>
-                                            </div>
-                                            <span class="kpi-gauge-max">{{ formatPrice(customerFinancials?.plafondCommercial) }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 2eme KPI : Factures & Avoirs -->
-                            <div class="kpi-card kpi-amber-theme" title="Factures &amp; Avoirs non soldés">
-                                <div v-if="isLoadingFinancials" class="kpi-loading-skeleton">
-                                    <div class="skeleton-line w-2/3 mb-2" style="width: 70%;"></div>
-                                    <div class="skeleton-line w-1/2" style="width: 50%;"></div>
-                                </div>
-                                <div v-else class="kpi-card-inner">
-                                    <!-- Left: Icon Badge -->
-                                    <div class="kpi-icon-container amber" title="Factures &amp; Avoirs">
-                                        <i class="pi pi-receipt"></i>
-                                    </div>
-                                    
-                                    <!-- Divider -->
-                                    <div class="kpi-divider amber"></div>
-                                    
-                                    <!-- Right: Main Content -->
-                                    <div class="kpi-main-content">
-                                        <!-- Line 1: Value -->
-                                        <div class="kpi-val-row">
-                                            <span class="kpi-main-value amber">
-                                                {{ formatPrice(customerFinancials?.factureEtAvoirs) }} TND
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 3eme KPI : Encours Financier / Encaissement en coffre -->
-                            <div class="kpi-card kpi-emerald-theme" title="Encours Financier / En Coffre">
-                                <div v-if="isLoadingFinancials" class="kpi-loading-skeleton">
-                                    <div class="skeleton-line w-2/3 mb-2" style="width: 70%;"></div>
-                                    <div class="skeleton-line w-1/2" style="width: 50%;"></div>
-                                </div>
-                                <div v-else class="kpi-card-inner">
-                                    <!-- Left: Icon Badge -->
-                                    <div class="kpi-icon-container emerald" title="Encours Financier">
-                                        <i class="pi pi-wallet"></i>
-                                    </div>
-                                    
-                                    <!-- Divider -->
-                                    <div class="kpi-divider emerald"></div>
-                                    
-                                    <!-- Right: Main Content -->
-                                    <div class="kpi-main-content">
-                                        <!-- Line 1: Value & Percent Badge -->
-                                        <div class="kpi-val-row">
-                                            <span class="kpi-main-value emerald">
-                                                {{ formatPrice(customerFinancials?.encoursFinancier) }} TND
-                                            </span>
-                                            <span class="kpi-mini-percent emerald">{{ encoursFinancierPercent }}%</span>
-                                        </div>
-                                        
-                                        <!-- Line 2: Gauge -->
-                                        <div class="kpi-gauge-row">
-                                            <span class="kpi-gauge-min">0</span>
-                                            <div class="kpi-gauge-bar-bg">
-                                                <div class="kpi-gauge-bar-fill emerald" :style="{ width: Math.min(100, encoursFinancierPercent) + '%' }"></div>
-                                            </div>
-                                            <span class="kpi-gauge-max">{{ formatPrice(customerFinancials?.encoursEncaissementEnCoffre) }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section Filtres Avancés (Expand/Collapse) -->
-                <div class="advanced-filters-panel" :class="{ 'expanded': isAdvancedSearchExpanded }">
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label class="filter-label">Groupe</label>
-                            <Select
-                                v-model="selectedGroup"
-                                :options="groups"
-                                optionLabel="displayName"
-                                optionValue="code"
-                                placeholder="Tous les groupes"
-                                class="filter-select"
-                                showClear
-                                :loading="isLoadingGroups"
-                                @change="onGroupChange"
-                                filter
-                                autoFilterFocus
-                                filterPlaceholder="Rechercher un groupe..."
-                                panelClass="b2b-client-panel"
-                                :disabled="!selectedClient"
-                            >
-  <template #option="{ option }">
-    <div class="option-row">
-      <span class="option-code">{{ option.code }}</span>
-      <span class="option-sep">—</span>
-      <span class="option-name">{{ option.displayName }}</span>
-    </div>
-  </template>
-</Select>
-                        </div>
-
-                        <div class="filter-group">
-    <label class="filter-label">Sous-groupe</label>
-    <Select
-        v-model="selectedSubGroup"
-        :options="subGroups"
-        optionLabel="displayName"
-        optionValue="code"
-        placeholder="Tous les sous-groupes"
-        class="filter-select"
-        showClear
-        :loading="isLoadingSubGroups"
-        :disabled="!selectedClient || !selectedGroup"
-        @change="handleSearch"
-        filter
-        autoFilterFocus
-        filterPlaceholder="Rechercher un sous-groupe..."
-        panelClass="b2b-client-panel"
-    >
-      <template #option="{ option }">
-        <div class="option-row">
-          <span class="option-code">{{ option.code }}</span>
-          <span class="option-sep">—</span>
-          <span class="option-name">{{ option.displayName }}</span>
-        </div>
-      </template>
-    </Select>
-</div>
-
-                        <div class="filter-group">
-                            <label class="filter-label">Fabricant</label>
-                            <Select
-                                v-model="selectedManufacturer"
-                                :options="manufacturers"
-                                optionLabel="Name"
-                                optionValue="Code"
-                                placeholder="Tous les fabricants"
-                                class="filter-select"
-                                showClear
-                                @change="handleSearch"
-                                filter
-                                autoFilterFocus
-                                filterPlaceholder="Rechercher un fabricant..."
-                                :loading="isLoadingManufacturers"
-                                panelClass="b2b-client-panel"
-                                :disabled="!selectedClient"
-                            >
-                                <template #option="{ option }">
-                                    <div class="option-row">
-                                        <span class="option-code">{{ option.Code }}</span>
-                                        <span class="option-sep">—</span>
-                                        <span class="option-name">{{ option.Name }}</span>
-                                    </div>
-                                </template>
-                            </Select>
-                        </div>
-
-                        <div class="filter-actions">
-                            <button class="filter-btn-search" @click="handleSearch" title="Rechercher avec les filtres" :disabled="!selectedClient">
-                                <i class="pi pi-search"></i>
-                                <span>Rechercher</span>
-                            </button>
-                            <button class="filter-btn-reset" @click="resetFilters" title="Réinitialiser les filtres" :disabled="!selectedClient">
-                                <i class="pi pi-refresh"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ─── BODY ────────────────────────────────────────────────────── -->
-            <div class="body-layout">
-                <div class="left-panel" :class="{ 'left-panel--expanded': isRightExpanded }">
-                    <div class="table-container">
-                        <div class="table-header-row">
-                            <span class="table-title">Résultats de recherche</span>
-                        </div>
-                        <div class="table-wrapper" @scroll="handleScroll">
-                            <table class="modern-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 23%">Réf / Désig</th>
-                                        <th style="width: 18%">Fabricant</th>
-                                        <th style="width: 13%; text-align: right;">Prix</th>
-                                        <th style="width: 10%; text-align: right;">Stock</th>
-                                        <th style="width: 12%; text-align: right;">Rés. / Réc.</th>
-                                        <th style="width: 7%; text-align: center;">Info</th>
-                                        <th style="width: 17%; text-align: center;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-if="!selectedClient">
-                                        <td colspan="7" class="text-center p-4" style="color: #ea580c; font-weight: 500; background-color: #fff7ed; font-style: italic;">
-                                            <i class="pi pi-exclamation-triangle mr-2"></i> Veuillez sélectionner un client dans la liste déroulante en haut pour commencer la recherche.
-                                        </td>
-                                    </tr>
-                                    <tr v-else-if="isLoadingSearch">
-                                        <td colspan="7" class="text-center p-4" style="color: #64748b; font-style: italic;">
-                                            <i class="pi pi-spin pi-spinner mr-2"></i> Recherche en cours...
-                                        </td>
-                                    </tr>
-                                    <tr v-else-if="!isLoadingSearch && searchResults.length === 0">
-                                        <td colspan="7" class="text-center p-4" style="color: #64748b; font-style: italic;">
-                                            Saisissez une référence et appuyez sur Entrée pour rechercher.
-                                        </td>
-                                    </tr>
-                                    <tr 
-                                        v-for="item in searchResults" 
-                                        :key="item.no || item.id"
-                                        @click="selectItem(item)"
-                                        :class="{ 'selected-orange-row': selectedItemNo === item.no }"
-                                        style="cursor: pointer;"
-                                    >
-                                        <td>
-                                            <div class="cell-reference" :title="formatReference(item.no)">
-                                                {{ formatReference(item.no) }}
-                                                <i v-if="isProductItem(item)" class="pi pi-bookmark-fill product-flag" title="Référence Master"></i>
-                                            </div>
-                                            <div class="cell-description" :title="item.descriptionStructuree">{{ item.descriptionStructuree }}</div>
-                                        </td>
-                                        <!-- Colonne 2 : fabricant et makeCode -->
-                                        <td>
-                                            <div class="cell-reference" :title="item.fabricant">{{ item.fabricant }}</div>
-                                            <div class="cell-description" :title="item.makeCode">{{ item.makeCode }}</div>
-                                        </td>
-                                        <!-- Colonne 3 : unitPrice -->
-                                        <td class="text-right">
-                                            <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}</div>
-                                        </td>
-                                        <!-- Colonne 4 : quantite -->
-                                        <td class="text-right">
-                                            <div class="cell-reference" :class="{ 'positive-qty': (item.quantite || 0) > 0 }">{{ formatNumber(item.quantite !== null ? item.quantite : 0, 0) }}</div>
-                                        </td>
-                                        <!-- Colonne 5 : reservedQuantity et receptionQty -->
-                                        <td class="text-right">
-                                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                                <span class="stock-tag tag-cmd" v-if="parseFloat(item.reservedQuantity || 0) !== 0">
-                                                    <span>Rsv :</span><span>{{ formatNumber(item.reservedQuantity || 0, 0) }}</span>
-                                                </span>
-                                                <span class="stock-tag tag-import" v-if="parseFloat(item.receptionQty || 0) !== 0">
-                                                    <span>Rec :</span><span>{{ formatNumber(item.receptionQty || 0, 0) }}</span>
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <!-- Colonne 6 : bouton info pour ouvrir dialog tecdoc -->
-                                        <td class="text-center">
-                                            <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
-                                                <i v-if="item.isOem == '0' || item.isOem === 0" class="pi pi-info-circle info-icon" @click="openTecdocDialog(item)" title="Voir les détails TecDoc"></i>
-                                            </div>
-                                        </td>
-                                        <!-- Colonne 7 : champ de qté à saisir + panier -->
-                                        <td class="text-center">
-                                            <div class="qty-input-wrapper" style="justify-content: center;">
-                                                <button @click="item.orderQty = Math.max(1, (item.orderQty || 1) - 1)" class="qty-btn" type="button">-</button>
-                                                <input type="number" v-model.number="item.orderQty" class="qty-input" min="1" />
-                                                <button @click="item.orderQty = (item.orderQty || 1) + 1" class="qty-btn" type="button">+</button>
-                                                <button class="cart-btn-mini" :disabled="!selectedClient" @click="addToCart(item)" :title="!selectedClient ? 'Veuillez sélectionner un client' : 'Ajouter au panier'" type="button">
-                                                    <i class="pi pi-shopping-cart"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <!-- Row de chargement supplémentaire (Infinite Scroll) -->
-                                    <tr v-if="!isLoadingSearch && searchResults.length > 0 && isLoadingMore">
-                                        <td colspan="7" class="text-center p-3" style="color: #3b82f6; font-style: italic; font-weight: 500; background: #f8fafc;">
-                                            <i class="pi pi-spin pi-spinner mr-2"></i> Chargement des articles suivants...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="table-container">
-                        <div class="table-header-row">
-                            <span class="table-title">Équivalences</span>
-                        </div>
-                        <div class="table-wrapper">
-                            <table class="modern-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 23%">Réf / Désig</th>
-                                        <th style="width: 18%">Fabricant</th>
-                                        <th style="width: 13%; text-align: right;">Prix</th>
-                                        <th style="width: 10%; text-align: right;">Stock</th>
-                                        <th style="width: 12%; text-align: right;">Rés. / Réc.</th>
-                                        <th style="width: 7%; text-align: center;">Info</th>
-                                        <th style="width: 17%; text-align: center;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-if="isLoadingEquivalences">
-                                        <td colspan="7" class="text-center p-4" style="color: #64748b; font-style: italic;">
-                                            <i class="pi pi-spin pi-spinner mr-2"></i> Chargement des équivalences...
-                                        </td>
-                                    </tr>
-                                    <tr v-else-if="!selectedItemNo">
-                                        <td colspan="7" class="text-center p-4" style="color: #64748b; font-style: italic;">
-                                            Sélectionnez un article ci-dessus pour afficher ses équivalences.
-                                        </td>
-                                    </tr>
-                                    <tr v-else-if="equivalences.length === 0">
-                                        <td colspan="7" class="text-center p-4" style="color: #64748b; font-style: italic;">
-                                            Aucune équivalence trouvée pour cet article.
-                                        </td>
-                                    </tr>
-                                    <template v-else>
-                                        <tr v-for="eq in equivalences" :key="eq.id || eq.no" @click="selectEquivalence(eq)" :class="{ 'selected-row-highlight': selectedEquivalenceNo === eq.no }" style="cursor: pointer;">
-                                            <!-- Colonne 1 : no et descriptionStructuree -->
-                                            <td>
-                                                <div class="cell-reference" :title="formatReference(eq.no)">
-                                                    {{ formatReference(eq.no) }}
-                                                    <i v-if="isProductItem(eq)" class="pi pi-bookmark-fill product-flag" title="Référence Master"></i>
-                                                </div>
-                                                <div class="cell-description" :title="eq.descriptionStructuree">{{ eq.descriptionStructuree }}</div>
-                                            </td>
-                                            <!-- Colonne 2 : fabricant et makeCode -->
-                                            <td>
-                                                <div class="cell-reference" :title="eq.fabricant">{{ eq.fabricant }}</div>
-                                                <div class="cell-description" :title="eq.makeCode">{{ eq.makeCode }}</div>
-                                            </td>
-                                            <!-- Colonne 3 : unitPrice -->
-                                            <td class="text-right">
-                                                <div class="cell-reference">{{ formatNumber(eq.unitPrice, 3) }}</div>
-                                            </td>
-                                            <!-- Colonne 4 : quantite -->
-                                            <td class="text-right">
-                                                <div class="cell-reference" :class="{ 'positive-qty': (eq.quantite || 0) > 0 }">{{ formatNumber(eq.quantite !== null ? eq.quantite : 0, 0) }}</div>
-                                            </td>
-                                            <!-- Colonne 5 : reservedQuantity et receptionQty -->
-                                            <td class="text-right">
-                                                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                                    <span class="stock-tag tag-cmd" v-if="parseFloat(eq.reservedQuantity || 0) !== 0">
-                                                        <span>Rsv :</span><span>{{ formatNumber(eq.reservedQuantity || 0, 0) }}</span>
-                                                    </span>
-                                                    <span class="stock-tag tag-import" v-if="parseFloat(eq.receptionQty || 0) !== 0">
-                                                        <span>Rec :</span><span>{{ formatNumber(eq.receptionQty || 0, 0) }}</span>
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <!-- Colonne 6 : bouton info pour ouvrir dialog tecdoc -->
-                                            <td class="text-center">
-                                                <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
-                                                    <i v-if="eq.isOem == '0' || eq.isOem === 0" class="pi pi-info-circle info-icon" @click="openTecdocDialog(eq)" title="Voir les détails TecDoc"></i>
-                                                </div>
-                                            </td>
-                                            <!-- Colonne 7 : champ de qté à saisir + panier -->
-                                            <td class="text-center">
-                                                <div class="qty-input-wrapper" style="justify-content: center;">
-                                                    <button @click="eq.orderQty = Math.max(1, (eq.orderQty || 1) - 1)" class="qty-btn" type="button">-</button>
-                                                    <input type="number" v-model.number="eq.orderQty" class="qty-input" min="1" />
-                                                    <button @click="eq.orderQty = (eq.orderQty || 1) + 1" class="qty-btn" type="button">+</button>
-                                                    <button class="cart-btn-mini" :disabled="!selectedClient" @click="addToCart(eq)" :title="!selectedClient ? 'Veuillez sélectionner un client' : 'Ajouter au panier'" type="button">
-                                                        <i class="pi pi-shopping-cart"></i>
-                                                     </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="table-container">
-                        <div class="table-header-row">
-                            <span class="table-title">Kits</span>
-                        </div>
-                        <div class="table-wrapper">
-                            <table class="modern-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 23%">Réf / Désig</th>
-                                        <th style="width: 18%">Fabricant</th>
-                                        <th style="width: 13%; text-align: right;">Prix</th>
-                                        <th style="width: 10%; text-align: right;">Stock</th>
-                                        <th style="width: 12%; text-align: right;">Rés. / Réc.</th>
-                                        <th style="width: 7%; text-align: center;">Info</th>
-                                        <th style="width: 17%; text-align: center;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-if="isLoadingKits">
-                                        <td colspan="7" class="text-center p-4" style="color: #64748b; font-style: italic;">
-                                            <i class="pi pi-spin pi-spinner mr-2"></i> Chargement des kits...
-                                        </td>
-                                    </tr>
-                                    <tr v-else-if="!selectedItemNo">
-                                        <td colspan="7" class="text-center p-4" style="color: #64748b; font-style: italic;">
-                                            Sélectionnez un article ci-dessus pour afficher ses kits.
-                                        </td>
-                                    </tr>
-                                    <tr v-else-if="kits.length === 0">
-                                        <td colspan="7" class="text-center p-4" style="color: #64748b; font-style: italic;">
-                                            Aucun kit trouvé pour cet article.
-                                        </td>
-                                    </tr>
-                                    <template v-else>
-                                        <tr v-for="k in kits" :key="k.id || k.no" @click="selectKit(k)" :class="{ 'selected-row-highlight': selectedKitNo === k.no }" style="cursor: pointer;">
-                                            <!-- Colonne 1 : no et descriptionStructuree -->
-                                            <td>
-                                                <div class="cell-reference" :title="formatReference(k.no)">
-                                                    {{ formatReference(k.no) }}
-                                                    <i v-if="isProductItem(k)" class="pi pi-bookmark-fill product-flag" title="Référence Master"></i>
-                                                </div>
-                                                <div class="cell-description" :title="k.descriptionStructuree">{{ k.descriptionStructuree }}</div>
-                                            </td>
-                                            <!-- Colonne 2 : fabricant et makeCode -->
-                                            <td>
-                                                <div class="cell-reference" :title="k.fabricant">{{ k.fabricant }}</div>
-                                                <div class="cell-description" :title="k.makeCode">{{ k.makeCode }}</div>
-                                            </td>
-                                            <!-- Colonne 3 : unitPrice -->
-                                            <td class="text-right">
-                                                <div class="cell-reference">{{ formatNumber(k.unitPrice, 3) }}</div>
-                                            </td>
-                                            <!-- Colonne 4 : quantite -->
-                                            <td class="text-right">
-                                                <div class="cell-reference" :class="{ 'positive-qty': (k.quantite || 0) > 0 }">{{ formatNumber(k.quantite !== null ? k.quantite : 0, 0) }}</div>
-                                            </td>
-                                            <!-- Colonne 5 : reservedQuantity et receptionQty -->
-                                            <td class="text-right">
-                                                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                                                    <span class="stock-tag tag-cmd" v-if="parseFloat(k.reservedQuantity || 0) !== 0">
-                                                        <span>Rsv :</span><span>{{ formatNumber(k.reservedQuantity || 0, 0) }}</span>
-                                                    </span>
-                                                    <span class="stock-tag tag-import" v-if="parseFloat(k.receptionQty || 0) !== 0">
-                                                        <span>Rec :</span><span>{{ formatNumber(k.receptionQty || 0, 0) }}</span>
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <!-- Colonne 6 : bouton info pour ouvrir dialog tecdoc -->
-                                            <td class="text-center">
-                                                <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
-                                                    <i v-if="k.isOem == '0' || k.isOem === 0" class="pi pi-info-circle info-icon" @click="openTecdocDialog(k)" title="Voir les détails TecDoc"></i>
-                                                </div>
-                                            </td>
-                                            <!-- Colonne 7 : champ de qté à saisir + panier -->
-                                            <td class="text-center">
-                                                <div class="qty-input-wrapper" style="justify-content: center;">
-                                                    <button @click="k.orderQty = Math.max(1, (k.orderQty || 1) - 1)" class="qty-btn" type="button">-</button>
-                                                    <input type="number" v-model.number="k.orderQty" class="qty-input" min="1" />
-                                                    <button @click="k.orderQty = (k.orderQty || 1) + 1" class="qty-btn" type="button">+</button>
-                                                    <button class="cart-btn-mini" :disabled="!selectedClient" @click="addToCart(k)" :title="!selectedClient ? 'Veuillez sélectionner un client' : 'Ajouter au panier'" type="button">
-                                                        <i class="pi pi-shopping-cart"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                <div class="right-panel" :class="{ 'right-panel--expanded': isRightExpanded }">
-                    <template v-if="selectedClient">
-                        <SalesOrderSidebar />
-                    </template>
-                    <template v-else>
-                        <div class="empty-client-sidebar">
-                            <i class="pi pi-users placeholder-icon"></i>
-                            <span class="placeholder-text">Aucun client sélectionné</span>
-                            <span class="placeholder-desc">Veuillez choisir un client dans le sélecteur en haut pour gérer son panier et son historique.</span>
-                        </div>
-                    </template>
-                </div>
-            </div>
-        </main>
-
-        <!-- ═══════════════════════════════════════════════════════════════
-             DIALOG DÉTAILS CLIENT
-        ════════════════════════════════════════════════════════════════ -->
-        <Dialog
-            v-model:visible="showClientDialog"
-            modal
-            :showHeader="false"
-            :style="{ width: '850px', maxWidth: '95vw', padding: '0', borderRadius: '20px', overflow: 'hidden' }"
-            :contentStyle="{ padding: '0', borderRadius: '20px' }"
-            dismissableMask
-            class="client-detail-dialog"
-        >
-            <div class="dialog-inner" v-if="selectedCustomerObj">
-
-                <!-- En-tête gradient -->
-                <div class="dialog-hero">
-                    <button class="dialog-close" @click="showClientDialog = false">
-                        <i class="pi pi-times"></i>
-                    </button>
-
-                    <div v-if="customerFinancials?.contreRemboursement" class="contre-remboursement-flag" title="Client en Contre Remboursement">
-                        <i class="pi pi-wallet"></i>
-                        <span>Contre Remboursement</span>
-                    </div>
-
-                    <div class="hero-avatar">
-                        <span class="avatar-initials">
-                            {{ selectedCustomerObj.companyName?.charAt(0)?.toUpperCase() }}
-                        </span>
-                    </div>
-
-                    <div class="hero-info">
-                        <h2 class="hero-name">{{ selectedCustomerObj.companyName }}</h2>
-                        <div class="hero-badge">
-                            <i class="pi pi-tag"></i>
-                            {{ selectedCustomerObj.extId }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Infos détaillées -->
-                <div class="dialog-body">
-                    <div class="info-grid">
-
-                        <div class="info-card">
-                            <div class="info-icon-wrap blue">
-                                <i class="pi pi-id-card"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Code Client</span>
-                                <span class="info-value mono">{{ selectedCustomerObj.extId }}</span>
-                            </div>
-                        </div>
-
-                        <div class="info-card">
-                            <div class="info-icon-wrap green">
-                                <i class="pi pi-building"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Raison Sociale</span>
-                                <span class="info-value">{{ selectedCustomerObj.companyName }}</span>
-                            </div>
-                        </div>
-
-                        <div class="info-card">
-                            <div class="info-icon-wrap orange">
-                                <i class="pi pi-phone"></i>
-                            </div>
-                            <div class="info-content" style="flex: 1; min-width: 0;">
-                                <span class="info-label">Téléphone</span>
-                                <div class="phone-tags-list">
-                                    <template v-if="getPhoneNumbersList(selectedCustomerObj.phone).length > 0">
-                                        <span v-for="phone in getPhoneNumbersList(selectedCustomerObj.phone)" :key="phone" class="phone-tag">
-                                            {{ phone }}
-                                        </span>
-                                    </template>
-                                    <span v-else class="info-value">—</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="info-card">
-                            <div class="info-icon-wrap red">
-                                <i class="pi pi-envelope"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Email</span>
-                                <span class="info-value">
-                                    {{ selectedCustomerObj.email || '—' }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="info-card">
-                            <div class="info-icon-wrap cyan">
-                                <i class="pi pi-file-edit"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Matricule Fiscal</span>
-                                <span class="info-value">
-                                    {{ selectedCustomerObj.taxRegistrationNumber || '—' }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="info-card">
-                            <div class="info-icon-wrap teal">
-                                <i class="pi pi-map"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Ville</span>
-                                <span class="info-value">
-                                    {{ selectedCustomerObj.city || '—' }}
-                                </span>
-                            </div>
-                        </div>
-
-
-                        <div class="info-card full">
-                            <div class="info-icon-wrap purple">
-                                <i class="pi pi-map-marker"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Adresse</span>
-                                <span class="info-value">
-                                    {{ selectedCustomerObj.address || '—' }}
-                                </span>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- Pied de dialog -->
-                <div class="dialog-footer">
-                    <button class="close-dialog-btn" @click="showClientDialog = false">
-                        Fermer
-                    </button>
-                </div>
-            </div>
-        </Dialog>
-
-        <!-- Article Info Dialog -->
         <div v-if="showInfoDialog" class="info-dialog-overlay" @click.self="showInfoDialog = false">
             <div class="info-dialog-container">
                 <!-- Header -->
@@ -989,274 +252,38 @@
             </div>
         </div>
 
-    </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import TheNavbar from '../components/TheNavbar.vue'
-import Select from 'primevue/select'
-import Dialog from 'primevue/dialog'
-import apiClient from '../api/axios'
-import { useCompareQuoteStore } from '../stores/compareQuote'
-import { useAuthStore } from '../stores/auth'
-import { useSalesOrderStore } from '../stores/salesOrderStore'
-import SalesOrderSidebar from '../components/SalesOrderSidebar.vue'
+import { ref, watch, nextTick, computed, onMounted } from 'vue';
+import { useCompareQuoteStore } from '@/stores/compareQuote';
 
-const compareStore = useCompareQuoteStore()
-const authStore = useAuthStore()
-const salesOrderStore = useSalesOrderStore()
+const props = defineProps({
+  visible: Boolean,
+  articleRef: String,
+  manufacturerId: [String, Number],
+  descriptionStructured: String,
+  manufacturerName: String
+});
+const emit = defineEmits(['update:visible']);
+const compareStore = useCompareQuoteStore();
 
+// Helper functions
 const formatReference = (refVal) => {
     if (!refVal) return ''
     return refVal.replace(/MASTER/gi, '').trim()
 }
-
-const getPhoneNumbersList = (phoneStr) => {
-    if (!phoneStr) return []
-    
-    // Split by common delimiters like slash, comma, asterisk, pipe, semicolon, newline
-    const segments = phoneStr.split(/[\/\,\*\n\r\|;]/)
-    const formattedNumbers = []
-    
-    for (let segment of segments) {
-        segment = segment.trim()
-        if (!segment) continue
-        
-        // Extract digits and leading + only
-        const onlyDigits = segment.replace(/[^\d+]/g, '')
-        const cleanDigits = onlyDigits.replace(/\+/g, '')
-        
-        if (cleanDigits.length === 8) {
-            formattedNumbers.push(`${cleanDigits.slice(0, 2)} ${cleanDigits.slice(2, 5)} ${cleanDigits.slice(5)}`)
-        } else if (cleanDigits.length === 11 && (cleanDigits.startsWith('216') || cleanDigits.startsWith('002'))) {
-            const mainPart = cleanDigits.slice(-8)
-            formattedNumbers.push(`(+216) ${mainPart.slice(0, 2)} ${mainPart.slice(2, 5)} ${mainPart.slice(5)}`)
-        } else if (cleanDigits.length === 12 && cleanDigits.startsWith('00216')) {
-            const mainPart = cleanDigits.slice(-8)
-            formattedNumbers.push(`(+216) ${mainPart.slice(0, 2)} ${mainPart.slice(2, 5)} ${mainPart.slice(5)}`)
-        } else if (cleanDigits.length > 8 && cleanDigits.length % 8 === 0) {
-            for (let i = 0; i < cleanDigits.length; i += 8) {
-                const num = cleanDigits.slice(i, i + 8)
-                formattedNumbers.push(`${num.slice(0, 2)} ${num.slice(2, 5)} ${num.slice(5)}`)
-            }
-        } else {
-            // Keep cleaned fallback
-            const cleaned = segment.replace(/\s+/g, ' ')
-            if (cleaned.length > 0) {
-                formattedNumbers.push(cleaned)
-            }
-        }
-    }
-    
-    return formattedNumbers
-}
-
 const isProductItem = (item) => {
     if (!item) return false
     const p = item.produit !== undefined ? item.produit : item.Produit
     return p === true || p === 'true' || p === 1 || p === '1'
 }
 
-const isRightExpanded = computed({
-    get: () => salesOrderStore.isExpanded,
-    set: (val) => salesOrderStore.isExpanded = val
-})
-const customers          = ref([])
-const selectedClient     = ref(null)
-const isLoadingCustomers = ref(false)
-const showClientDialog   = ref(false)
-const searchQuery        = ref('')
+// Mock structures to prevent undefined errors in extracted B2B methods
+const customers = ref([]);
+const selectedClient = ref(null);
+const isLoadingCustomers = ref(false);
 
-// Informations financières du client
-const customerFinancials = ref(null)
-const isLoadingFinancials = ref(false)
-
-const formatPrice = (val) => {
-    if (val == null || isNaN(val)) return '0'
-    return Number(val).toLocaleString('fr-FR', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    })
-}
-
-const toSafeNumber = (value) => {
-    if (value === null || value === undefined || value === '') return 0
-    if (typeof value === 'number') return Number.isFinite(value) ? value : 0
-
-    const normalized = String(value).trim().replace(/\s+/g, '').replace(',', '.')
-    const parsed = Number(normalized)
-    return Number.isFinite(parsed) ? parsed : 0
-}
-
-const computeSafePercent = (numerator, denominator) => {
-    const val = toSafeNumber(numerator)
-    const max = toSafeNumber(denominator)
-    if (max <= 0) return 0
-
-    const percent = Math.round((val / max) * 100)
-    if (!Number.isFinite(percent)) return 0
-    return Math.max(0, percent)
-}
-
-const encoursCommercialPercent = computed(() => {
-    if (!customerFinancials.value) return 0
-    return computeSafePercent(
-        customerFinancials.value.encoursCommercial,
-        customerFinancials.value.plafondCommercial
-    )
-})
-
-const encoursFinancierPercent = computed(() => {
-    if (!customerFinancials.value) return 0
-    return computeSafePercent(
-        customerFinancials.value.encoursFinancier,
-        customerFinancials.value.encoursEncaissementEnCoffre
-    )
-})
-
-const fetchCustomerFinancials = async (clientId) => {
-    isLoadingFinancials.value = true
-    try {
-        const response = await apiClient.get(`/api/customer-financials/${clientId}`)
-        customerFinancials.value = response.data
-    } catch (error) {
-        console.error('Erreur lors du chargement des informations financières', error)
-        customerFinancials.value = null
-    } finally {
-        isLoadingFinancials.value = false
-    }
-}
-
-const searchResults      = ref([])
-const isLoadingSearch    = ref(false)
-const isLoadingMore      = ref(false)
-const currentPage        = ref(0)
-const hasMore            = ref(true)
-
-// Variables pour les équivalences
-const selectedItemNo = ref(null)
-const selectedEquivalenceNo = ref(null)
-const equivalences = ref([])
-const isLoadingEquivalences = ref(false)
-
-// Variables pour les kits
-const selectedKitNo = ref(null)
-const kits = ref([])
-const isLoadingKits = ref(false)
-
-// ─── Watch selectedClient → charger le panier actif et l'historique ───────────────
-watch(selectedClient, (newClientId) => {
-    // Réinitialiser les critères et résultats de recherche lors du changement de client
-    searchQuery.value = ''
-    searchResults.value = []
-    selectedGroup.value = null
-    selectedSubGroup.value = null
-    selectedManufacturer.value = null
-    subGroups.value = []
-    isAdvancedSearchExpanded.value = false
-    selectedItemNo.value = null
-    selectedEquivalenceNo.value = null
-    selectedKitNo.value = null
-    salesOrderStore.selectedTransactionItem = null
-    salesOrderStore.activeTab = 'order'
-    equivalences.value = []
-    kits.value = []
-    customerFinancials.value = null
-
-    if (newClientId) {
-        salesOrderStore.loadActiveOrder(newClientId)
-        salesOrderStore.loadHistory({ clientId: newClientId, page: 0, size: 20 })
-        fetchCustomerFinancials(newClientId)
-    } else {
-        // Reset le store quand on désélectionne le client
-        salesOrderStore.resetOrder()
-    }
-})
-
-// Advanced search filters
-const isAdvancedSearchExpanded = ref(false)
-const selectedGroup = ref(null)
-const selectedSubGroup = ref(null)
-const selectedManufacturer = ref(null)
-
-const groups = ref([])
-const subGroups = ref([])
-const manufacturers = ref([])
-
-const isLoadingGroups = ref(false)
-const isLoadingSubGroups = ref(false)
-const isLoadingManufacturers = ref(false)
-
-const toggleAdvancedSearch = async () => {
-    isAdvancedSearchExpanded.value = !isAdvancedSearchExpanded.value
-    if (isAdvancedSearchExpanded.value) {
-        if (groups.value.length === 0) {
-            await fetchGroups()
-        }
-        if (manufacturers.value.length === 0) {
-            await fetchManufacturers()
-        }
-    }
-}
-
-const fetchGroups = async () => {
-    isLoadingGroups.value = true
-    try {
-        const companyId = authStore.user?.bcCompanyId || '20C5337E-2E49-EC11-A103-00155DB6A301'
-        groups.value = await compareStore.fetchCategories(1, 'PR', companyId)
-    } catch (err) {
-        console.error('Error fetching groups:', err)
-    } finally {
-        isLoadingGroups.value = false
-    }
-}
-
-const fetchSubGroups = async (groupCode) => {
-    if (!groupCode) {
-        subGroups.value = []
-        return
-    }
-    isLoadingSubGroups.value = true
-    try {
-        const companyId = authStore.user?.bcCompanyId || '20C5337E-2E49-EC11-A103-00155DB6A301'
-        subGroups.value = await compareStore.fetchCategories(2, groupCode, companyId)
-    } catch (err) {
-        console.error('Error fetching sub-groups:', err)
-        subGroups.value = []
-    } finally {
-        isLoadingSubGroups.value = false
-    }
-}
-
-const onGroupChange = async () => {
-    selectedSubGroup.value = null
-    await fetchSubGroups(selectedGroup.value)
-    handleSearch()
-}
-
-const fetchManufacturers = async () => {
-    isLoadingManufacturers.value = true
-    try {
-        const companyId = authStore.user?.bcCompanyId || '20C5337E-2E49-EC11-A103-00155DB6A301'
-        const response = await apiClient.get(`/api/bc/manufacturers?companyId=${encodeURIComponent(companyId)}`)
-        manufacturers.value = response.data || []
-    } catch (err) {
-        console.error('Error fetching manufacturers:', err)
-        manufacturers.value = []
-    } finally {
-        isLoadingManufacturers.value = false
-    }
-}
-
-const resetFilters = () => {
-    selectedGroup.value = null
-    selectedSubGroup.value = null
-    selectedManufacturer.value = null
-    subGroups.value = []
-}
-
-// State variables for Article Info Dialog
 const showInfoDialog = ref(false)
 const selectedInfoItem = ref(null)
 const currentImageIndex = ref(0)
@@ -1787,12 +814,26 @@ const loadMore = async () => {
     }
 }
 
-onMounted(async () => {
-    await fetchCustomers()
-    if (selectedClient.value) {
-        fetchCustomerFinancials(selectedClient.value)
+// Sync local showInfoDialog ref with visible prop
+watch(() => props.visible, (newVal) => {
+    showInfoDialog.value = newVal;
+    if(newVal && props.articleRef && props.manufacturerId) {
+        openTecdocDialog({ 
+            vendorItemNo: props.articleRef, 
+            no: props.articleRef,
+            tecdocIdFabricant: props.manufacturerId,
+            manufacturerId: props.manufacturerId,
+            descriptionStructured: props.descriptionStructured,
+            manufacturerName: props.manufacturerName
+        });
     }
-})
+});
+
+watch(showInfoDialog, (newVal) => {
+    if (!newVal) {
+        emit('update:visible', false);
+    }
+});
 </script>
 
 <!-- ── SCOPED : trigger + layout ──────────────────────────────────── -->
@@ -3406,13 +2447,738 @@ onMounted(async () => {
 }
 </style>
 
+<style scoped>
+/* Article Info Dialog Styles */
+.info-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
 
+.info-dialog-container {
+    background: white;
+    width: 1200px;
+    max-width: 95vw;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e2e8f0;
+}
 
+.info-dialog-header {
+    padding: 15px 20px;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
+.info-dialog-header-title {
+    color: #1e293b;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
 
+.info-dialog-header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
 
+.tecalliance-logo {
+    height: 50px;
+}
 
+.close-info-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    transition: color 0.2s;
+}
 
+.close-info-btn:hover {
+    color: #ef4444;
+}
 
+.info-dialog-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
 
+.info-top-section {
+    display: flex;
+    gap: 20px;
+    height: 500px;
+}
 
+.info-gallery {
+    flex: 1;
+    display: flex;
+    gap: 15px;
+    border: 1px solid #f59e0b;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.thumbnail-list {
+    width: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.thumb-item {
+    width: 70px;
+    height: 70px;
+    border: 1px solid #e2e8f0;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.thumb-item.active {
+    border-color: #f59e0b;
+}
+
+.thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.thumb-nav-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px;
+}
+
+.thumbnail-scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 5px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+}
+
+.main-image-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    position: relative;
+    background: #f8fafc;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.main-article-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.viewer-360-toggle-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: white;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+
+.viewer-360-toggle-btn:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+    border-color: #94a3b8;
+}
+
+.viewer-360-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: ew-resize;
+}
+
+.image-360 {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.viewer-360-overlay {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.7);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.spin-icon {
+    animation: spin 4s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.info-specs-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    border: 1px solid #16a34a;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.brand-header {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #16a34a;
+}
+
+.brand-logo {
+    height: 40px;
+}
+
+.brand-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.brand-ref {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #1e293b;
+}
+
+.brand-desc {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.brand-name {
+    font-size: 0.85rem;
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.specs-table {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 350px;
+    overflow-y: auto;
+    padding-right: 5px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.specs-table::-webkit-scrollbar {
+    width: 6px;
+}
+
+.specs-table::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.specs-table::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+}
+
+.specs-table::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+}
+
+.spec-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    padding: 4px 0;
+}
+
+.spec-label {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.spec-value {
+    color: #1e293b;
+    font-weight: 700;
+    text-align: right;
+    max-width: 60%;
+}
+
+.info-sections-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.info-section {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.info-section-header {
+    background: #f8fafc;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.95rem;
+}
+
+.info-section-header i {
+    color: #16a34a;
+}
+
+.info-section-content {
+    padding: 15px;
+}
+
+.oe-numbers-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.oe-number-item {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #475569;
+    text-align: left;
+    padding: 2px 0;
+}
+
+.vehicles-list-container {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.brand-group {
+    margin-bottom: 10px;
+}
+
+.brand-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    border-radius: 4px;
+}
+
+.brand-toggle-row:hover {
+    background: #f8fafc;
+}
+
+.brand-toggle-row i {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.brand-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #334155;
+    text-transform: uppercase;
+}
+
+.models-list {
+    padding-left: 35px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 5px;
+}
+
+.model-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+}
+
+.model-plus-icon {
+    font-size: 0.8rem;
+    color: #16a34a;
+    font-weight: 900;
+}
+
+.model-text {
+    font-size: 0.95rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+.no-data-message {
+    color: #94a3b8;
+    font-style: italic;
+    font-size: 0.9rem;
+    padding: 10px;
+    text-align: center;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 15px;
+}
+
+.loading-state p {
+    color: #64748b;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.no-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 40px;
+    background: #f8fafc;
+    border-radius: 4px;
+}
+
+.no-image-placeholder p {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.pdfs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pdf-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #334155;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.pdf-item:hover {
+    background: #f8fafc;
+    border-color: #3b82f6;
+    transform: translateX(4px);
+}
+
+.pdf-item i.pi-file-pdf {
+    color: #dc2626;
+    font-size: 1.2rem;
+}
+
+.pdf-item i.pi-external-link {
+    color: #3b82f6;
+    font-size: 0.9rem;
+    margin-left: auto;
+}
+
+.pdf-item span {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Advanced Search Toggler */
+.adv-search-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    color: #64748b;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease-in-out;
+    font-size: 1rem;
+}
+.adv-search-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #1e293b;
+    transform: translateY(-1px);
+}
+.adv-search-btn.active {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.adv-search-btn:disabled {
+    background-color: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+/* Advanced Filters Panel */
+.advanced-filters-panel {
+    border-top: none;
+    background: #f8fafc;
+    padding: 0 1.5rem;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s ease-in-out,
+                padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.advanced-filters-panel.expanded {
+    border-top: 1px solid #f1f5f9;
+    padding: 1.25rem 1.5rem;
+    max-height: 250px;
+    opacity: 1;
+}
+
+.filter-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+}
+
+.filter-select {
+    width: 100% !important;
+}
+
+.filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.filter-btn-search {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 40px;
+    padding: 0 1.25rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-btn-search:hover:not(:disabled) {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.filter-btn-search:disabled {
+    background: #cbd5e1;
+    color: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.filter-btn-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    color: #64748b;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+}
+
+.filter-btn-reset:hover:not(:disabled) {
+    background: #f1f5f9;
+    color: #1e293b;
+    border-color: #cbd5e1;
+}
+
+.filter-btn-reset:disabled {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+/* Custom styles for Select components in filter panel */
+.advanced-filters-panel :deep(.p-select) {
+    height: 40px !important;
+    border-radius: 8px !important;
+    border: 1.5px solid #e2e8f0 !important;
+    background: white !important;
+}
+.advanced-filters-panel :deep(.p-select:hover) {
+    border-color: #cbd5e1 !important;
+}
+.advanced-filters-panel :deep(.p-select-focus) {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Styles for empty client placeholder in right sidebar */
+.empty-client-sidebar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 32px 24px;
+    text-align: center;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px dashed #cbd5e1;
+    margin: 12px;
+}
+.empty-client-sidebar .placeholder-icon {
+    font-size: 2.5rem;
+    color: #94a3b8;
+    margin-bottom: 16px;
+}
+.empty-client-sidebar .placeholder-text {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+}
+.empty-client-sidebar .placeholder-desc {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: #64748b;
+    max-width: 260px;
+}
+
+/* Transition expand no longer needed as we use native CSS transitions */
+
+.product-flag {
+    color: #3b82f6; /* master reference blue */
+    margin-left: 6px;
+    font-size: 0.85rem;
+    vertical-align: middle;
+    display: inline-block;
+}
+</style>

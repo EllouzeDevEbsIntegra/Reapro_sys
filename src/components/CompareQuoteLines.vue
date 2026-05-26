@@ -19,7 +19,7 @@
             <Column field="itemNo" header="Article" style="min-width: 120px">
                 <template #body="slotProps">
                     <span class="font-semibold text-blue-600">
-                        {{ slotProps.data.itemNo }}
+                        {{ slotProps.data.itemNo ? slotProps.data.itemNo.replace(/MASTER/gi, '').trim() : '' }}
                     </span>
                 </template>
             </Column>

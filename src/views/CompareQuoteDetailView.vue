@@ -193,6 +193,8 @@ const handleBack = () => {
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Oui',
         rejectLabel: 'Non',
+        acceptClass: 'p-button-success',
+        rejectClass: 'p-button-secondary',
         accept: () => {
             console.log('Accepted')
             router.push('/comparateur')
@@ -301,6 +303,8 @@ const getStatusClass = (status) => {
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     margin-bottom: 1.5rem;
+    min-height: 90px;
+    box-sizing: border-box;
 }
 
 .header-bar h1 {

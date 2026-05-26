@@ -5,10 +5,10 @@
 
         <main class="main-content">
             <template v-if="!selectedLine">
-                <!-- Dual Headers -->
-                <div class="flex gap-6 mb-6">
-                    <!-- Left Header: Comparateur -->
-                    <div class="w-2/3 header-bar">
+                <!-- Unified Dual Headers -->
+                <div class="header-bar w-full" style="padding: 0; gap: 0;">
+                    <!-- Left Section: Comparateur -->
+                    <div class="w-left-panel flex items-center h-full" style="padding: 1rem 1.5rem; gap: 1.5rem;">
                         <h1>Comparateur</h1>
 
                         <IconField iconPosition="left" class="search-field" style="width: 300px;">
@@ -20,20 +20,19 @@
                         <div class="spacer"></div>
                     </div>
 
-                    <!-- Right Header: Lignes -->
-                    <div class="w-1/3 header-bar">
+                    <!-- Right Section: Lignes -->
+                    <div class="w-right-panel flex items-center h-full" style="padding: 1rem 1.5rem; gap: 1.5rem;">
+                        <div style="width: 2px; height: 40px; background-color: #e2e8f0; border-radius: 2px; flex-shrink: 0;"></div>
                         <h1>Lignes</h1>
 
-                        <IconField iconPosition="left" class="search-field" style="width: 200px;">
+                        <IconField iconPosition="left" class="search-field" style="width: 140px;">
                             <InputIcon class="pi pi-search" />
-                            <InputText v-model="linesSearchQuery" placeholder="Rechercher article..."
+                            <InputText v-model="linesSearchQuery" placeholder="Article..."
                                 @input="handleLinesSearch" />
                         </IconField>
 
-                        <div class="spacer"></div>
-
                         <!-- Lignes Pagination Controls -->
-                        <div class="flex items-center gap-2 mr-4">
+                        <div class="flex items-center gap-1">
                             <Button icon="pi pi-angle-double-left" text rounded size="small"
                                 :disabled="compareStore.currentLinesPage === 0"
                                 @click="loadQuoteLines(0, compareStore.linesPageSize)" />
@@ -42,7 +41,8 @@
                                 @click="loadQuoteLines(compareStore.currentLinesPage - 1, compareStore.linesPageSize)" />
 
                             <div class="flex items-center gap-1 mx-1">
-                                <InputText v-model="manualPage" class="w-12 text-center p-1 text-sm page-input"
+                                <InputText v-model="manualPage" class="text-center p-1 text-sm page-input"
+                                    style="width: 40px !important; height: 32px;"
                                     @keydown.enter="handlePageInput" @blur="handlePageInput" />
                             </div>
 
@@ -58,9 +58,10 @@
                                 @update:modelValue="(val) => loadQuoteLines(0, val)" />
                         </div>
 
-                        <div class="flex items-center gap-4 flex-shrink-0" style="min-width: max-content;">
-                            <span class="text-sm font-medium text-slate-700 inline-block text-left"
-                                style="white-space: nowrap; width: 5rem;">
+                        <div class="spacer"></div>
+
+                        <div class="flex items-center gap-2 flex-shrink-0" style="min-width: max-content;">
+                            <span class="text-sm font-medium text-slate-700 inline-block text-left whitespace-nowrap">
                                 {{ linesTreatedFilter === false ? 'Non Traité' : 'Tous' }}
                             </span>
                             <label class="switch">
@@ -75,7 +76,7 @@
                 <div class="flex gap-6 h-[calc(100vh-220px)]">
                     <!-- Left Panel: List (2/3 width) -->
                     <div
-                        class="w-2/3 transition-all duration-300 ease-in-out flex flex-col gap-0 overflow-hidden glass-card p-0">
+                        class="w-left-panel transition-all duration-300 ease-in-out flex flex-col gap-0 overflow-hidden glass-card p-0">
                         <DataTable :value="compareStore.quotes" :loading="compareStore.isLoading"
                             v-model:selection="selectedQuote" selectionMode="single" @row-select="onRowSelect"
                             @row-unselect="onRowUnselect" responsiveLayout="scroll"
@@ -159,8 +160,8 @@
                         </div>
                     </div>
 
-                    <!-- Right Panel: Details (1/3 width) -->
-                    <div class="w-1/3 animate-slide-in-right">
+                    <!-- Right Panel: Details (45% width) -->
+                    <div class="w-right-panel animate-slide-in-right" style="width: 45%;">
                         <div class="glass-card h-full overflow-hidden p-0 flex flex-col">
                             <div v-if="!selectedQuote"
                                 class="h-full flex flex-col items-center justify-center text-gray-400">
@@ -320,8 +321,8 @@ const handleBackFromDetail = () => {
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Oui',
         rejectLabel: 'Non',
-        acceptClass: 'p-button-danger',
-        rejectClass: 'p-button-success',
+        acceptClass: 'p-button-success',
+        rejectClass: 'p-button-secondary',
         accept: () => {
             selectedLine.value = null
         },
@@ -489,6 +490,8 @@ const getStatusClass = (status) => {
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     margin-bottom: 1.5rem;
+    min-height: 90px;
+    box-sizing: border-box;
 }
 
 .header-bar h1 {
@@ -513,13 +516,13 @@ const getStatusClass = (status) => {
     flex-grow: 1;
 }
 
-/* Tailwind-like utilities for width transition */
-.w-2\/3 {
-    width: 66.666667%;
+/* Layout panel widths */
+.w-left-panel {
+    width: 55%;
 }
 
-.w-1\/3 {
-    width: 33.333333%;
+.w-right-panel {
+    width: 45%;
 }
 
 .flex-1 {

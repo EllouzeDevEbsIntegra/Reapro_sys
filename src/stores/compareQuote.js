@@ -47,6 +47,21 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
+        async searchItems(params) {
+            this.isLoading = true
+            this.error = null
+            try {
+                const response = await axios.get('/api/elva-items', { params })
+                return response.data
+            } catch (err) {
+                this.error = err.response?.data?.message || 'Erreur lors de la recherche des articles'
+                console.error('searchItems error:', err)
+                throw err
+            } finally {
+                this.isLoading = false
+            }
+        },
+
         async fetchCompareQuoteLines(compareQuoteNo, filters = {}) {
             this.isLoading = true
             this.error = null
@@ -113,7 +128,7 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        async fetchItemLedgerEntries(itemNo, year, page = 0, size = 20, companyId = null) {
+        async fetchItemLedgerEntries(itemNo, year, page = 0, size = 20, companyId = null, sourceNo = null, allYears = false) {
             this.error = null
             try {
                 const params = {
@@ -124,6 +139,12 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 }
                 if (companyId) {
                     params.companyId = companyId
+                }
+                if (sourceNo) {
+                    params.sourceNo = sourceNo
+                }
+                if (allYears) {
+                    params.allYears = true
                 }
                 const response = await axios.get('/api/bc/item-ledger-entries', {
                     params
@@ -272,11 +293,14 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        async fetchCategories(indentation, parentCategory) {
+        async fetchCategories(indentation, parentCategory, companyId = null) {
             try {
                 const params = { indentation }
                 if (parentCategory) {
                     params.parentCategory = parentCategory
+                }
+                if (companyId) {
+                    params.companyId = companyId
                 }
                 const response = await axios.get('/api/bc/categories', { params })
                 return response.data

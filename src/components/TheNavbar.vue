@@ -54,6 +54,11 @@ const navItems = [
     label: 'Sync Adaptable',
     icon: 'pi pi-sync',
     route: '/sync-adaptable'
+  },
+  {
+    label: 'Catalogue Partslink',
+    icon: 'pi pi-desktop',
+    route: '/partslink-viewer'
   }
 ];
 

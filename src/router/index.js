@@ -65,19 +65,10 @@ const routes = [
     path: '/sync-adaptable',
     name: 'SyncAdaptable',
     component: () => import('../views/SyncAdaptableView.vue'),
-    meta: {
-      title: 'Synchronisation Adaptable'
-    }
-  },
-  {
-    path: '/partslink',
-    name: 'partslink',
-    component: () => import('../views/PartslinkView.vue'),
-    meta: {
-      title: 'Catalogue Partslink'
-    }
+    meta: { title: 'Synchronisation Adaptable' }
   }
 ]
+
 
 
 

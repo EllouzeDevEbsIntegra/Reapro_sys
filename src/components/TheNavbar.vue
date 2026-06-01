@@ -54,11 +54,6 @@ const navItems = [
     label: 'Sync Adaptable',
     icon: 'pi pi-sync',
     route: '/sync-adaptable'
-  },
-  {
-    label: 'Partslink',
-    icon: 'pi pi-compass',
-    route: '/partslink'
   }
 ];
 

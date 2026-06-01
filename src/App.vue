@@ -1,10 +1,26 @@
 <template>
-  <router-view />
+  <div class="app-shell">
+    <main class="app-content">
+      <router-view />
+    </main>
+    <TheFooter />
+  </div>
   <Toast class="custom-toast" />
 </template>
 
 <script setup>
 import Toast from 'primevue/toast'
+import TheFooter from './components/TheFooter.vue'
 </script>
 
-<style></style>
+<style scoped>
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-content {
+  flex: 1;
+}
+</style>

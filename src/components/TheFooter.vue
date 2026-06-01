@@ -2,7 +2,7 @@
     <footer class="app-footer">
         <div class="footer-content">
             <span class="version-text" v-if="version">Version: {{ version.displayVersion }}</span>
-            <span class="copyright">© {{ new Date().getFullYear() }} Reapro System</span>
+            <span class="copyright">&copy; {{ new Date().getFullYear() }} Reapro System</span>
         </div>
     </footer>
 </template>

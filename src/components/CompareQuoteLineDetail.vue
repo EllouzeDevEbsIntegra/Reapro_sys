@@ -1620,7 +1620,6 @@
                 </div>
             </div>
         </Popover>
-        <TheFooter />
     </div>
 </template>
 <script setup>
@@ -1635,7 +1634,6 @@ import { useConfirm } from 'primevue/useconfirm'
 
 import { useCompareQuoteStore } from '../stores/compareQuote'
 import { useAuthStore } from '../stores/auth'
-import TheFooter from './TheFooter.vue'
 import CreateArticleMasterDialog from '@/components/CreateArticleMasterDialog.vue'
 
 

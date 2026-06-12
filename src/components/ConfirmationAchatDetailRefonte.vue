@@ -1,0 +1,6898 @@
+<template>
+    <div class="line-detail-container">
+        <!-- Section 1 : Header unifié (gauche: retour+titre / centre: KPI-STOCKS / droite: actions) -->
+        <div class="top-header">
+            <!-- Gauche : bouton retour (icône seule) + titre -->
+            <div class="detail-header-left">
+                <button class="detail-back-btn" type="button" @click="$emit('back')"
+                    v-tooltip.bottom="'Retour à la liste'" aria-label="Retour à la liste">
+                    <i class="pi pi-arrow-left"></i>
+                </button>
+                <div class="detail-title-block">
+                    <div class="detail-title-row">
+                        <h1 class="detail-title">Confirmation Commandes Achat</h1>
+                        <span class="refonte-badge">REFONTE UI</span>
+                    </div>
+                    <div class="detail-subtitle">
+                        <span class="detail-no">{{ compareQuoteNo }}</span>
+                        <span class="detail-sep">—</span>
+                        <span class="detail-desc">{{ compareQuoteDescription }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Centre : bande STOCKS + total document + panier (largeur limitée, s'arrête avant la zone action) -->
+            <div class="detail-header-center">
+                <div class="header-stocks">
+                    <div class="stock-column label-column">
+                        <div class="stocks-label">STOCKS</div>
+                    </div>
+                    <div v-for="stock in intercompanyStocks" :key="stock.companyId" class="stock-column dynamic-column">
+                        <div class="stock-part ste">
+                            <span class="stock-label-mini">STE</span>
+                            <span class="stock-value-main company">{{ stock.company }}</span>
+                        </div>
+                        <div class="stock-part stock clickable"
+                            @click="openHistory(stock.company, stock.companyId, stock.stock)">
+                            <span class="stock-label-mini">Stock</span>
+                            <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
+                            }}</span>
+                        </div>
+                        <div class="stock-part purchase">
+                            <span class="stock-label-mini">Dernier Achat</span>
+                            <span class="stock-value-main date">{{ formatDate(stock.lastPurchaseDate) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="order-total" style="display: flex; align-items: center; gap: 10px;">
+                    <div class="amount-wrapper" style="display: flex; flex-direction: column; align-items: flex-start;">
+                        <span v-if="selectedDocumentNo" class="doc-no"
+                            style="font-size: 0.8rem; color: #64748b; font-weight: 600;">{{
+                                selectedDocumentNo }}</span>
+                        <span class="amount" style="font-size: 1.1rem; font-weight: 700;">{{ totalAmount ?
+                            formatNumber(totalAmount, 2) : '-' }}</span>
+                    </div>
+                    <i class="pi pi-calculator" style="font-size: 1.5rem;"></i>
+                </div>
+
+                <button class="cart-btn" @click="openCartSidebar">
+                    <div class="cart-icon-wrapper">
+                        <i class="pi pi-shopping-cart"></i>
+                        <span v-if="store.cartCount > 0" class="cart-badge">{{ store.cartCount }}</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Droite : zone d'action dédiée (bouton Confirmer Commande) -->
+            <div class="detail-header-right confirmation-actions-zone">
+                <button class="confirm-order-btn" type="button" @click="onConfirmOrder">
+                    <i class="pi pi-check-circle"></i>
+                    <span>Confirmer Commande</span>
+                </button>
+            </div>
+        </div>
+
+
+
+        <!-- Body Section: 70/30 Split -->
+        <div class="main-layout">
+            <!-- Section 2: Tables (70% width) -->
+            <div class="left-column">
+                <!-- Frs Table -->
+                <div class="table-container">
+                    <div class="table-header-row">
+                        <span class="table-title">Fournisseurs</span>
+                    </div>
+                    <div class="table-wrapper frs-scroll" ref="frsTableWrapper" @scroll="onFrsScroll">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th :style="{ width: isSidebarExpanded ? '8%' : '6%' }">Document</th>
+                                    <th :style="{ width: isSidebarExpanded ? '8%' : '6%' }">Frs</th>
+                                    <th :style="{ width: isSidebarExpanded ? '20%' : '12%' }">Réf / Desig
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '8%' : '6%' }">
+                                        <div class="th-filter">
+                                            <span>Stocks</span>
+                                            <button class="th-filter-btn" :class="{ active: isStockFilterActive }"
+                                                type="button" @click.stop="toggleStockFilter" v-tooltip.bottom="stockFilterTooltip">
+                                                <i class="pi pi-filter"></i>
+                                            </button>
+                                            <Popover ref="stockFilterPanel">
+                                                <div class="filter-popover">
+                                                    <div class="filter-popover-header">
+                                                        <div class="filter-popover-heading">
+                                                            <span class="filter-popover-title">Stock</span>
+                                                            <span class="filter-popover-sub">Définir une condition</span>
+                                                        </div>
+                                                        <button class="filter-close-btn" type="button" @click="stockFilterPanel?.hide()">
+                                                            <i class="pi pi-times"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="filter-field">
+                                                        <label class="filter-label">Condition</label>
+                                                        <Select v-model="frsFilters.stock.operator" :options="operatorOptions"
+                                                            optionLabel="label" optionValue="value" class="filter-full" />
+                                                    </div>
+                                                    <div class="filter-field">
+                                                        <label class="filter-label">Valeur</label>
+                                                        <InputNumber v-model="frsFilters.stock.value" class="filter-full"
+                                                            :useGrouping="false" placeholder="Saisir une valeur" />
+                                                    </div>
+                                                    <div class="filter-actions">
+                                                        <Button label="Effacer" severity="secondary" text size="small" @click="resetStockFilter" />
+                                                        <Button label="Appliquer" size="small" icon="pi pi-check" @click="applyStockFilter" />
+                                                    </div>
+                                                </div>
+                                            </Popover>
+                                        </div>
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
+                                    <th :style="{ width: isSidebarExpanded ? '10%' : '8%' }">
+                                        <div class="th-filter">
+                                            <span>Dernier Achat</span>
+                                            <button class="th-filter-btn" :class="{ active: isDateFilterActive }"
+                                                type="button" @click.stop="toggleDateFilter" v-tooltip.bottom="dateFilterTooltip">
+                                                <i class="pi pi-filter"></i>
+                                            </button>
+                                            <Popover ref="dateFilterPanel">
+                                                <div class="filter-popover">
+                                                    <div class="filter-popover-header">
+                                                        <div class="filter-popover-heading">
+                                                            <span class="filter-popover-title">Dernier Achat</span>
+                                                            <span class="filter-popover-sub">Définir une condition</span>
+                                                        </div>
+                                                        <button class="filter-close-btn" type="button" @click="dateFilterPanel?.hide()">
+                                                            <i class="pi pi-times"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="filter-field">
+                                                        <label class="filter-label">Condition</label>
+                                                        <Select v-model="frsFilters.date.operator" :options="operatorOptions"
+                                                            optionLabel="label" optionValue="value" class="filter-full" />
+                                                    </div>
+                                                    <div class="filter-field">
+                                                        <label class="filter-label">Valeur</label>
+                                                        <DatePicker v-model="frsFilters.date.value" class="filter-full"
+                                                            dateFormat="dd/mm/yy" showIcon iconDisplay="input" placeholder="jj/mm/aaaa" />
+                                                    </div>
+                                                    <div class="filter-actions">
+                                                        <Button label="Effacer" severity="secondary" text size="small" @click="resetDateFilter" />
+                                                        <Button label="Appliquer" size="small" icon="pi pi-check" @click="applyDateFilter" />
+                                                    </div>
+                                                </div>
+                                            </Popover>
+                                        </div>
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Cout Directe
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Prix Revient
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Prix de Vente
+                                    </th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Nég Prix</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Nég Qte</th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">
+                                        <div class="th-filter">
+                                            <span>Qte à confirmer</span>
+                                            <button class="th-filter-btn" :class="{ active: isQuantityFilterActive }"
+                                                type="button" @click.stop="toggleQuantityFilter" v-tooltip.bottom="quantityFilterTooltip">
+                                                <i class="pi pi-filter"></i>
+                                            </button>
+                                            <Popover ref="quantityFilterPanel">
+                                                <div class="filter-popover">
+                                                    <div class="filter-popover-header">
+                                                        <div class="filter-popover-heading">
+                                                            <span class="filter-popover-title">Qté à confirmer</span>
+                                                            <span class="filter-popover-sub">Définir une condition</span>
+                                                        </div>
+                                                        <button class="filter-close-btn" type="button" @click="quantityFilterPanel?.hide()">
+                                                            <i class="pi pi-times"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="filter-field">
+                                                        <label class="filter-label">Condition</label>
+                                                        <Select v-model="frsFilters.quantity.operator" :options="operatorOptions"
+                                                            optionLabel="label" optionValue="value" class="filter-full" />
+                                                    </div>
+                                                    <div class="filter-field">
+                                                        <label class="filter-label">Valeur</label>
+                                                        <InputNumber v-model="frsFilters.quantity.value" class="filter-full"
+                                                            :useGrouping="false" placeholder="Saisir une valeur" />
+                                                    </div>
+                                                    <div class="filter-actions">
+                                                        <Button label="Effacer" severity="secondary" text size="small" @click="resetQuantityFilter" />
+                                                        <Button label="Appliquer" size="small" icon="pi pi-check" @click="applyQuantityFilter" />
+                                                    </div>
+                                                </div>
+                                            </Popover>
+                                        </div>
+                                    </th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Raison</th>
+                                    <th :style="{ width: isSidebarExpanded ? '5%' : '3%' }">Info</th>
+                                    <th style="width: 2%" v-if="!isSidebarExpanded"></th>
+                                    <th style="width: 3%" v-if="!isSidebarExpanded"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingDetails">
+                                    <td colspan="16" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="quoteLineDetails.length === 0">
+                                    <td colspan="16" class="text-center p-4">Aucune donnée disponible</td>
+                                </tr>
+                                <tr v-else v-for="detail in quoteLineDetails" :key="detail.id"
+                                    @click="selectLine(detail)"
+                                    class="cursor-pointer transition-colors hover:bg-blue-50"
+                                    :class="{ 'bg-blue-100': isItemSelected(detail) }">
+                                    <td>
+                                        <div class="cell-reference">{{ detail.documentNo }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ detail.buyFromVendorNo }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ detail.no }}</div>
+                                        <div class="cell-description">{{ detail.descriptionStructured }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference" :class="getStyleClass(detail.styleInvNoImport)">{{
+                                            detail.inventoryWithoutImport }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-col gap-1">
+                                            <span class="stock-tag tag-import"
+                                                :class="getImportStyleClass(detail.importInventory)">
+                                                <span>Imp :</span>
+                                                <span>{{ detail.importInventory }}</span>
+                                            </span>
+                                            <span class="stock-tag tag-cmd"
+                                                :class="[getQteCmdStyleClass(detail.qtyOnPurchOrder), { 'cursor-pointer hover:opacity-80': detail.qtyOnPurchOrder > 0 }]"
+                                                @click="openPurchaseLinesDialog(detail.no, detail.qtyOnPurchOrder)">
+                                                <span>Cmd :</span>
+                                                <span>{{ detail.qtyOnPurchOrder }}</span>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">
+                                            {{
+                                                formatNumber(getLastInvoicedData(detail.buyFromVendorNo,
+                                                    detail.no)?.lastInvoicedDirectCost,
+                                                    2) }}
+                                            <span
+                                                v-if="getLastInvoicedData(detail.buyFromVendorNo, detail.no)?.quantity"
+                                                class="qty-badge">
+                                                {{
+                                                    Math.round(getLastInvoicedData(detail.buyFromVendorNo,
+                                                        detail.no)?.quantity)
+                                                }}
+                                            </span>
+                                        </div>
+                                        <div class="cell-description">
+                                            {{
+                                                formatDate(getLastInvoicedData(detail.buyFromVendorNo,
+                                                    detail.no)?.lastInvoicedCostDate)
+                                            }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference clickable-cell"
+                                            @click.stop="openPurchasePriceDialog(detail.buyFromVendorNo, detail.no, detail.descriptionStructured, true)"
+                                            title="Voir l'historique des prix">
+                                            {{ formatNumber(detail.directUnitCost, 2) }}
+                                            <i :class="detail.preferential ? 'pi pi-check-circle preferential-icon active' : 'pi pi-times-circle preferential-icon inactive'"
+                                                :title="detail.preferential ? 'Fournisseur préférentiel' : 'Non préférentiel'"></i>
+                                        </div>
+                                        <div class="cell-description">
+                                            <span
+                                                v-if="calculatePercentageChange(detail.directUnitCost, getSecondLastPurchasePrice(detail.buyFromVendorNo, detail.no))"
+                                                :class="getPercentageClass(calculatePercentageChange(detail.directUnitCost, getSecondLastPurchasePrice(detail.buyFromVendorNo, detail.no)))"
+                                                class="percentage-indicator">
+                                                {{ calculatePercentageChange(detail.directUnitCost,
+                                                    getSecondLastPurchasePrice(detail.buyFromVendorNo, detail.no)) }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{
+                                            formatNumber(detail.prixDeRevientCalcule, 3) }}
+                                        </div>
+                                        <div class="cell-description">
+                                            {{ formatNumber(detail.lastDirectUnitCostCalculated, 3) }}
+                                            <span
+                                                v-if="getPercentageChange(detail, 'prixDeRevientCalcule', 'lastDirectUnitCostCalculated')"
+                                                :class="getPercentageClass(getPercentageChange(detail, 'prixDeRevientCalcule', 'lastDirectUnitCostCalculated'))"
+                                                class="percentage-indicator">
+                                                {{ getPercentageChange(detail, 'prixDeRevientCalcule',
+                                                    'lastDirectUnitCostCalculated') }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{
+                                            formatNumber(detail.calcAncienPrixDeVente, 3) }}
+                                        </div>
+                                        <div class="cell-description">
+                                            {{ formatNumber(detail.unitPriceLCY, 3) }}
+                                            <span
+                                                v-if="getPercentageChange(detail, 'calcAncienPrixDeVente', 'unitPriceLCY')"
+                                                :class="getPercentageClass(getPercentageChange(detail, 'calcAncienPrixDeVente', 'unitPriceLCY'))"
+                                                class="percentage-indicator">
+                                                {{ getPercentageChange(detail,
+                                                    'calcAncienPrixDeVente', 'unitPriceLCY') }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="qty-input-wrapper mini">
+                                            <span class="initial-tag" title="Prix Initial">{{
+                                                formatNumber(detail.initialVendorPrice, 2) }}</span>
+                                            <input type="number" v-model.number="detail.askingPrice"
+                                                :id="`askingPrice-${detail.id}`" class="qty-input mini"
+                                                placeholder="Prix Nég" @change="updateLine(detail, false)"
+                                                @keydown.tab.prevent="focusNextField('askingPrice', detail.id)" />
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="qty-input-wrapper mini">
+                                            <span class="initial-tag" title="Quantité Initiale">{{
+                                                detail.initialQuantity }}</span>
+                                            <input type="number" v-model.number="detail.askingQty"
+                                                :id="`askingQty-${detail.id}`" class="qty-input mini"
+                                                placeholder="Qte Nég" @change="updateLine(detail, false)"
+                                                @keydown.tab.prevent="focusNextField('askingQty', detail.id)" />
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="qty-input-wrapper">
+                                            <input type="number" v-model.number="detail.quantity" class="qty-input"
+                                                :id="`quantity-${detail.id}`" min="0" @change="updateLine(detail, true)"
+                                                @keydown.tab.prevent="focusNextField('quantity', detail.id)" />
+                                            <i v-if="detail.treated" class="pi pi-check-circle"
+                                                style="color: #22c55e; margin-left: 8px; font-size: 1.1rem;"
+                                                title="Ligne traitée"></i>
+                                            <i v-else class="pi pi-exclamation-circle"
+                                                style="color: #f97316; margin-left: 8px; font-size: 1.1rem;"
+                                                title="Non traité"></i>
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="reason-select-container">
+                                            <select v-model="detail.quoteLineReason" class="reason-select"
+                                                @change="updateLine(detail, false)">
+                                                <option value=""></option>
+                                                <option v-for="reason in orderReasons" :key="reason.value"
+                                                    :value="reason.value">
+                                                    {{ reason.label }}
+                                                </option>
+                                            </select>
+                                            <button v-if="detail.quoteLineReason" class="clear-reason-btn"
+                                                @click="detail.quoteLineReason = ''" title="Effacer">
+                                                <i class="pi pi-times"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center gap-4 h-full">
+                                            <i class="pi pi-info-circle info-icon cursor-pointer"
+                                                @click.stop="openInfoDialog(detail)"></i>
+                                            <i v-if="!detail.isVerifying" class="pi pi-check-circle cursor-pointer text-indigo-500 hover:text-indigo-700" style="font-size: 1.1rem;"
+                                                @click.stop="markAsToVerify(detail)" title="A vérifier"></i>
+                                            <i v-else class="pi pi-spin pi-spinner text-indigo-500" style="font-size: 1.1rem;"></i>
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="flex justify-center items-center h-full">
+                                            <i class="pi comment-icon cursor-pointer"
+                                                :class="[(detail.quoteLineComment || detail.QuoteLineComment) ? 'pi-comments has-comment' : 'pi-comment']"
+                                                @click.stop="toggleCommentOverlay($event, detail)"
+                                                :title="(detail.quoteLineComment || detail.QuoteLineComment) ? 'Modifier commentaire' : 'Ajouter un commentaire'"></i>
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="flex justify-center items-center h-full">
+                                            <button class="validate-line-btn" title="Valider la ligne"
+                                                :id="`validateBtn-${detail.id}`" @click="updateLine(detail, true)">
+                                                <i class="pi"
+                                                    :class="detail.isUpdating ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="loading-indicator" v-if="isLoadingFrsMore">
+                        <i class="pi pi-spin pi-spinner"></i> Chargement...
+                    </div>
+                </div>
+
+                <!-- Equivalence Table -->
+                <div class="table-container">
+                    <div class="table-header-row">
+                        <span class="table-title">Equivalence</span>
+                    </div>
+                    <div class="table-wrapper" @scroll="onEquivalenceScroll" ref="equivalenceTableWrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
+                                    <th :style="{ width: isSidebarExpanded ? '24%' : '16%' }">Réf / Desig
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Cout Calculé /
+                                        Date</th>
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Prix de vente
+                                    </th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Achat</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Vente</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Panier à Cmd</th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Raison</th>
+                                    <th :style="{ width: isSidebarExpanded ? '5%' : '3%' }">Info</th>
+                                    <th style="width: 2%" v-if="!isSidebarExpanded"></th>
+                                    <th style="width: 3%" v-if="!isSidebarExpanded"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingEquivalence && equivalenceItems.length === 0">
+                                    <td colspan="14" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="equivalenceItems.length === 0">
+                                    <td colspan="14" class="text-center p-4">Aucune donnée disponible</td>
+                                </tr>
+                                <tr v-else v-for="item in equivalenceItems" :key="item.id"
+                                    @click="selectEquivalenceItem(item)"
+                                    class="cursor-pointer transition-colors hover:bg-blue-50"
+                                    :class="{ 'bg-blue-100': isItemSelected(item) }">
+                                    <td>
+                                        <div class="cell-reference">{{ item.vendorNo }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">
+                                            {{ formatReference(item.no) }}
+                                        </div>
+                                        <div class="cell-description">{{ item.descriptionStructured }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference" :class="getStyleClass(item.styleQty)">{{
+                                            item.qtyStock }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-col gap-1">
+                                            <span class="stock-tag tag-import"
+                                                :class="getImportStyleClass(item.qtyImport)">
+                                                <span>Imp :</span>
+                                                <span>{{ item.qtyImport }}</span>
+                                            </span>
+                                            <span class="stock-tag tag-cmd"
+                                                :class="[getQteCmdStyleClass(item.qtyOnPurchOrder), { 'cursor-pointer hover:opacity-80': item.qtyOnPurchOrder > 0 }]"
+                                                @click="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder)">
+                                                <span>Cmd :</span>
+                                                <span>{{ item.qtyOnPurchOrder }}</span>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference" :class="getStyleClass(item.styleDate)">
+                                            {{ formatNumber(item.lastInvoicedDirectCost, 2) }}
+                                            <span v-if="item.quantity" class="qty-badge">
+                                                {{ Math.round(item.quantity) }}
+                                            </span>
+                                        </div>
+                                        <div class="cell-description">
+                                            {{ formatDate(item.lastInvoicedCostDate) }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference clickable-cell"
+                                            @click.stop="openPurchasePriceDialog(item.vendorNo, item.no, item.descriptionStructured, false)"
+                                            title="Voir l'historique des prix">
+                                            {{ formatNumber(item.lastCurrPrice, 2) }}
+                                            <i :class="item.LastPreferential ? 'pi pi-check-circle preferential-icon active' : 'pi pi-times-circle preferential-icon inactive'"
+                                                :title="item.LastPreferential ? 'Fournisseur préférentiel' : 'Non préférentiel'"></i>
+                                        </div>
+                                        <div class="cell-description">{{ formatDate(item.lastDate) }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS, 3)
+                                        }}</div>
+                                        <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="cell-reference"
+                                            :class="{ 'status-favorable': (item.acheteCurrYear || 0) > 0 }">{{
+                                                item.acheteCurrYear || 0 }}</div>
+                                        <div class="cell-description"
+                                            :class="{ 'status-favorable': (item.totalAchete || 0) > 0 }">{{
+                                                item.totalAchete || 0 }}</div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="cell-reference"
+                                            :class="{ 'status-favorable': (item.venduCurrYear || 0) > 0 }">{{
+                                                item.venduCurrYear || 0 }}</div>
+                                        <div class="cell-description"
+                                            :class="{ 'status-favorable': (item.totalVendu || 0) > 0 }">{{
+                                                item.totalVendu || 0 }}</div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="qty-input-wrapper">
+                                            <input type="number" v-model.number="item.quantityToOrder" class="qty-input"
+                                                min="0" />
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="reason-select-container">
+                                            <select v-model="item.orderReason" class="reason-select">
+                                                <option value=""></option>
+                                                <option v-for="reason in orderReasons" :key="reason.value"
+                                                    :value="reason.value">
+                                                    {{ reason.label }}
+                                                </option>
+                                            </select>
+                                            <button v-if="item.orderReason" class="clear-reason-btn"
+                                                @click="item.orderReason = ''" title="Effacer">
+                                                <i class="pi pi-times"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center gap-4 h-full">
+                                            <i class="pi pi-info-circle info-icon cursor-pointer"
+                                                @click.stop="openInfoDialog(item)"></i>
+                                            <i v-if="!item.isVerifying" class="pi pi-check-circle cursor-pointer text-indigo-500 hover:text-indigo-700" style="font-size: 1.1rem;"
+                                                @click.stop="markAsToVerify(item)" title="A vérifier"></i>
+                                            <i v-else class="pi pi-spin pi-spinner text-indigo-500" style="font-size: 1.1rem;"></i>
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="flex justify-center items-center h-full">
+                                            <i class="pi pi-comment comment-icon cursor-pointer"
+                                                :class="{ 'has-comment': item.comment || item.commentPurchaseCart, 'text-orange-500': item.commentPurchaseCart }"
+                                                @click.stop="toggleCommentOverlay($event, item)"
+                                                title="Ajouter un commentaire"></i>
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="flex justify-center items-center h-full">
+                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart"
+                                                title="Voir dans le panier" @click.stop="openCartForItem(item)">
+                                                <i class="pi pi-shopping-cart"></i>
+                                            </button>
+                                            <button v-else class="validate-line-btn" title="Valider la ligne"
+                                                @click.stop="addToCart(item)">
+                                                <i class="pi pi-check"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="loading-indicator" v-if="isLoadingEquivalence && equivalenceItems.length > 0">
+                        <i class="pi pi-spin pi-spinner"></i> Chargement...
+                    </div>
+                </div>
+
+                <!-- Kit Table -->
+                <div class="table-container">
+                    <div class="table-header-row">
+                        <span class="table-title">Kit</span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Frs</th>
+                                    <th :style="{ width: isSidebarExpanded ? '24%' : '16%' }">Réf / Desig
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '8%' : '5%' }">Stocks</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Appro</th>
+                                    <th :style="{ width: isSidebarExpanded ? '9%' : '6%' }">Dernier Achat
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '11%' : '7%' }">Prix Devise
+                                    </th>
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Cout Calculé /
+                                        Date</th>
+                                    <th :style="{ width: isSidebarExpanded ? '12%' : '8%' }">Prix de vente
+                                    </th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Achat</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Vente</th>
+                                    <th style="width: 7%" v-if="!isSidebarExpanded">Panier à Cmd</th>
+                                    <th style="width: 8%" v-if="!isSidebarExpanded">Raison</th>
+                                    <th :style="{ width: isSidebarExpanded ? '5%' : '3%' }">Info</th>
+                                    <th style="width: 2%" v-if="!isSidebarExpanded"></th>
+                                    <th style="width: 3%" v-if="!isSidebarExpanded"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingKit">
+                                    <td colspan="15" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="kitItems.length === 0">
+                                    <td colspan="15" class="text-center p-4">Aucune donnée disponible</td>
+                                </tr>
+                                <tr v-else v-for="item in kitItems" :key="item.no" @click="selectKitItem(item)"
+                                    class="cursor-pointer transition-colors hover:bg-blue-50"
+                                    :class="{ 'bg-blue-100': isItemSelected(item) }">
+                                    <td>
+                                        <div class="cell-reference">{{ item.vendorNo }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">
+                                            {{ formatReference(item.no) }}
+                                        </div>
+                                        <div class="cell-description">{{ item.descriptionStructured }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ item.qtyStock || 0 }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-col gap-1">
+                                            <span class="stock-tag tag-import"
+                                                :class="getImportStyleClass(item.qtyImport || 0)">
+                                                <span>Imp :</span>
+                                                <span>{{ item.qtyImport || 0 }}</span>
+                                            </span>
+                                            <span class="stock-tag tag-cmd"
+                                                :class="[getQteCmdStyleClass(item.qtyOnPurchOrder || 0), { 'cursor-pointer hover:opacity-80': (item.qtyOnPurchOrder || 0) > 0 }]"
+                                                @click="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder || 0)">
+                                                <span>Cmd :</span>
+                                                <span>{{ item.qtyOnPurchOrder || 0 }}</span>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">
+                                            {{ formatNumber(item.lastInvoicedDirectCost, 2) }}
+                                            <span v-if="item.quantity" class="qty-badge">
+                                                {{ Math.round(item.quantity) }}
+                                            </span>
+                                        </div>
+                                        <div class="cell-description">
+                                            {{ formatDate(item.lastInvoicedCostDate) }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference clickable-cell"
+                                            @click.stop="openPurchasePriceDialog(item.vendorNo, item.no, item.descriptionStructured, false)"
+                                            title="Voir l'historique des prix">
+                                            {{ formatNumber(item.lastCurrPrice ||
+                                                item.lastInvoicedDirectCost, 2) }}
+                                        </div>
+                                        <div class="cell-description">{{ formatDate(item.lastDate) }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(item.lastPurshCostDS ||
+                                            item.lastInvoicedDirectCost, 3) }}
+                                        </div>
+                                        <div class="cell-description">{{ formatDate(item.lastPurshDate) }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cell-reference">{{ formatNumber(item.unitPrice, 3) }}
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="cell-reference"
+                                            :class="{ 'text-green-600': (item.acheteCurrYear || 0) > 0 }">{{
+                                                item.acheteCurrYear || 0 }}</div>
+                                        <div class="cell-description"
+                                            :class="{ 'text-green-600': (item.totalAchete || 0) > 0 }">{{
+                                                item.totalAchete || 0 }}</div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="cell-reference"
+                                            :class="{ 'text-green-600': (item.venduCurrYear || 0) > 0 }">{{
+                                                item.venduCurrYear || 0 }}</div>
+                                        <div class="cell-description"
+                                            :class="{ 'text-green-600': (item.totalVendu || 0) > 0 }">{{ item.totalVendu
+                                                || 0 }}</div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="qty-input-wrapper">
+                                            <input type="number" v-model.number="item.quantityToOrder" class="qty-input"
+                                                min="0" />
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="reason-select-container">
+                                            <select v-model="item.orderReason" class="reason-select">
+                                                <option value=""></option>
+                                                <option v-for="reason in orderReasons" :key="reason.value"
+                                                    :value="reason.value">
+                                                    {{ reason.label }}
+                                                </option>
+                                            </select>
+                                            <button v-if="item.orderReason" class="clear-reason-btn"
+                                                @click="item.orderReason = ''" title="Effacer">
+                                                <i class="pi pi-times"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex justify-center items-center gap-4 h-full">
+                                            <i class="pi pi-info-circle info-icon cursor-pointer"
+                                                @click.stop="openInfoDialog(item)"></i>
+                                            <i v-if="!item.isVerifying" class="pi pi-check-circle cursor-pointer text-indigo-500 hover:text-indigo-700" style="font-size: 1.1rem;"
+                                                @click.stop="markAsToVerify(item)" title="A vérifier"></i>
+                                            <i v-else class="pi pi-spin pi-spinner text-indigo-500" style="font-size: 1.1rem;"></i>
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="flex justify-center items-center h-full">
+                                            <i class="pi pi-comment comment-icon cursor-pointer"
+                                                :class="{ 'has-comment': item.comment || item.commentPurchaseCart, 'text-orange-500': item.commentPurchaseCart }"
+                                                @click.stop="toggleCommentOverlay($event, item)"
+                                                title="Ajouter un commentaire"></i>
+                                        </div>
+                                    </td>
+                                    <td v-if="!isSidebarExpanded">
+                                        <div class="flex justify-center items-center h-full">
+                                            <button v-if="item.existPurchaseCart" class="validate-line-btn in-cart"
+                                                title="Voir dans le panier" @click.stop="openCartForItem(item)">
+                                                <i class="pi pi-shopping-cart"></i>
+                                            </button>
+                                            <button v-else class="validate-line-btn" title="Valider la ligne"
+                                                @click.stop="addToCart(item)">
+                                                <i class="pi pi-check"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer">
+                        <div class="pagination-info" v-if="kitItems.length > 0">
+                            {{ kitPagination.page * kitPagination.size + 1 }}-{{
+                                Math.min((kitPagination.page + 1) *
+                                    kitPagination.size, kitPagination.totalElements) }} sur {{
+                                kitPagination.totalElements }}
+                        </div>
+                        <div class="pagination-controls">
+                            <button class="p-btn" :disabled="kitPagination.page === 0"
+                                @click="fetchKitItems(selectedDetail.no, kitPagination.page - 1)">
+                                <i class="pi pi-angle-left"></i>
+                            </button>
+                            <span class="p-current">{{ kitPagination.page + 1 }}</span>
+                            <button class="p-btn" :disabled="kitPagination.page >= kitPagination.totalPages - 1"
+                                @click="fetchKitItems(selectedDetail.no, kitPagination.page + 1)">
+                                <i class="pi pi-angle-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Sidebar (30% or 50% width) -->
+            <div class="right-column" :class="{ 'expanded': isSidebarExpanded }">
+                <!-- History View -->
+                <template v-if="activeRightPanel === 'history'">
+                    <div class="sidebar-header">
+                        <div class="header-actions">
+                            <Button :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text
+                                rounded @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
+                            <button class="history-btn">Historique</button>
+                            <div class="item-title-inline" v-if="selectedHistoryItem">
+                                {{ formatReference(selectedHistoryItem.no || selectedHistoryItem.itemNo) }}
+                                • {{
+                                    selectedHistoryItem.descriptionStructured ||
+                                    selectedHistoryItem.structuredDescription ||
+                                    selectedHistoryItem.description || 'Temoins de freins' }}
+                            </div>
+                            <div class="item-title-inline" v-else>
+                                {{ formatReference(line.itemNo) }}
+                                • {{ line.structuredDescription || line.description ||
+                                    'Temoins de freins'
+                                }}
+                            </div>
+                            <div class="year-selector">
+                                <button class="year-arrow" @click="changeYear(-1)">
+                                    <i class="pi pi-chevron-left"></i>
+                                </button>
+                                <span class="year-display">{{ selectedYear }}</span>
+                                <button class="year-arrow" @click="changeYear(1)">
+                                    <i class="pi pi-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stats-bar">
+                        <div class="stats-column">Stock : {{ historyKpis.stock }}</div>
+                        <div class="stats-column">Achat : {{ historyKpis.achat }}</div>
+                        <div class="stats-column">Vente : {{ Math.abs(historyKpis.vente) }}</div>
+                        <div class="stats-column">Rupt : {{ historyKpis.rupt }}</div>
+                    </div>
+
+
+
+                    <div class="table-container history-container">
+                        <div class="table-wrapper" ref="historyTableWrapper" @scroll="onHistoryScroll">
+                            <table class="modern-table history-table">
+                                <thead>
+                                    <tr>
+                                        <th :style="{ width: isSidebarExpanded ? '8%' : '15%' }">Date</th>
+                                        <th :style="{ width: isSidebarExpanded ? '5%' : '8%' }">Type</th>
+                                        <template v-if="isSidebarExpanded">
+                                            <th style="width: 10%">Type Doc</th>
+                                            <th style="width: 10%">N° Document</th>
+                                        </template>
+                                        <th :style="{ width: isSidebarExpanded ? '10%' : '15%' }">Client / Frs
+                                        </th>
+                                        <th :style="{ width: isSidebarExpanded ? '35%' : '42%' }">Nom</th>
+                                        <th :style="{ width: isSidebarExpanded ? '6%' : '8%' }" class="text-right">Qte
+                                        </th>
+                                        <template v-if="isSidebarExpanded">
+                                            <th style="width: 6%">Magasin</th>
+                                        </template>
+                                        <th :style="{ width: isSidebarExpanded ? '10%' : '12%' }" class="text-right">PU
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-if="isLoadingHistory && historyEntries.length === 0">
+                                        <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">
+                                            Chargement...</td>
+                                    </tr>
+                                    <tr v-else-if="historyEntries.length === 0">
+                                        <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Aucune
+                                            donnée
+                                            disponible</td>
+                                    </tr>
+                                    <tr v-else v-for="(entry, index) in historyEntries" :key="index"
+                                        :class="{ 'rupture-row': entry.entryType === 'Rupture' }">
+                                        <td>{{ formatDate(entry.postingDate) }}</td>
+                                        <td>
+                                            <div class="type-indicator-circle"
+                                                :class="getEntryTypeClass(entry.entryType)">
+                                                {{ getEntryTypeLetter(entry.entryType) }}
+                                            </div>
+                                        </td>
+                                        <template v-if="isSidebarExpanded">
+                                            <td>{{ entry.documentType }}</td>
+                                            <td>{{ entry.documentNo }}</td>
+                                        </template>
+                                        <td>{{ entry.sourceNo }}</td>
+                                        <td>{{ entry.sourceName }}</td>
+                                        <td class="text-right">{{ entry.quantity }}</td>
+                                        <template v-if="isSidebarExpanded">
+                                            <td>{{ entry.locationCode }}</td>
+                                        </template>
+                                        <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div v-if="isLoadingHistory && historyEntries.length > 0" class="loading-more">
+                                <i class="pi pi-spin pi-spinner"></i> Chargement...
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Cart View -->
+                <template v-else-if="activeRightPanel === 'cart'">
+                    <div class="sidebar-header">
+                        <div class="header-actions">
+                            <Button :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text
+                                rounded @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
+                            <span class="table-title" style="font-size: 1.1rem; margin-left: 8px;">Panier d'Achat</span>
+
+                            <div style="flex-grow: 1;"></div>
+
+                            <div class="cart-tabs">
+                                <button class="cart-tab-btn" :class="{ 'active': activeCartTab === 'current' }"
+                                    @click="switchCartTab('current')">
+                                    {{ line.compareQuoteNo }}
+                                </button>
+                                <button class="cart-tab-btn" :class="{ 'active': activeCartTab === 'all' }"
+                                    @click="switchCartTab('all')">
+                                    Tous
+                                </button>
+                            </div>
+
+                            <Button icon="pi pi-times" text rounded severity="secondary"
+                                @click="activeRightPanel = 'history'" tooltip="Fermer" />
+                        </div>
+                    </div>
+                    <div class="cart-filters p-3 flex gap-2 align-items-center"
+                        style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+
+                        <InputText v-model="cartFilters.vendorNo" placeholder="Frs" class="p-inputtext-sm"
+                            style="width: 85px; font-size: 0.85rem;" @input="debouncedFilter" />
+
+                        <InputText v-model="cartFilters.itemNo" placeholder="Référence" class="p-inputtext-sm"
+                            style="flex: 1; font-size: 0.85rem;" @input="debouncedFilter" />
+
+                        <InputText v-model="cartFilters.compareQuoteNo" placeholder="Comp" class="p-inputtext-sm"
+                            style="width: 150px; font-size: 0.85rem;" @input="debouncedFilter" />
+
+                        <Select v-model="cartFilters.status" :options="['New', 'Verified', 'All']" placeholder="Statut"
+                            class="p-inputtext-sm custom-status-dropdown" panelClass="custom-status-dropdown-panel"
+                            style="width: 160px; font-size: 0.85rem;" @change="applyFilters">
+                            <template #value="slotProps">
+                                <span v-if="slotProps.value"
+                                    :class="'status-text-' + (slotProps.value ? slotProps.value.toLowerCase() : '')">{{
+                                        slotProps.value === 'All' ? 'Tous' : slotProps.value }}</span>
+                                <span v-else class="text-gray-400 flex align-items-center"
+                                    style="height: 100%; display: flex; align-items: center;">{{ slotProps.placeholder
+                                    }}</span>
+                            </template>
+                        </Select>
+                    </div>
+
+                    <div class="table-container history-container" style="margin-top: 0; flex-grow: 1;">
+                        <div class="table-wrapper cart-table-wrapper">
+                            <DataTable :value="store.cartItems" responsiveLayout="scroll" class="p-datatable-sm"
+                                :loading="store.isLoading">
+                                <Column field="buyFromVendorNo" header="FRS" sortable
+                                    :style="{ width: isSidebarExpanded ? '9%' : '15%' }">
+                                    <template #body="slotProps">
+                                        <div class="cell-reference">{{ slotProps.data.buyFromVendorNo }}</div>
+                                    </template>
+                                </Column>
+                                <Column header="Article / Description" sortable field="itemNo">
+                                    <template #body="slotProps">
+                                        <div class="cell-reference">{{ slotProps.data.itemNo }}</div>
+                                        <div class="cell-description">{{ slotProps.data.description }}</div>
+                                    </template>
+                                </Column>
+                                <Column field="refMaster" header="Ref Master" sortable v-if="isSidebarExpanded">
+                                </Column>
+                                <Column field="quantity" header="Qté" sortable></Column>
+                                <Column field="directUnitCost" header="Coût" sortable>
+                                    <template #body="slotProps">
+                                        {{ formatNumber(slotProps.data.directUnitCost, 2) }}
+                                    </template>
+                                </Column>
+                                <Column field="compareQuoteNo" header="COMP / Date" sortable v-if="isSidebarExpanded">
+                                    <template #body="slotProps">
+                                        <div class="cell-reference">{{ slotProps.data.compareQuoteNo }}</div>
+                                        <div class="cell-description">{{ formatDate(slotProps.data.addedDate) }}</div>
+                                    </template>
+                                </Column>
+                                <Column field="comment" header="Commentaire" sortable v-if="isSidebarExpanded">
+                                    <template #body="slotProps">
+                                        <div class="cell-description" :title="slotProps.data.comment">{{
+                                            slotProps.data.comment }}</div>
+                                    </template>
+                                </Column>
+                                <Column field="status" header="Statut" sortable>
+                                    <template #body="slotProps">
+                                        <span :class="'status-badge status-' + slotProps.data.status.toLowerCase()">{{
+                                            slotProps.data.status }}</span>
+                                    </template>
+                                </Column>
+                                <Column header="Actions" v-if="isSidebarExpanded">
+                                    <template #body="slotProps">
+                                        <div class="flex gap-2 justify-center">
+                                            <button class="action-btn verify-btn" title="Vérifier"
+                                                @click="updateCartStatus(slotProps.data.lineNo, 'Verified')"
+                                                :disabled="slotProps.data.status === 'Verified'">
+                                                <i class="pi pi-check-circle"></i>
+                                            </button>
+                                            <button class="action-btn cancel-btn" title="Annuler"
+                                                @click="updateCartStatus(slotProps.data.lineNo, 'Cancelled')"
+                                                :disabled="slotProps.data.status === 'Cancelled'">
+                                                <i class="pi pi-times-circle"></i>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </Column>
+                                <template #empty>
+                                    <div class="text-center p-4">
+                                        <p class="text-slate-500">Votre panier est vide.</p>
+                                    </div>
+                                </template>
+                            </DataTable>
+                        </div>
+                        <div class="table-footer" v-if="store.cartItems.length > 0">
+                            <div class="pagination-info">
+                                {{ store.cartPagination.page * store.cartPagination.size + 1 }}-{{
+                                    Math.min((store.cartPagination.page + 1) *
+                                        store.cartPagination.size, store.cartPagination.totalElements) }} sur {{
+                                    store.cartPagination.totalElements }}
+                            </div>
+                            <div class="pagination-controls">
+                                <button class="p-btn" :disabled="store.cartPagination.page === 0"
+                                    @click="applyFilters(store.cartPagination.page - 1)">
+                                    <i class="pi pi-angle-left"></i>
+                                </button>
+                                <span class="p-current">{{ store.cartPagination.page + 1 }}</span>
+                                <button class="p-btn" :disabled="store.cartPagination.page >= store.cartPagination.totalPages - 1"
+                                    @click="applyFilters(store.cartPagination.page + 1)">
+                                    <i class="pi pi-angle-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Comment Overlay -->
+        <Popover ref="commentOverlay" class="comment-overlay" :showCloseIcon="false" :dismissable="true">
+            <div class="comment-content">
+                <div class="comment-header">
+                    <span class="comment-title">Commentaire</span>
+                    <div class="header-actions">
+                        <Button icon="pi pi-check" text rounded severity="success" @click="saveComment"
+                            tooltip="Enregistrer" />
+                        <Button icon="pi pi-times" text rounded severity="secondary"
+                            @click="$refs.commentOverlay.hide()" tooltip="Fermer" />
+                    </div>
+                </div>
+                <textarea v-model="commentText" rows="3" class="comment-textarea" placeholder="Saisir un commentaire..."
+                    maxlength="250"></textarea>
+                <div class="text-xs text-right text-gray-400 mt-1">
+                    {{ commentText.length }}/250
+                </div>
+            </div>
+        </Popover>
+
+        <!-- Article Info Dialog -->
+        <div v-if="showInfoDialog" class="info-dialog-overlay" @click.self="showInfoDialog = false">
+            <div class="info-dialog-container">
+                <!-- Header -->
+                <div class="info-dialog-header">
+                    <div class="info-dialog-header-title">
+                        Informations Article . {{ selectedInfoItem?.no || selectedInfoItem?.articleNumber }} . {{
+                            selectedInfoItem?.descriptionStructured || selectedInfoItem?.manufacturerName
+                        }}
+                    </div>
+                    <div class="info-dialog-header-right">
+                        <img src="/images/articles/tecalliance_partner.png" alt="TecAlliance" class="tecalliance-logo">
+                        <button class="close-info-btn" @click="showInfoDialog = false">
+                            <i class="pi pi-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="info-dialog-body">
+                    <!-- Loading State -->
+                    <div v-if="selectedInfoItem?.isLoading" class="loading-state">
+                        <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: #3b82f6;"></i>
+                        <p>Chargement des informations...</p>
+                    </div>
+
+                    <template v-else>
+                        <div class="info-top-section">
+                            <!-- Image Gallery -->
+                            <div class="info-gallery">
+                                <div class="thumbnail-list"
+                                    v-if="!isViewing360 && selectedInfoItem?.thumbnails?.length > 0">
+                                    <button class="thumb-nav-btn up" @click="prevImage"
+                                        v-if="selectedInfoItem.thumbnails.length > 1"><i
+                                            class="pi pi-chevron-up"></i></button>
+                                    <div class="thumbnail-scroll-container">
+                                        <div v-for="(thumb, index) in selectedInfoItem?.thumbnails" :key="index"
+                                            class="thumb-item" :class="{ active: index === currentImageIndex }"
+                                            @click="currentImageIndex = index">
+                                            <img :src="thumb" alt="thumbnail">
+                                        </div>
+                                    </div>
+                                    <button class="thumb-nav-btn down" @click="nextImage"
+                                        v-if="selectedInfoItem.thumbnails.length > 1"><i
+                                            class="pi pi-chevron-down"></i></button>
+                                </div>
+                                <div class="main-image-container">
+                                    <!-- 360 Toggle Button -->
+                                    <button v-if="selectedInfoItem?.images360?.length > 0" class="viewer-360-toggle-btn"
+                                        @click="isViewing360 = !isViewing360"
+                                        :title="isViewing360 ? 'Retour aux photos' : 'Vue 360°'">
+                                        <i class="pi" :class="isViewing360 ? 'pi-images' : 'pi-sync'"
+                                            style="font-size: 1.2rem;"></i>
+                                    </button>
+
+                                    <!-- Standard Image View -->
+                                    <template v-if="!isViewing360">
+                                        <img v-if="selectedInfoItem?.thumbnails?.[currentImageIndex]"
+                                            :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
+                                            class="main-article-image">
+                                        <div v-else class="no-image-placeholder">
+                                            <i class="pi pi-image" style="font-size: 3rem; color: #94a3b8;"></i>
+                                            <p>Aucune image disponible</p>
+                                        </div>
+                                    </template>
+
+                                    <!-- 360 View -->
+                                    <div v-else class="viewer-360-container" @mousemove="handle360MouseMove"
+                                        @touchmove.prevent="handle360TouchMove">
+                                        <img :src="selectedInfoItem?.images360?.[current360Frame]" alt="360 View"
+                                            class="image-360" draggable="false">
+                                        <div class="viewer-360-overlay">
+                                            <i class="pi pi-sync spin-icon"></i>
+                                            <span>Faites glisser pour tourner</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Technical Specs -->
+                            <div class="info-specs-container">
+                                <div class="brand-header">
+                                    <img v-if="selectedInfoItem?.brandLogo" :src="selectedInfoItem?.brandLogo"
+                                        alt="Brand" class="brand-logo">
+                                    <div class="brand-info">
+                                        <div class="brand-ref">N° de référence: {{ selectedInfoItem?.no }}
+                                        </div>
+                                        <div class="brand-desc">{{ selectedInfoItem?.genericDescription ||
+                                            selectedInfoItem?.descriptionStructured }}</div>
+                                        <div class="brand-name" v-if="selectedInfoItem?.brand">{{
+                                            selectedInfoItem?.brand }}</div>
+                                    </div>
+                                </div>
+                                <div class="specs-table" v-if="selectedInfoItem?.specs?.length > 0">
+                                    <div v-for="(spec, index) in selectedInfoItem?.specs" :key="index" class="spec-row">
+                                        <div class="spec-label">{{ spec.label }}</div>
+                                        <div class="spec-value">{{ spec.value }}</div>
+                                    </div>
+                                </div>
+                                <div v-else class="no-data-message">
+                                    Aucune spécification technique disponible.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stacked Sections -->
+                        <div class="info-sections-container">
+                            <!-- OEM Numbers Section -->
+                            <div class="info-section" v-if="selectedInfoItem?.oemNumbers?.length > 0">
+                                <div class="info-section-header cursor-pointer"
+                                    @click="isOemSectionExpanded = !isOemSectionExpanded">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <i class="pi pi-list"></i>
+                                        <span>Numéros OEM</span>
+                                    </div>
+                                    <i class="pi"
+                                        :class="isOemSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                                </div>
+                                <div class="info-section-content" v-if="isOemSectionExpanded">
+                                    <div class="vehicles-list-container">
+                                        <div v-for="(group, index) in groupedOemNumbers" :key="index"
+                                            class="brand-group">
+                                            <div class="brand-toggle-row" @click="toggleOemBrand(group.brand)">
+                                                <i class="pi"
+                                                    :class="expandedOemBrands.has(group.brand) ? 'pi-minus' : 'pi-plus'"></i>
+                                                <span class="brand-name">{{ group.brand }}</span>
+                                            </div>
+                                            <div v-if="expandedOemBrands.has(group.brand)" class="oe-numbers-list"
+                                                style="padding: 10px 10px 10px 30px;">
+                                                <div v-for="(oem, oIndex) in group.numbers" :key="oIndex"
+                                                    class="oe-number-item">
+                                                    {{ oem.articleNumber }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PDFs Section -->
+                            <div class="info-section" v-if="selectedInfoItem?.pdfs?.length > 0">
+                                <div class="info-section-header cursor-pointer"
+                                    @click="isPdfSectionExpanded = !isPdfSectionExpanded">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <i class="pi pi-file-pdf"></i>
+                                        <span>Documents PDF</span>
+                                    </div>
+                                    <i class="pi"
+                                        :class="isPdfSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                                </div>
+                                <div class="info-section-content" v-if="isPdfSectionExpanded">
+                                    <div class="pdfs-list">
+                                        <a v-for="(pdf, index) in selectedInfoItem?.pdfs" :key="index" :href="pdf.url"
+                                            target="_blank" rel="noopener noreferrer" class="pdf-item">
+                                            <i class="pi pi-file-pdf"></i>
+                                            <span>{{ pdf.fileName }}</span>
+                                            <i class="pi pi-external-link"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+                            <!-- Composants du Kit Section -->
+                            <div class="info-section" v-if="selectedInfoItem?.articleParts?.length > 0">
+                                <div class="info-section-header cursor-pointer"
+                                    @click="isKitPartsSectionExpanded = !isKitPartsSectionExpanded">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <i class="pi pi-briefcase"></i>
+                                        <span>Composants du Kit</span>
+                                    </div>
+                                    <i class="pi"
+                                        :class="isKitPartsSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                                </div>
+                                <div class="info-section-content" v-if="isKitPartsSectionExpanded">
+                                    <div class="table-responsive" style="overflow-x: auto; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                        <table class="w-full text-left border-collapse" style="font-size: 0.9rem; min-width: 500px;">
+                                            <thead>
+                                                <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
+                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Référence</th>
+                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Désignation</th>
+                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Fabricant</th>
+                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;" class="text-center">Quantité</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="(part, pIndex) in selectedInfoItem.articleParts" :key="pIndex"
+                                                    style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;"
+                                                    class="hover:bg-slate-50">
+                                                    <td style="padding: 12px 16px; font-weight: 600; color: #0f172a;">{{ part.articleNo || part.articleNumber || '—' }}</td>
+                                                    <td style="padding: 12px 16px; color: #334155;">{{ part.articleName || '—' }}</td>
+                                                    <td style="padding: 12px 16px; color: #475569;">{{ part.brandName || '—' }}</td>
+                                                    <td style="padding: 12px 16px; color: #0f172a; font-weight: 500;" class="text-center">{{ part.quantity || 1 }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vehicles Section -->
+                            <div class="info-section" v-if="selectedInfoItem?.vehicles?.length > 0">
+                                <div class="info-section-header cursor-pointer"
+                                    @click="isVehiclesSectionExpanded = !isVehiclesSectionExpanded">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <i class="pi pi-car"></i>
+                                        <span>Véhicules concernés</span>
+                                    </div>
+                                    <i class="pi"
+                                        :class="isVehiclesSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                                </div>
+                                <div class="info-section-content" v-if="isVehiclesSectionExpanded">
+                                    <div class="vehicles-list-container">
+                                        <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
+                                            <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
+                                                class="brand-group">
+                                                <div class="brand-toggle-row" @click="toggleBrand(brandGroup)">
+                                                    <i class="pi"
+                                                        :class="expandedBrands.has(brandGroup.brand) ? 'pi-minus' : 'pi-plus'"></i>
+                                                    <span class="brand-name">{{ brandGroup.brand }}</span>
+                                                </div>
+                                                <div v-if="expandedBrands.has(brandGroup.brand)" class="models-list">
+                                                    <div v-if="brandGroup.isLoading" class="loading-models"
+                                                        style="padding: 10px; color: #64748b; font-style: italic;">
+                                                        <i class="pi pi-spin pi-spinner" style="margin-right: 8px;"></i>
+                                                        Chargement des modèles...
+                                                    </div>
+                                                    <div v-else-if="brandGroup.models.length === 0" class="no-models"
+                                                        style="padding: 10px; color: #94a3b8; font-style: italic;">
+                                                        Aucun modèle trouvé.
+                                                    </div>
+                                                    <div v-else v-for="(model, mIndex) in brandGroup.models"
+                                                        :key="mIndex" class="model-item">
+                                                        <i class="pi pi-angle-right model-plus-icon"></i>
+                                                        <span class="model-text">{{ model }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-else class="no-data-message">
+                                            Aucune donnée de véhicule disponible pour cet article.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock History Dialog -->
+        <Dialog v-model:visible="showHistoryDialog" modal :style="{ width: '50vw' }" class="history-dialog"
+            :showHeader="false" dismissableMask>
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Historique</button>
+                        <div class="item-title-inline" v-if="selectedHistoryItem">
+                            {{ formatReference(selectedHistoryItem.no || selectedHistoryItem.itemNo) }}
+                            • {{
+                                selectedHistoryItem.descriptionStructured ||
+                                selectedHistoryItem.structuredDescription ||
+                                selectedHistoryItem.description || 'Temoins de freins' }}
+                            <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany
+                            }})</span>
+                        </div>
+                        <div class="year-selector">
+                            <button class="year-arrow" @click="changeDialogYear(-1)">
+                                <i class="pi pi-chevron-left"></i>
+                            </button>
+                            <span class="year-display">{{ dialogSelectedYear }}</span>
+                            <button class="year-arrow" @click="changeDialogYear(1)">
+                                <i class="pi pi-chevron-right"></i>
+                            </button>
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showHistoryDialog = false"
+                            class="close-dialog-btn" />
+                    </div>
+                </div>
+
+                <div class="stats-bar dialog-stats-bar">
+                    <div class="stats-column">Stock : {{ dialogHistoryKpis.stock }}</div>
+                    <div class="stats-column">Achat : {{ dialogHistoryKpis.achat }}</div>
+                    <div class="stats-column">Vente : {{ Math.abs(dialogHistoryKpis.vente) }}</div>
+                    <div class="stats-column">Rupt : {{ dialogHistoryKpis.rupt }}</div>
+                </div>
+
+
+
+                <div class="table-container dialog-history-container">
+                    <div class="table-wrapper" ref="dialogHistoryTableWrapper" @scroll="onDialogHistoryScroll">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%">Date</th>
+                                    <th style="width: 5%">Type</th>
+                                    <th style="width: 10%">Type Doc</th>
+                                    <th style="width: 12%">N° Document</th>
+                                    <th style="width: 15%">Client / Frs</th>
+                                    <th style="width: 18%">Nom</th>
+                                    <th style="width: 8%" class="text-right">Qte</th>
+                                    <th style="width: 10%">Magasin</th>
+                                    <th style="width: 12%" class="text-right">PU</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingDialogHistory && dialogHistoryEntries.length === 0">
+                                    <td colspan="9" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="dialogHistoryEntries.length === 0">
+                                    <td colspan="9" class="text-center p-4">Aucune donnée disponible</td>
+                                </tr>
+                                <tr v-else v-for="(entry, index) in dialogHistoryEntries" :key="index">
+                                    <td>{{ formatDate(entry.postingDate) }}</td>
+                                    <td>
+                                        <div class="type-indicator-circle" :class="getEntryTypeClass(entry.entryType)">
+                                            {{ getEntryTypeLetter(entry.entryType) }}
+                                        </div>
+                                    </td>
+                                    <td>{{ entry.documentType }}</td>
+                                    <td>{{ entry.documentNo }}</td>
+                                    <td>{{ entry.sourceNo }}</td>
+                                    <td>{{ entry.sourceName }}</td>
+                                    <td class="text-right">{{ entry.quantity }}</td>
+                                    <td>{{ entry.locationCode }}</td>
+                                    <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-if="isLoadingDialogHistory && dialogHistoryEntries.length > 0" class="loading-more">
+                            <i class="pi pi-spin pi-spinner"></i> Chargement...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <Dialog v-model:visible="showPurchasePriceDialog" modal :style="{ width: '50vw' }" class="history-dialog"
+            :showHeader="false" dismissableMask>
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Historique Prix Achat</button>
+                        <div class="item-title-inline" v-if="selectedPurchasePriceItem">
+                            {{ selectedPurchasePriceItem.itemNo }} • {{
+                                selectedPurchasePriceItem.description }}
+                        </div>
+                        <div class="header-filter-container" v-if="availableVendors.length > 1">
+                            <select v-model="purchasePriceVendorFilter" class="vendor-filter-select"
+                                :disabled="isPurchasePriceFilterDisabled">
+                                <option value="">Tous les fournisseurs</option>
+                                <option v-for="vendor in availableVendors" :key="vendor" :value="vendor">
+                                    {{ vendor }}
+                                </option>
+                            </select>
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showPurchasePriceDialog = false"
+                            class="close-dialog-btn" style="margin-left: 0;" />
+                    </div>
+                </div>
+
+                <div class="table-container dialog-history-container" style="margin-top: 20px;">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%">Frs</th>
+                                    <th style="width: 15%">Date Début</th>
+                                    <th style="width: 15%">Date Fin</th>
+                                    <th style="width: 15%">Devise</th>
+                                    <th style="width: 20%" class="text-right">Coût Unitaire Direct</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingPurchasePrices">
+                                    <td colspan="5" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="purchasePrices.length === 0">
+                                    <td colspan="5" class="text-center p-4">Aucun historique de prix
+                                        disponible</td>
+                                </tr>
+                                <tr v-else v-for="(price, index) in filteredPurchasePrices" :key="index">
+                                    <td>{{ price.vendorNo }}</td>
+                                    <td>{{ formatDate(price.startingDate) }}</td>
+                                    <td>{{ formatDate(price.endingDate) }}</td>
+                                    <td>{{ price.currencyCode }}</td>
+                                    <td class="text-right">{{ formatNumber(price.directUnitCost, 2) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- TecDoc Verification Dialog -->
+        <Dialog v-model:visible="showVerificationDialog" modal :style="{ width: '70vw' }" class="history-dialog"
+            :showHeader="false" dismissableMask>
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Vérification TecDoc</button>
+                        <div class="item-title-inline" v-if="line">
+                            {{ masterItemNo }} • {{ line.structuredDescription || line.description }}
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showVerificationDialog = false"
+                            class="close-dialog-btn" />
+                    </div>
+                </div>
+
+                <div class="stats-bar dialog-stats-bar">
+                    <div class="stats-column">Total : {{ verificationStatus?.totalTecDocItems || 0 }}</div>
+                    <div class="stats-column">Éligibles : {{ verificationStatus?.countEligible || 0 }}</div>
+                    <div class="stats-column">Créés : {{ verificationStatus?.countCreated || 0 }}</div>
+                    <div class="stats-column">Non Créés : {{ verificationStatus?.countNotCreated || 0 }}
+                    </div>
+                </div>
+
+                <div class="verification-filter" style="padding: 10px 20px;">
+                    <label style="font-weight: 600; margin-right: 10px;">Fabricant:</label>
+                    <select v-model="verificationManufacturerFilter" class="manufacturer-filter"
+                        style="padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem;">
+                        <option value="">Tous les fabricants</option>
+                        <option v-for="mfr in availableManufacturers" :key="mfr" :value="mfr">
+                            {{ mfr }}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="table-footer centered-footer top-pagination">
+                    <div class="pagination-info" v-if="filteredVerificationItems.length > 0">
+                        {{ verificationPagination.page * verificationPagination.size + 1 }}-{{
+                            Math.min((verificationPagination.page + 1) * verificationPagination.size,
+                                filteredVerificationItems.length) }} sur {{ filteredVerificationItems.length }}
+                    </div>
+                    <div class="pagination-controls centered">
+                        <button class="p-btn" :disabled="verificationPagination.page === 0"
+                            @click="changeVerificationPage(verificationPagination.page - 1)">
+                            <i class="pi pi-angle-left"></i>
+                        </button>
+                        <span class="p-current">{{ verificationPagination.page + 1 }}</span>
+                        <button class="p-btn" :disabled="verificationPagination.page >= verificationTotalPages - 1"
+                            @click="changeVerificationPage(verificationPagination.page + 1)">
+                            <i class="pi pi-angle-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container dialog-history-container">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%">Fabricant</th>
+                                    <th style="width: 15%">Référence</th>
+                                    <th style="width: 15%">MASTER ERP</th>
+                                    <th style="width: 15%">Statut</th>
+                                    <th style="width: 20%">Action</th>
+                                    <th style="width: 15%" class="text-center">Information Tecdoc</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingVerification">
+                                    <td colspan="6" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="paginatedVerificationItems.length === 0">
+                                    <td colspan="6" class="text-center p-4">Aucun article trouvé</td>
+                                </tr>
+                                <tr v-else v-for="(item, index) in paginatedVerificationItems" :key="index">
+                                    <td>{{ item.manufacturerName }}</td>
+                                    <td>{{ item.articleNumber }}</td>
+                                    <td>
+                                        <span :class="getMasterErpClass(item.referenceMaster)">
+                                            {{ item.referenceMaster }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge"
+                                            :class="item.status === 'CREATED' ? 'status-created' : 'status-not-created'">
+                                            {{ item.status === 'CREATED' ? 'Créé' : 'Non Créé' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <Button v-if="item.status !== 'CREATED'" label="Ajouter AM" icon="pi pi-plus"
+                                            class="p-button-sm create-am-btn" @click="createArticleMaster(item)" />
+                                        <Button v-if="item.status === 'CREATED'" label="A Vérifier"
+                                            icon="pi pi-check-circle" class="p-button-sm verify-btn ml-2"
+                                            @click="markAsToVerify(item)" :loading="item.isVerifying" />
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="pi pi-info-circle info-icon cursor-pointer text-blue-500 hover:text-blue-700" style="font-size: 1.2rem;" @click="openInfoDialog(item)" title="Infos TecDoc"></i>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- Create Article Master Dialog -->
+        <CreateArticleMasterDialog
+            v-model:visible="showCreateArticleMasterDialog"
+            :candidate="selectedArticleMasterCandidate"
+            @success="onArticleMasterCreated"
+        />
+        <!-- Purchase Lines Dialog -->
+        <Dialog v-model:visible="showPurchaseLinesDialog" modal :style="{ width: '65vw' }" class="history-dialog"
+            :showHeader="false" dismissableMask>
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Lignes de Commande Achat</button>
+                        <div class="item-title-inline" v-if="selectedPurchaseLineNo">
+                            Réf: {{ selectedPurchaseLineNo }}
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showPurchaseLinesDialog = false"
+                            class="close-dialog-btn" />
+                    </div>
+                </div>
+
+                <div class="table-container dialog-history-container" style="margin-top: 20px;">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th v-for="col in purchaseLinesColumns" :key="col.field"
+                                        :class="[{ 'text-right': col.isNumber, 'text-center': col.isDate }, 'cursor-pointer select-none hover:bg-slate-200']"
+                                        @click="onSortPurchaseLines(col.field)">
+                                        <div class="flex items-center gap-1" :class="{ 'justify-end': col.isNumber, 'justify-center': col.isDate }">
+                                            <span>{{ col.header }}</span>
+                                            <i v-if="purchaseLinesSort.field === col.field"
+                                                :class="purchaseLinesSort.direction === 'asc' ? 'pi pi-sort-amount-up-alt text-primary' : 'pi pi-sort-amount-down text-primary'"></i>
+                                            <i v-else class="pi pi-sort text-slate-400 opacity-50"></i>
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="isLoadingPurchaseLines">
+                                    <td :colspan="purchaseLinesColumns.length" class="text-center p-4">Chargement...</td>
+                                </tr>
+                                <tr v-else-if="purchaseLines.length === 0">
+                                    <td :colspan="purchaseLinesColumns.length" class="text-center p-4">Aucune ligne de commande disponible</td>
+                                </tr>
+                                <tr v-else v-for="(line, index) in purchaseLines" :key="index">
+                                    <td v-for="col in purchaseLinesColumns" :key="col.field"
+                                        :class="{ 'font-bold': col.isBold, 'text-right': col.isNumber, 'text-center': col.isDate }"
+                                        :style="col.isBold ? 'font-weight: 700 !important;' : ''">
+                                        <template v-if="col.isDate">
+                                            {{ formatPurchaseLineDate(getPurchaseLineValue(line, col)) }}
+                                        </template>
+                                        <template v-else>
+                                            {{ getPurchaseLineValue(line, col) }}
+                                        </template>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer" v-if="purchaseLines.length > 0">
+                        <div class="pagination-info">
+                            {{ purchaseLinesPagination.page * purchaseLinesPagination.size + 1 }}-{{
+                                Math.min((purchaseLinesPagination.page + 1) *
+                                    purchaseLinesPagination.size, purchaseLinesPagination.totalElements) }} sur {{
+                                purchaseLinesPagination.totalElements }}
+                        </div>
+                        <div class="pagination-controls">
+                            <button class="p-btn" :disabled="purchaseLinesPagination.page === 0"
+                                @click="loadPurchaseLines(selectedPurchaseLineNo, purchaseLinesPagination.page - 1)">
+                                <i class="pi pi-angle-left"></i>
+                            </button>
+                            <span class="p-current">{{ purchaseLinesPagination.page + 1 }}</span>
+                            <button class="p-btn" :disabled="purchaseLinesPagination.page >= purchaseLinesPagination.totalPages - 1"
+                                @click="loadPurchaseLines(selectedPurchaseLineNo, purchaseLinesPagination.page + 1)">
+                                <i class="pi pi-angle-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- OEM Count Details Dialog -->
+        <Dialog v-model:visible="showOemCountDialog" modal :style="{ width: '45vw' }" class="history-dialog"
+            :showHeader="false" dismissableMask>
+            <div class="dialog-content-wrapper">
+                <div class="sidebar-header dialog-header">
+                    <div class="header-actions">
+                        <button class="history-btn">Détails des équivalences OEM</button>
+                        <div class="item-title-inline" v-if="masterItemNo">
+                            Réf Master: {{ masterItemNo }}
+                        </div>
+                        <Button icon="pi pi-times" text rounded @click="showOemCountDialog = false"
+                            class="close-dialog-btn" />
+                    </div>
+                </div>
+
+                <div class="table-container dialog-history-container" style="margin-top: 20px;">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-left" style="padding: 12px 16px;">Référence Équivalente</th>
+                                    <th class="text-right" style="width: 30%; padding: 12px 16px;">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="oemCountDetails.length === 0">
+                                    <td colspan="2" class="text-center p-4">Aucun détail disponible</td>
+                                </tr>
+                                <tr v-else v-for="(detailItem, index) in sortedOemCountDetails" :key="index" class="hover:bg-slate-50">
+                                    <td class="font-bold" style="font-weight: 700 !important; padding: 12px 16px;">{{ detailItem.reference }}</td>
+                                    <td class="text-right font-bold text-primary" style="font-weight: 700 !important; padding: 12px 16px;">{{ detailItem.count }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer" v-if="oemCountDetails.length > 0" style="padding: 12px 16px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 8px 8px;">
+                        <div class="pagination-info" style="width: 100%; text-align: right; font-weight: 700; font-size: 1.1rem; color: #1e293b;">
+                            Total : {{ oemCount !== null ? oemCount : 0 }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+
+        <!-- Comment Overlay -->
+        <Popover ref="commentOverlay" class="comment-overlay" appendTo="body"
+            :style="{ width: '25vw', minWidth: '25vw', maxWidth: '25vw', border: '1px solid #cbd5e1', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', background: 'white' }">
+            <div class="comment-content"
+                style="width: 100%; display: flex; flex-direction: column; gap: 10px; padding: 10px 10px 0px 10px !important; box-sizing: border-box !important;">
+                <textarea v-model="commentText" class="comment-textarea" placeholder="Saisissez votre commentaire..."
+                    rows="5"
+                    style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; font-family: inherit; font-size: 0.9rem; resize: none; outline: none;"></textarea>
+                <div class="comment-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <Button icon="pi pi-check" text rounded size="small" @click="saveComment" title="Enregistrer" />
+                    <Button icon="pi pi-times" text rounded size="small" @click="$refs.commentOverlay.toggle($event)"
+                        title="Fermer" />
+                </div>
+            </div>
+        </Popover>
+    </div>
+</template>
+<script setup>
+import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
+import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import Popover from 'primevue/popover'
+import Select from 'primevue/select'
+import InputNumber from 'primevue/inputnumber'
+import DatePicker from 'primevue/datepicker'
+import Toast from 'primevue/toast'
+import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
+
+import { useCompareQuoteStore } from '../stores/compareQuote'
+import { useAuthStore } from '../stores/auth'
+import CreateArticleMasterDialog from '@/components/CreateArticleMasterDialog.vue'
+
+
+const props = defineProps({
+    compareQuoteNo: {
+        type: String,
+        required: true
+    },
+    compareQuoteDescription: {
+        type: String,
+        default: ''
+    }
+})
+
+const emit = defineEmits(['back', 'prev', 'next'])
+
+const store = useCompareQuoteStore()
+const authStore = useAuthStore()
+
+const formatReference = (refVal) => {
+    if (!refVal) return ''
+    return refVal.replace(/MASTER/gi, '').trim()
+}
+
+const isProductItem = (item) => {
+    if (!item) return false
+    const p = item.produit !== undefined ? item.produit : item.Produit
+    return p === true || p === 'true' || p === 1 || p === '1'
+}
+const toast = useToast()
+const confirm = useConfirm()
+const isSidebarExpanded = ref(false)
+const showHistoryDialog = ref(false)
+const selectedCompany = ref('')
+const selectedCompanyId = ref(null)
+const quoteLineDetails = ref([])
+const isLoadingDetails = ref(false)
+
+// Confirmation Achat : pagination SERVEUR (infinite scroll) des lignes FRS.
+// On ne charge qu'une page à la fois via /by-compare-quote?page=&size= (anti-burst).
+const frsPage = ref(0)
+const frsPageSize = 10        // > 4 lignes visibles pour garantir l'overflow/scroll
+const frsHasMore = ref(true)
+const isLoadingFrsMore = ref(false)
+const frsTableWrapper = ref(null)
+
+// Filtres FRS (opérateur + valeur), appliqués côté backend AVANT pagination
+const defaultFrsFilters = () => ({
+    stock: { operator: 'gt', value: null },
+    date: { operator: 'ge', value: null },
+    quantity: { operator: 'eq', value: null }
+})
+const frsFilters = ref(defaultFrsFilters())
+
+// Opérateurs proposés dans les popovers de filtre (libellés clairs)
+const operatorOptions = [
+    { label: '>  Supérieur à', value: 'gt' },
+    { label: '≥  Supérieur ou égal à', value: 'ge' },
+    { label: '=  Égal à', value: 'eq' },
+    { label: '≤  Inférieur ou égal à', value: 'le' },
+    { label: '<  Inférieur à', value: 'lt' }
+]
+
+// Refs des popovers de filtre (par colonne)
+const stockFilterPanel = ref(null)
+const dateFilterPanel = ref(null)
+const quantityFilterPanel = ref(null)
+
+const isStockFilterActive = computed(() => frsFilters.value.stock.value !== null && frsFilters.value.stock.value !== '')
+const isDateFilterActive = computed(() => !!frsFilters.value.date.value)
+const isQuantityFilterActive = computed(() => frsFilters.value.quantity.value !== null && frsFilters.value.quantity.value !== '')
+
+const toISODate = (d) => {
+    if (!d) return null
+    const date = (d instanceof Date) ? d : new Date(d)
+    if (isNaN(date.getTime())) return null
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+}
+
+// Construit les paramètres plats attendus par le backend
+const buildFrsFilterParams = () => ({
+    stockOperator: frsFilters.value.stock.operator,
+    stockValue: frsFilters.value.stock.value,
+    dateDernierAchatOperator: frsFilters.value.date.operator,
+    dateDernierAchatValue: toISODate(frsFilters.value.date.value),
+    quantityOperator: frsFilters.value.quantity.operator,
+    quantityValue: frsFilters.value.quantity.value
+})
+
+// Symboles d'opérateurs (pour les tooltips de filtre actif)
+const OP_SYMBOL = { gt: '>', ge: '≥', eq: '=', le: '≤', lt: '<' }
+
+const formatFrDate = (d) => {
+    if (!d) return ''
+    const date = (d instanceof Date) ? d : new Date(d)
+    if (isNaN(date.getTime())) return ''
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+const stockFilterTooltip = computed(() => isStockFilterActive.value
+    ? `Filtre actif : ${OP_SYMBOL[frsFilters.value.stock.operator]} ${frsFilters.value.stock.value}` : 'Filtrer')
+const dateFilterTooltip = computed(() => isDateFilterActive.value
+    ? `Filtre actif : ${OP_SYMBOL[frsFilters.value.date.operator]} ${formatFrDate(frsFilters.value.date.value)}` : 'Filtrer')
+const quantityFilterTooltip = computed(() => isQuantityFilterActive.value
+    ? `Filtre actif : ${OP_SYMBOL[frsFilters.value.quantity.operator]} ${frsFilters.value.quantity.value}` : 'Filtrer')
+
+// Un seul popover de filtre ouvert à la fois : on ferme les autres avant d'ouvrir.
+const toggleStockFilter = (e) => { dateFilterPanel.value?.hide(); quantityFilterPanel.value?.hide(); stockFilterPanel.value?.toggle(e) }
+const toggleDateFilter = (e) => { stockFilterPanel.value?.hide(); quantityFilterPanel.value?.hide(); dateFilterPanel.value?.toggle(e) }
+const toggleQuantityFilter = (e) => { stockFilterPanel.value?.hide(); dateFilterPanel.value?.hide(); quantityFilterPanel.value?.toggle(e) }
+
+const applyStockFilter = () => { stockFilterPanel.value?.hide(); applyFrsFilters() }
+const resetStockFilter = () => { frsFilters.value.stock = { operator: 'gt', value: null }; stockFilterPanel.value?.hide(); applyFrsFilters() }
+const applyDateFilter = () => { dateFilterPanel.value?.hide(); applyFrsFilters() }
+const resetDateFilter = () => { frsFilters.value.date = { operator: 'ge', value: null }; dateFilterPanel.value?.hide(); applyFrsFilters() }
+const applyQuantityFilter = () => { quantityFilterPanel.value?.hide(); applyFrsFilters() }
+const resetQuantityFilter = () => { frsFilters.value.quantity = { operator: 'eq', value: null }; quantityFilterPanel.value?.hide(); applyFrsFilters() }
+
+const selectedDetail = ref(null)
+const selectedHistoryItem = ref(null)
+
+// Shim de compatibilité : reproduit la forme attendue de l'ancien prop `line`
+// à partir de la ligne FRS actuellement sélectionnée (mode "par comparateur").
+const line = computed(() => ({
+    compareQuoteNo: props.compareQuoteNo,
+    itemNo: selectedDetail.value?.ReferenceMaster || selectedDetail.value?.referenceMaster || '',
+    structuredDescription: selectedDetail.value?.descriptionStructured || '',
+    description: selectedDetail.value?.descriptionStructured || '',
+    countItemManual: 0
+}))
+
+const equivalenceItems = ref([])
+const isLoadingEquivalence = ref(false)
+const equivalencePagination = ref({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0
+})
+
+const kitItems = ref([])
+const isLoadingKit = ref(false)
+const kitPagination = ref({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0
+})
+
+
+
+
+// Sidebar History State
+const selectedYear = ref(new Date().getFullYear())
+const historyEntries = ref([])
+const isLoadingHistory = ref(false)
+const historyPagination = ref({
+    page: 0,
+    size: 20,
+    totalElements: 0,
+    totalPages: 0
+})
+
+// OEM Grouping State
+const expandedOemBrands = ref(new Set())
+
+const toggleOemBrand = (brand) => {
+    if (expandedOemBrands.value.has(brand)) {
+        expandedOemBrands.value.delete(brand)
+    } else {
+        expandedOemBrands.value.add(brand)
+    }
+}
+
+const groupedOemNumbers = computed(() => {
+    if (!selectedInfoItem.value?.oemNumbers?.length) return []
+
+    const groups = {}
+    selectedInfoItem.value.oemNumbers.forEach(oem => {
+        const brand = oem.mfrName || 'Autre'
+        if (!groups[brand]) {
+            groups[brand] = []
+        }
+        groups[brand].push(oem)
+    })
+
+    // Sort brands alphabetically
+    return Object.keys(groups).sort().map(brand => ({
+        brand,
+        numbers: groups[brand]
+    }))
+})
+
+// Comment State
+const commentOverlay = ref(null)
+const commentText = ref('')
+const selectedCommentItem = ref(null)
+
+const toggleCommentOverlay = (event, item) => {
+    selectedCommentItem.value = item
+    commentText.value = item.commentPurchaseCart || item.quoteLineComment || item.QuoteLineComment || ''
+    commentOverlay.value.toggle(event)
+}
+
+const openCartForItem = (item) => {
+    activeRightPanel.value = 'cart'
+    activeCartTab.value = 'current'
+    cartFilters.value = {
+        compareQuoteNo: props.compareQuoteNo,
+        status: null,
+        itemNo: item.no,
+        vendorNo: ''
+    }
+    applyFilters()
+}
+
+const saveComment = async () => {
+    if (selectedCommentItem.value) {
+        // For Equivalence/KIT items, just store locally
+        if (selectedCommentItem.value.no) {
+            // If item is already in cart, update the comment via API
+            if (selectedCommentItem.value.existPurchaseCart) {
+                let lineNo = selectedCommentItem.value.purchaseCartLineNo;
+
+                // Fallback: Try to find the line number in the store's cart items if not present on the item
+                if (!lineNo) {
+                    // First check existing store items
+                    if (store.cartItems && store.cartItems.length > 0) {
+                        const cartItem = store.cartItems.find(ci =>
+                            ci.itemNo === selectedCommentItem.value.no &&
+                            ci.buyFromVendorNo === selectedCommentItem.value.vendorNo
+                        );
+                        if (cartItem) {
+                            lineNo = cartItem.lineNo;
+                        }
+                    }
+
+                    // If still not found, fetch from API specifically for this item
+                    if (!lineNo) {
+                        try {
+                            const fetchedItems = await store.fetchCartItems({
+                                itemNo: selectedCommentItem.value.no,
+                                vendorNo: selectedCommentItem.value.vendorNo,
+                                compareQuoteNo: props.compareQuoteNo,
+                                status: 'All'
+                            });
+
+                            if (fetchedItems && fetchedItems.length > 0) {
+                                // Find the exact match (though filters should have narrowed it down)
+                                const match = fetchedItems.find(ci =>
+                                    ci.itemNo === selectedCommentItem.value.no &&
+                                    ci.buyFromVendorNo === selectedCommentItem.value.vendorNo
+                                );
+                                if (match) {
+                                    lineNo = match.lineNo;
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Error fetching cart item for comment update:', err);
+                        }
+                    }
+
+                    // Cache it if found
+                    if (lineNo) {
+                        selectedCommentItem.value.purchaseCartLineNo = lineNo;
+                    }
+                }
+
+                if (lineNo) {
+                    try {
+                        await store.updateCartItemComment(lineNo, commentText.value)
+                        selectedCommentItem.value.commentPurchaseCart = commentText.value
+                        toast.add({ severity: 'success', summary: 'Succès', detail: 'Commentaire mis à jour dans le panier', life: 2000 })
+                        commentOverlay.value.hide()
+                        return
+                    } catch (error) {
+                        console.error('Failed to update cart comment:', error)
+                        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour du commentaire', life: 3000 })
+                        return
+                    }
+                }
+            }
+
+            selectedCommentItem.value.comment = commentText.value
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Commentaire enregistré localement', life: 2000 })
+            commentOverlay.value.hide()
+        } else {
+            // For quote line items, update via API
+            try {
+                await store.updateQuoteLineComment(selectedCommentItem.value.id, commentText.value)
+                selectedCommentItem.value.quoteLineComment = commentText.value
+                toast.add({ severity: 'success', summary: 'Succès', detail: 'Commentaire enregistré', life: 2000 })
+                commentOverlay.value.hide()
+            } catch (error) {
+                toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de l\'enregistrement', life: 3000 })
+            }
+        }
+    }
+}
+
+const addToCart = async (item) => {
+    try {
+        const payload = {
+            buyFromVendorNo: item.vendorNo,
+            itemNo: item.no,
+            refMaster: line.value.itemNo,
+            quantity: item.quantityToOrder || 1,
+            directUnitCost: item.lastCurrPrice,
+            compareQuoteNo: props.compareQuoteNo,
+            comment: item.comment || ''
+        }
+
+        const response = await store.addToCart(payload)
+
+        // Update local item state immediately
+        item.existPurchaseCart = true
+        // Capture the line number from the response
+        if (response && response.lineNo) {
+            item.purchaseCartLineNo = response.lineNo
+        }
+
+        if (payload.comment) {
+            item.commentPurchaseCart = payload.comment
+        }
+
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Article ajouté au panier', life: 2000 })
+
+        // Refresh cart count and items
+        if (props.compareQuoteNo) {
+            await store.fetchCartCount(props.compareQuoteNo)
+        }
+        if (activeRightPanel.value === 'cart') {
+            applyFilters()
+        }
+
+
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de l\'ajout au panier', life: 3000 })
+    }
+}
+
+
+
+
+
+const updateCartStatus = async (lineNo, status) => {
+    try {
+        await store.updateCartItemStatus(lineNo, status)
+        toast.add({ severity: 'success', summary: 'Succès', detail: `Statut mis à jour: ${status}`, life: 2000 })
+
+        // Refresh cart count and items
+        if (props.compareQuoteNo) {
+            await store.fetchCartCount(props.compareQuoteNo)
+        }
+        applyFilters()
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour du statut', life: 3000 })
+    }
+}
+const historyKpis = ref({
+    stock: 0,
+    vente: 0,
+    achat: 0,
+    rupt: 0
+})
+
+// Dialog History State
+const dialogSelectedYear = ref(new Date().getFullYear())
+const dialogHistoryEntries = ref([])
+const isLoadingDialogHistory = ref(false)
+const dialogHistoryPagination = ref({
+    page: 0,
+    size: 20,
+    totalElements: 0,
+    totalPages: 0
+})
+const dialogHistoryKpis = ref({
+    stock: 0,
+    vente: 0,
+    achat: 0,
+    rupt: 0
+})
+const intercompanyStocks = ref([])
+const isLoadingIntercompanyStock = ref(false)
+const isLoadingSecondaryData = ref(false)
+
+const oemCount = ref(null)
+const oemCountDetails = ref([])
+const isLoadingOemCount = ref(false)
+const showOemCountDialog = ref(false)
+
+const fetchOemCount = async () => {
+    if (!line.value?.itemNo) return
+
+    isLoadingOemCount.value = true
+    oemCount.value = null
+    oemCountDetails.value = []
+    try {
+        const response = await store.fetchOemEquivalenceCount(line.value.itemNo)
+        oemCount.value = response?.totalCount !== undefined ? response.totalCount : (response || 0)
+        oemCountDetails.value = response?.details || []
+    } catch (error) {
+        console.error('Failed to fetch OEM equivalence count:', error)
+        oemCount.value = line.value?.countItemManual || 0
+        oemCountDetails.value = []
+    } finally {
+        isLoadingOemCount.value = false
+    }
+}
+
+const openOemCountDialog = () => {
+    if (!isLoadingOemCount.value && oemCountDetails.value.length > 0) {
+        showOemCountDialog.value = true
+    } else if (!isLoadingOemCount.value && oemCountDetails.value.length === 0) {
+        toast.add({ severity: 'info', summary: 'Information', detail: 'Aucun détail de count disponible', life: 2000 })
+    }
+}
+
+const sortedOemCountDetails = computed(() => {
+    if (!oemCountDetails.value) return []
+    return [...oemCountDetails.value].sort((a, b) => (b.count || 0) - (a.count || 0))
+})
+
+const isLoadingMasterData = computed(() => {
+    return isLoadingDetails.value ||
+        isLoadingEquivalence.value ||
+        isLoadingKit.value ||
+        isLoadingIntercompanyStock.value ||
+        isLoadingSecondaryData.value ||
+        isLoadingOemCount.value
+})
+
+// Article Info Dialog State
+const showInfoDialog = ref(false)
+
+// TecDoc Verification State
+const verificationStatus = ref(null)
+const showVerificationDialog = ref(false)
+const isLoadingVerification = ref(false)
+const verificationManufacturerFilter = ref('')
+const verificationPagination = ref({
+    page: 0,
+    size: 10
+})
+
+// Purchase Lines Dialog State
+const showPurchaseLinesDialog = ref(false)
+const purchaseLines = ref([])
+const isLoadingPurchaseLines = ref(false)
+const selectedPurchaseLineNo = ref(null)
+
+const purchaseLinesPagination = ref({
+    page: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 1
+})
+
+const purchaseLinesSort = ref({
+    field: '',
+    direction: ''
+})
+
+const purchaseLinesColumns = [
+    { field: 'documentNo', altField: 'Document No', header: 'N° Commande' },
+    { field: 'buyFromVendorNo', altField: 'Buy From Vendor No', header: 'Fournisseur', isBold: true },
+    { field: 'no', altField: 'No', header: 'Référence' },
+    { field: 'locationCode', altField: 'Location Code', header: 'Magasin' },
+    { field: 'orderDate', altField: 'Order Date', header: 'Date Commande', isDate: true },
+    { field: 'description', altField: 'Description', header: 'Description' },
+    { field: 'quantity', altField: 'Quantity', header: 'Qté Commande', isNumber: true },
+    { field: 'outstandingQuantity', altField: 'Outstanding Quantity', header: 'Qté Cmd Restante', isBold: true, isNumber: true }
+]
+
+const getPurchaseLineValue = (line, col) => {
+    if (!line) return ''
+    if (line[col.field] !== undefined) return line[col.field]
+    if (line[col.altField] !== undefined) return line[col.altField]
+    
+    const normalizedField = col.field.toLowerCase().replace(/[^a-z0-9]/g, '')
+    for (const key of Object.keys(line)) {
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (normalizedKey === normalizedField || normalizedKey === normalizedField + '_') {
+            return line[key]
+        }
+    }
+    return ''
+}
+
+const formatPurchaseLineDate = (dateString) => {
+    if (!dateString || dateString === '0001-01-01' || dateString.startsWith('1753-01-01')) return '-'
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return dateString
+
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+
+    return `${day}/${month}/${year}`
+}
+
+const loadPurchaseLines = async (no, page = 0) => {
+    if (!no) return
+    selectedPurchaseLineNo.value = no
+    isLoadingPurchaseLines.value = true
+    
+    let sortParam = ''
+    if (purchaseLinesSort.value.field) {
+        sortParam = `${purchaseLinesSort.value.field},${purchaseLinesSort.value.direction}`
+    }
+
+    try {
+        const data = await store.fetchPurchaseLines(no, page, purchaseLinesPagination.value.size, sortParam)
+        if (data && data.content) {
+            purchaseLines.value = data.content
+            purchaseLinesPagination.value = {
+                ...purchaseLinesPagination.value,
+                page: data.page?.number ?? data.number ?? page,
+                size: data.page?.size ?? data.size ?? purchaseLinesPagination.value.size,
+                totalElements: data.page?.totalElements ?? data.totalElements ?? data.content.length,
+                totalPages: data.page?.totalPages ?? data.totalPages ?? 1
+            }
+        } else {
+            const items = Array.isArray(data) ? data : (data ? [data] : [])
+            purchaseLines.value = items
+            purchaseLinesPagination.value = {
+                ...purchaseLinesPagination.value,
+                page: 0,
+                totalElements: items.length,
+                totalPages: 1
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching purchase lines:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la récupération des lignes de commande', life: 3000 })
+        purchaseLines.value = []
+    } finally {
+        isLoadingPurchaseLines.value = false
+    }
+}
+
+const onSortPurchaseLines = (field) => {
+    if (purchaseLinesSort.value.field === field) {
+        if (purchaseLinesSort.value.direction === 'asc') {
+            purchaseLinesSort.value.direction = 'desc'
+        } else if (purchaseLinesSort.value.direction === 'desc') {
+            purchaseLinesSort.value.field = ''
+            purchaseLinesSort.value.direction = ''
+        }
+    } else {
+        purchaseLinesSort.value.field = field
+        purchaseLinesSort.value.direction = 'asc'
+    }
+    loadPurchaseLines(selectedPurchaseLineNo.value, 0)
+}
+
+const openPurchaseLinesDialog = async (no, qtyCmd) => {
+    if (!qtyCmd || qtyCmd <= 0) return
+    selectedPurchaseLineNo.value = no
+    showPurchaseLinesDialog.value = true
+    purchaseLinesSort.value = { field: '', direction: '' }
+    purchaseLinesPagination.value.page = 0
+    await loadPurchaseLines(no, 0)
+}
+
+// Purchase Price Dialog State
+const showPurchasePriceDialog = ref(false)
+const purchasePrices = ref([])
+const isLoadingPurchasePrices = ref(false)
+const selectedPurchasePriceItem = ref(null)
+const purchasePriceVendorFilter = ref('')
+const allPurchasePrices = ref([])
+const purchasePricesByItem = ref(new Map())
+const totalAmount = ref(null)
+const selectedDocumentNo = ref(null)
+
+const availableVendors = computed(() => {
+    if (!purchasePrices.value) return []
+    const vendors = [...new Set(purchasePrices.value.map(p =>
+        p.vendorNo))].filter(Boolean)
+    return vendors.sort()
+})
+
+const filteredPurchasePrices = computed(() => {
+    if (!purchasePriceVendorFilter.value) return purchasePrices.value
+    return purchasePrices.value.filter(p => p.vendorNo ===
+        purchasePriceVendorFilter.value)
+})
+
+const isPurchasePriceFilterDisabled = ref(false)
+
+const openPurchasePriceDialog = async (vendorNo, itemNo, description,
+    isFromSuppliers = false) => {
+    if (!itemNo) return
+
+    selectedPurchasePriceItem.value = { itemNo, description }
+    isPurchasePriceFilterDisabled.value = isFromSuppliers
+
+    if (isFromSuppliers && vendorNo) {
+        purchasePriceVendorFilter.value = vendorNo
+    } else {
+        purchasePriceVendorFilter.value = ''
+    }
+
+    showPurchasePriceDialog.value = true
+    isLoadingPurchasePrices.value = true
+    purchasePrices.value = []
+
+    try {
+        const data = await store.fetchPurchasePrices(itemNo)
+        purchasePrices.value = data || []
+    } catch (error) {
+        console.error('Error fetching purchase prices:', error)
+    } finally {
+        isLoadingPurchasePrices.value = false
+    }
+}
+
+// Last Invoiced Cost State
+// Last Invoiced Cost State
+const lastInvoicedCosts = ref(new Map())
+const equivalenceLastInvoicedCosts = ref(new Map())
+const kitLastInvoicedCosts = ref(new Map())
+
+const fetchLastInvoicedCosts = async () => {
+    if (!quoteLineDetails.value || quoteLineDetails.value.length === 0) return
+
+    // Get unique item numbers from the details list
+    const uniqueItems = [...new Set(quoteLineDetails.value.map(d => d.no))].filter(Boolean)
+
+    // Clear existing map
+    lastInvoicedCosts.value = new Map()
+
+    for (const itemNo of uniqueItems) {
+        try {
+            const data = await store.fetchLastInvoicedCost(itemNo)
+            if (Array.isArray(data)) {
+                const costMap = new Map()
+                data.forEach(item => {
+                    if (item.frs) {
+                        costMap.set(item.frs, item)
+                    }
+                })
+                lastInvoicedCosts.value.set(itemNo, costMap)
+            }
+        } catch (error) {
+            console.error(`Error fetching last invoiced costs for item ${itemNo}:`, error)
+        }
+    }
+}
+
+const getLastInvoicedData = (vendorNo, itemNo) => {
+    if (!vendorNo || !itemNo) return null
+    const itemMap = lastInvoicedCosts.value.get(itemNo)
+    if (!itemMap) return null
+    return itemMap.get(vendorNo)
+}
+
+const getEquivalenceLastInvoicedData = (itemNo, vendorNo) => {
+    if (!itemNo || !vendorNo) return null
+    const itemMap = equivalenceLastInvoicedCosts.value.get(itemNo)
+    if (!itemMap) return null
+    return itemMap.get(vendorNo)
+}
+
+const getKitLastInvoicedData = (itemNo, vendorNo) => {
+    if (!itemNo || !vendorNo) return null
+    const itemMap = kitLastInvoicedCosts.value.get(itemNo)
+    if (!itemMap) return null
+    return itemMap.get(vendorNo)
+}
+
+const fetchEquivalenceLastInvoicedCosts = async (items) => {
+    if (!items || items.length === 0) return
+
+    for (const item of items) {
+        if (!item.no) continue
+        try {
+            const data = await store.fetchLastInvoicedCost(item.no)
+            if (Array.isArray(data)) {
+                const costMap = new Map()
+                data.forEach(d => {
+                    if (d.frs) {
+                        costMap.set(d.frs, d)
+                    }
+                })
+                equivalenceLastInvoicedCosts.value.set(item.no, costMap)
+            }
+        } catch (error) {
+            console.error(`Error fetching last invoiced cost for equivalence item ${item.no}:`,
+                error)
+        }
+    }
+}
+
+const fetchKitLastInvoicedCosts = async () => {
+    // Mock kit items for now, as per template loop
+    const kitItems = [1, 2, 3, 4].map(i => ({
+        no: 'KIT-' + i, vendorNo: 'MOCK-VENDOR'
+    }))
+
+    for (const item of kitItems) {
+        try {
+            const data = await store.fetchLastInvoicedCost(item.no)
+            if (Array.isArray(data)) {
+                const costMap = new Map()
+                data.forEach(d => {
+                    if (d.frs) {
+                        costMap.set(d.frs, d)
+                    }
+                })
+                kitLastInvoicedCosts.value.set(item.no, costMap)
+            }
+        } catch (error) {
+            console.error(`Error fetching last invoiced cost for kit item ${item.no}:`, error)
+        }
+    }
+}
+
+const getSecondLastPurchasePrice = (vendorNo, itemNo) => {
+    if (!vendorNo || !itemNo) return null
+
+    // Get prices for this specific item
+    const itemPrices = purchasePricesByItem.value.get(itemNo)
+    if (!itemPrices || !itemPrices.length) return null
+
+    // Filter by vendor (use loose equality to handle string/number differences)
+    const vendorPrices = itemPrices.filter(p => p.vendorNo == vendorNo)
+
+    // Sort by startingDate descending
+    vendorPrices.sort((a, b) => new Date(b.startingDate) - new Date(a.startingDate))
+
+    // Return the second item (index 1) if it exists
+    if (vendorPrices.length >= 2) {
+        return vendorPrices[1].directUnitCost
+    }
+
+    return null
+}
+
+// ── Confirmation Achat : chargement progressif des lignes FRS + données secondaires par lot ──
+const fetchSecondaryDataForItems = async (items) => {
+    const uniqueNos = [...new Set((items || []).map(d => d.no))]
+        .filter(Boolean)
+        .filter(no => !lastInvoicedCosts.value.has(no))
+
+    await Promise.all(uniqueNos.map(async (itemNo) => {
+        try {
+            const data = await store.fetchLastInvoicedCost(itemNo)
+            if (Array.isArray(data)) {
+                const costMap = new Map()
+                data.forEach(d => { if (d.frs) costMap.set(d.frs, d) })
+                lastInvoicedCosts.value.set(itemNo, costMap)
+            }
+        } catch (error) {
+            console.error(`Error fetching last invoiced cost for ${itemNo}:`, error)
+        }
+        try {
+            const prices = await store.fetchPurchasePrices(itemNo)
+            purchasePricesByItem.value.set(itemNo, prices || [])
+        } catch (error) {
+            console.error(`Error fetching purchase prices for ${itemNo}:`, error)
+        }
+    }))
+}
+
+// Charge UNE page FRS depuis le backend (page courante) puis ses données secondaires.
+const loadFrsPage = async () => {
+    if (isLoadingFrsMore.value || !frsHasMore.value) return
+    isLoadingFrsMore.value = true
+    try {
+        const data = await store.fetchConfirmationQuoteLines(
+            props.compareQuoteNo,
+            frsPage.value,
+            frsPageSize,
+            buildFrsFilterParams()
+        )
+        const rows = Array.isArray(data) ? data : (data ? [data] : [])
+        quoteLineDetails.value = [...quoteLineDetails.value, ...rows]
+        // Plus de page si le backend renvoie moins que la taille demandée
+        frsHasMore.value = rows.length === frsPageSize
+        frsPage.value += 1
+        // last-invoiced-cost / purchase-prices uniquement pour les lignes de CETTE page
+        await fetchSecondaryDataForItems(rows)
+    } catch (error) {
+        console.error('Error loading FRS page:', error)
+        frsHasMore.value = false
+    } finally {
+        isLoadingFrsMore.value = false
+    }
+}
+
+const onFrsScroll = (event) => {
+    const { scrollTop, clientHeight, scrollHeight } = event.target
+    if (scrollTop + clientHeight >= scrollHeight - 20) {
+        if (!isLoadingFrsMore.value && frsHasMore.value) {
+            loadFrsPage()
+        }
+    }
+}
+
+// Changement d'un filtre FRS : on recharge la 1ère page (page 0) côté backend,
+// puis on resélectionne la 1ère ligne (recharge EQV/KIT/Historique) ou on vide si aucun résultat.
+const applyFrsFilters = async () => {
+    quoteLineDetails.value = []
+    frsPage.value = 0
+    frsHasMore.value = true
+    lastInvoicedCosts.value = new Map()
+    purchasePricesByItem.value = new Map()
+    selectedDetail.value = null
+    await loadFrsPage()
+    if (quoteLineDetails.value.length > 0) {
+        await selectLine(quoteLineDetails.value[0])
+    } else {
+        selectedHistoryItem.value = null
+        equivalenceItems.value = []
+        kitItems.value = []
+        historyEntries.value = []
+    }
+}
+
+// Bouton "Confirmer Commande" — visuel/futur uniquement : aucun appel backend ni traitement métier pour l'instant.
+const onConfirmOrder = () => {
+    // TODO: logique métier de confirmation d'achat à implémenter ultérieurement.
+    console.log('[Confirmation Achat] Confirmer Commande (placeholder) — comparateur:', props.compareQuoteNo)
+    toast.add({
+        severity: 'info',
+        summary: 'Confirmer Commande',
+        detail: 'Action à venir — aucun traitement pour l’instant.',
+        life: 2500
+    })
+}
+
+const selectedInfoItem = ref(null)
+const currentImageIndex = ref(0)
+const isViewing360 = ref(false)
+const current360Frame = ref(0)
+const expandedBrands = ref(new Set())
+
+// Info Section Collapse State
+const isOemSectionExpanded = ref(true)
+const isPdfSectionExpanded = ref(true)
+const isVehiclesSectionExpanded = ref(true)
+const isKitPartsSectionExpanded = ref(true)
+
+// TecDoc Verification Computed Properties
+const masterItemNo = computed(() => {
+    if (!line.value?.itemNo) return ''
+    return line.value.itemNo.replace(/MASTER/gi, '').trim()
+})
+
+const availableManufacturers = computed(() => {
+    if (!verificationStatus.value?.items) return []
+    const manufacturers = [...new Set(verificationStatus.value.items.map(item =>
+        item.manufacturerName))]
+    return manufacturers.sort()
+})
+
+const filteredVerificationItems = computed(() => {
+    if (!verificationStatus.value?.items) return []
+    if (!verificationManufacturerFilter.value) return verificationStatus.value.items
+    return verificationStatus.value.items.filter(item =>
+        item.manufacturerName === verificationManufacturerFilter.value
+    )
+})
+
+const paginatedVerificationItems = computed(() => {
+    const start = verificationPagination.value.page * verificationPagination.value.size
+    const end = start + verificationPagination.value.size
+    return filteredVerificationItems.value.slice(start, end)
+})
+
+const verificationTotalPages = computed(() => {
+    return Math.ceil(filteredVerificationItems.value.length /
+        verificationPagination.value.size)
+})
+
+const statusDotClass = computed(() => {
+    if (!verificationStatus.value) return 'loading'
+    if (verificationStatus.value.countNotCreated === 0) return 'success'
+    return 'warning'
+})
+
+const toggleBrand = async (brandGroup) => {
+    const isExpanded = expandedBrands.value.has(brandGroup.brand)
+
+    // Collapse all others (Accordion behavior)
+    expandedBrands.value.clear()
+
+    if (!isExpanded) {
+        expandedBrands.value.add(brandGroup.brand)
+        // Fetch vehicles if not already loaded
+        if (brandGroup.models.length === 0 && brandGroup.id) {
+            await fetchVehiclesForBrand(brandGroup)
+        }
+    }
+}
+
+const fetchVehiclesForBrand = async (brandGroup) => {
+    if (!selectedInfoItem.value?.articleId || !brandGroup.id) {
+        return
+    }
+
+    brandGroup.isLoading = true
+    try {
+        const vehicles = await store.fetchArticleVehicles(selectedInfoItem.value.articleId, brandGroup.id)
+
+        // Group by modelDesc
+        const groupedModels = {}
+        vehicles.forEach(v => {
+            if (!groupedModels[v.modelDesc]) {
+                groupedModels[v.modelDesc] = {
+                    manuDesc: v.manuDesc,
+                    modelDesc: v.modelDesc,
+                    minYear: v.yearOfConstructionFrom,
+                    maxYear: v.yearOfConstructionTo,
+                    minHp: v.powerHpFrom,
+                    maxHp: v.powerHpFrom,
+                    count: 0
+                }
+            }
+
+            const group = groupedModels[v.modelDesc]
+            group.count++
+
+            // Update ranges
+            if (v.yearOfConstructionFrom < group.minYear) group.minYear = v.yearOfConstructionFrom
+            if (v.yearOfConstructionTo > group.maxYear) group.maxYear = v.yearOfConstructionTo
+            if (v.powerHpFrom < group.minHp) group.minHp = v.powerHpFrom
+            if (v.powerHpFrom > group.maxHp) group.maxHp = v.powerHpFrom
+        })
+
+        // Format output
+        brandGroup.models = Object.values(groupedModels).map(g => {
+            const minDate = formatConstructionDate(g.minYear)
+            const maxDate = g.maxYear ? formatConstructionDate(g.maxYear) : '...'
+            return `${g.manuDesc} ${g.modelDesc} ( ${minDate} - ${maxDate} , ${g.minHp} - ${g.maxHp} CH)`
+        })
+
+    } catch (error) {
+        console.error('Error fetching vehicles for brand:', error)
+        brandGroup.models = ['Erreur lors du chargement des véhicules']
+    } finally {
+        brandGroup.isLoading = false
+    }
+}
+
+const formatConstructionDate = (dateNum) => {
+    if (!dateNum) return '...'
+    const str = dateNum.toString()
+    if (str.length !== 6) return str
+    return `${str.substring(4, 6)}.${str.substring(0, 4)}`
+}
+
+const nextImage = () => {
+    if (!selectedInfoItem.value) return
+    currentImageIndex.value = (currentImageIndex.value + 1) %
+        selectedInfoItem.value.thumbnails.length
+}
+
+const prevImage = () => {
+    if (!selectedInfoItem.value) return
+    currentImageIndex.value = (currentImageIndex.value - 1 +
+        selectedInfoItem.value.thumbnails.length) % selectedInfoItem.value.thumbnails.length
+}
+
+const orderReasons = [
+    { value: 'Prix augmenté', label: 'Prix augmenté' },
+    { value: 'Remplacé autre fabricant', label: 'Remplacé autre fabricant' },
+    { value: 'Mouvement lent', label: 'Mouvement lent' },
+    { value: 'Nouveau article', label: 'Nouveau article' },
+    { value: 'En attente devis autre fabricant', label: 'En attente devis autre fabricant' },
+    { value: 'Sur Stockage', label: 'Sur Stockage' }
+]
+
+const handleKeyDown = (event) => {
+    if (event.key === 'F8') {
+        event.preventDefault()
+        if (event.ctrlKey) {
+            emit('prev')
+        } else {
+            if (showHistoryDialog.value) {
+                changeDialogYear(-1)
+            } else {
+                changeYear(-1)
+            }
+        }
+    } else if (event.key === 'F9') {
+        event.preventDefault()
+        if (event.ctrlKey) {
+            emit('next')
+        } else {
+            if (showHistoryDialog.value) {
+                changeDialogYear(1)
+            } else {
+                changeYear(1)
+            }
+        }
+    } else if (event.key === 'F7') {
+        event.preventDefault()
+        if (selectedHistoryItem.value) {
+            const item = selectedHistoryItem.value
+            // Handle different vendor field names (buyFromVendorNo for main table, vendorNo for equivalence / kits)
+            const vendor = item.buyFromVendorNo || item.vendorNo
+
+            if (vendor && item.no) {
+                openPurchasePriceDialog(
+                    vendor,
+                    item.no,
+                    item.descriptionStructured || item.description,
+                    !!item.buyFromVendorNo // true if from main table
+                )
+            }
+        }
+    }
+}
+
+const formatNumber = (value, decimals) => {
+    if (value === null || value === undefined) return ''
+    return Number(value).toFixed(decimals)
+}
+
+const formatDate = (dateString) => {
+    if (!dateString || dateString === '0001-01-01' || dateString.startsWith('1753-01-01')) return '-'
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return dateString
+
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = String(date.getFullYear()).slice(-2)
+
+    return `${day}/${month}/${year}`
+}
+
+const getStyleClass = (styleValue) => {
+    if (styleValue === 'Favorable') return 'status-favorable'
+    if (styleValue === 'Unfavorable') return 'status-unfavorable'
+    if (styleValue === 'Attention') return 'status-attention'
+    return ''
+}
+
+const getImportStyleClass = (importQty) => {
+    // Import: 0 = blue border + black text, >0 = green background
+    return importQty > 0 ? 'import-available' : 'import-empty'
+}
+
+const getQteCmdStyleClass = (qteCmdValue) => {
+    // Qte Cmd: 0 = dark gray border + black text, >0 = green background
+    return qteCmdValue > 0 ? 'qtecmd-available' : 'qtecmd-empty'
+}
+
+const getQtyCmdStyleClass = (qtyValue) => {
+    // Legacy function for backward compatibility
+    return getQteCmdStyleClass(qtyValue)
+}
+
+// TecDoc Verification Functions
+const fetchVerificationStatus = async () => {
+    if (!masterItemNo.value) return
+
+    isLoadingVerification.value = true
+    try {
+        const data = await store.fetchTecdocVerification(masterItemNo.value)
+        verificationStatus.value = data
+    } catch (error) {
+        console.error('Failed to fetch verification status:', error)
+        verificationStatus.value = null
+    } finally {
+        isLoadingVerification.value = false
+    }
+}
+
+const openVerificationDialog = () => {
+    showVerificationDialog.value = true
+}
+
+const closeVerificationDialog = () => {
+    showVerificationDialog.value = false
+}
+
+const changeVerificationPage = (newPage) => {
+    verificationPagination.value.page = newPage
+}
+
+const showCreateArticleMasterDialog = ref(false)
+const hasCreatedArticleMaster = ref(false)
+const selectedArticleMasterCandidate = ref(null)
+const vendors = ref([])
+
+const onArticleMasterCreated = () => {
+    hasCreatedArticleMaster.value = true
+    fetchVerificationStatus()
+}
+
+onMounted(async () => {
+    try {
+        const fetchedVendors = await store.fetchVendors()
+        vendors.value = fetchedVendors.map(v => ({
+            ...v,
+            fullLabel: `${v.number} - ${v.displayName}`
+        }))
+    } catch (error) {
+        console.error('Error fetching initial data:', error)
+    }
+})
+
+const createArticleMaster = (item) => {
+    console.log('Create Article Master for:', item)
+    console.log('Props Line:', line.value)
+
+    let initialVendor = ''
+    if (item.vendorNo) {
+        // Try to find matching vendor in fetched list
+        const foundVendor = vendors.value.find(v => v.number === item.vendorNo)
+        if (foundVendor) {
+            initialVendor = foundVendor.number
+        }
+    }
+
+    selectedArticleMasterCandidate.value = {
+        // Master Info from line.value
+        masterItemNo: line.value.itemNo,
+        masterDescription: line.value.structuredDescription || line.value.description,
+        groupName: line.value.groupe,
+        subGroupName: line.value.sousGroupe,
+        makeCode: line.value.makeCode,
+        champsLibre: line.value.champsLibre,
+        // Hidden codes for validation
+        groupCode: line.value.itemProductCode,
+        subGroupCode: line.value.itemSubProductCode,
+
+        // Candidate Info from item
+        manufacturerName: item.bcManufacturerName || item.manufacturerName,
+        manufacturerCode: item.bcManufacturerCode,
+        articleNumber: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : '',
+        bcReference: item.articleNumber ? item.articleNumber.replace(/\s/g, '') : '',
+        vendorNo: initialVendor
+    }
+
+    showCreateArticleMasterDialog.value = true
+}
+
+const markAsToVerify = async (item) => {
+    const itemNo = item.bcItemNo || item.no
+    if (!itemNo) return
+
+    confirm.require({
+        message: `Voulez-vous vraiment marquer la référence ${itemNo} comme "À Vérifier" ?`,
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Oui',
+        rejectLabel: 'Non',
+        acceptClass: 'p-button-success',
+        rejectClass: 'p-button-secondary',
+        accept: async () => {
+            item.isVerifying = true
+            try {
+                await store.markAsToVerify(itemNo)
+                toast.add({ severity: 'success', summary: 'Succès', detail: 'Article marqué à vérifier', life: 2000 })
+                // Refresh verification status to update the list
+                await fetchVerificationStatus()
+            } catch (error) {
+                console.error('Failed to mark as to verify:', error)
+                toast.add({ severity: 'error', summary: 'Erreur', detail: 'Echec de mettre l\'article à vérifier', life: 3000 })
+            } finally {
+                item.isVerifying = false
+            }
+        }
+    })
+}
+
+
+const updateLine = async (detail, markAsTreated = false) => {
+    if (!detail || !detail.id) return
+
+    const userCompanyId = authStore.user?.bcCompanyId
+    console.log('Updating line:', detail)
+    console.log('ETag:', detail['@odata.etag'])
+    console.log('User CompanyId:', userCompanyId)
+
+    detail.isUpdating = true // Set loading state
+
+    const payload = {
+        askingPrice: detail.askingPrice,
+        askingQty: detail.askingQty,
+        quantity: detail.quantity,
+        quoteLineReason: detail.quoteLineReason
+    }
+
+    if (markAsTreated) {
+        payload.treated = true
+    }
+
+    try {
+        const response = await store.updateQuoteLine(detail.id, detail['@odata.etag'], payload, userCompanyId)
+        if (markAsTreated) {
+            detail.treated = true
+        }
+        
+        // Merge the backend response (which includes the new ETag) directly into this row's object
+        // This avoids calling fetchDetails(true) which would overwrite ongoing edits in other rows!
+        if (response && response.data) {
+            Object.assign(detail, response.data)
+        }
+        
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Ligne mise à jour', life: 2000 })
+    } catch (error) {
+        console.error('Update line error:', error)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la mise à jour', life: 3000 })
+        if (error.response && error.response.status === 412) {
+            // ETag mismatch, refresh data
+            await fetchDetails(true)
+        }
+    } finally {
+        detail.isUpdating = false // Always reset loading state
+    }
+}
+
+const openInfoDialog = async (item) => {
+    // Show dialog immediately with loading state
+    currentImageIndex.value = 0
+    isViewing360.value = false
+    current360Frame.value = 0
+    showInfoDialog.value = true
+    expandedBrands.value.clear()
+
+    // Debug: Log the item to verify fields are present
+
+
+    // Initialize with basic item data
+    selectedInfoItem.value = {
+        ...item,
+        isLoading: true,
+        brand: '',
+        brandLogo: '',
+        thumbnails: [],
+        images360: [],
+        specs: [],
+        oemNumbers: [],
+        vehicles: [],
+        pdfs: [],
+        articleParts: []
+    }
+
+    // Fetch TecDoc data
+    try {
+        // Support both possible field name casings and Verification Table payload
+        const articleRef = item.VendorItemNo || item.vendorItemNo || item.articleNumber
+        const manufacturerId = item.ManufacturerTecdocId || item.manufacturerTecdocId || item.dataSupplierId || item.manufacturerId
+
+        if (!articleRef || !manufacturerId) {
+            console.error('Missing article reference or manufacturer ID')
+            console.error('articleRef:', articleRef, 'manufacturerId:', manufacturerId)
+            selectedInfoItem.value.isLoading = false
+            return
+        }
+
+
+        const response = await store.fetchTecdocArticleDetails(articleRef, manufacturerId)
+
+        if (response && response.articles && response.articles.length > 0) {
+            const article = response.articles[0]
+
+            // Map images and separate 360 images (ZIP)
+            const allImages = article.images || []
+            const thumbnails = []
+            const images360 = []
+
+            allImages.forEach(img => {
+                if (img.fileName && img.fileName.toUpperCase().endsWith('.ZIP')) {
+                    images360.push(img.imageURL800)
+                } else {
+                    thumbnails.push(img.imageURL800)
+                }
+            })
+
+            // Map specs from articleCriteria
+            const specs = article.articleCriteria?.map(criteria => ({
+                label: criteria.criteriaDescription,
+                value: criteria.formattedValue
+            })) || []
+
+            // Map OEM numbers
+            const oemNumbers = article.oemNumbers?.map(oem => ({
+                mfrName: oem.mfrName,
+                articleNumber: oem.articleNumber
+            })) || []
+
+            // Map PDFs
+            const pdfs = article.pdfs || []
+
+            // Get generic article description for brand/description
+            const genericDesc = article.genericArticles?.[0]?.genericArticleDescription ||
+                item.descriptionStructured
+
+            // Update selectedInfoItem with API data
+            selectedInfoItem.value = {
+                ...item,
+                articleId: article.genericArticles?.[0]?.legacyArticleId,
+                isLoading: false,
+                brand: article.mfrName || '',
+                brandLogo: article.supplierLogoUrl || '/images/articles/febi_logo.png', // Use dynamic logo or fallback
+                thumbnails: thumbnails,
+                images360: images360,
+                mainImage: thumbnails[0] || '',
+                specs: specs,
+                oemNumbers: oemNumbers,
+                pdfs: pdfs,
+                genericDescription: genericDesc,
+                vehicles: article.linkedVehicles?.map(v => ({
+                    brand: v.manuName,
+                    id: v.manuId,
+                    models: []
+                })) || [],
+                gtins: article.gtins || [],
+                articleParts: article.articleParts || []
+            }
+        } else {
+            // No data found
+            selectedInfoItem.value.isLoading = false
+        }
+    } catch (error) {
+        console.error('Error fetching TecDoc article details:', error)
+        selectedInfoItem.value.isLoading = false
+    }
+}
+
+const handle360MouseMove = (event) => {
+    if (!selectedInfoItem.value?.images360?.length) return
+
+    const container = event.currentTarget
+    const rect = container.getBoundingClientRect()
+    const x = event.clientX - rect.left
+    const width = rect.width
+
+    // Calculate frame based on horizontal position
+    // More frames = smoother rotation
+    const totalFrames = selectedInfoItem.value.images360.length
+    const frameIndex = Math.floor((x / width) * totalFrames)
+
+    // Ensure index is within bounds
+    current360Frame.value = Math.max(0, Math.min(frameIndex, totalFrames - 1))
+}
+
+const handle360TouchMove = (event) => {
+    if (!selectedInfoItem.value?.images360?.length) return
+
+    const container = event.currentTarget
+    const rect = container.getBoundingClientRect()
+    const touch = event.touches[0]
+    const x = touch.clientX - rect.left
+    const width = rect.width
+
+    const totalFrames = selectedInfoItem.value.images360.length
+    const frameIndex = Math.floor((x / width) * totalFrames)
+
+    current360Frame.value = Math.max(0, Math.min(frameIndex, totalFrames - 1))
+}
+
+const selectLine = async (detail) => {
+    // Reset year to current year on selection
+    selectedYear.value = new Date().getFullYear()
+    // Always update history selection
+    selectedHistoryItem.value = detail
+    // Always update history stock KPI
+    historyKpis.value.stock = detail.inventoryWithoutImport || 0
+
+    // Check if it's already the active detail to avoid redundant equivalence fetching
+    const isAlreadySelectedDetail = selectedDetail.value &&
+        ((detail.id !== undefined && selectedDetail.value.id === detail.id) ||
+            (detail.id === undefined && selectedDetail.value.no === detail.no));
+
+    if (isAlreadySelectedDetail) return
+
+    selectedDetail.value = detail
+
+
+    // Fetch total amount for the document
+    if (detail.documentNo) {
+        selectedDocumentNo.value = detail.documentNo
+        try {
+            const amount = await store.fetchTotalAmount(detail.documentNo)
+            totalAmount.value = amount
+        } catch (error) {
+            console.error('Error fetching total amount:', error)
+            totalAmount.value = null
+        }
+    } else {
+        selectedDocumentNo.value = null
+        totalAmount.value = null
+    }
+
+    // Sequential loading: Equivalence first, then Kit
+    isLoadingKit.value = true // Show loading in Kit table immediately
+    await fetchEquivalenceItems(detail)
+    await fetchKitItems(detail.no)
+}
+
+const selectEquivalenceItem = (item) => {
+    selectedYear.value = new Date().getFullYear()
+    selectedHistoryItem.value = item
+    historyKpis.value.stock = item.qtyStock || 0
+}
+
+const selectKitItem = (item) => {
+    selectedYear.value = new Date().getFullYear()
+    selectedHistoryItem.value = item
+    // For kits, we might need a specific logic if stock is not numeric
+    historyKpis.value.stock = item.qtyStock || 0
+}
+
+const historyTableWrapper = ref(null)
+const equivalenceTableWrapper = ref(null)
+
+const checkAndLoadMore = async () => {
+    await nextTick()
+    if (historyTableWrapper.value) {
+        const { scrollHeight, clientHeight } = historyTableWrapper.value
+        // If content fits (no scrollbar) and we have more pages, load next page
+        if (scrollHeight <= clientHeight && historyPagination.value.page < historyPagination.value.totalPages - 1) {
+            fetchHistory(historyPagination.value.page + 1)
+        }
+    }
+}
+
+const fetchHistory = async (page = 0) => {
+    if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+
+    // Prevent duplicate calls if already loading
+    if (isLoadingHistory.value) return
+
+    isLoadingHistory.value = true
+    try {
+        const data = await store.fetchItemLedgerEntries(
+            selectedHistoryItem.value.no,
+            selectedYear.value,
+            page,
+            historyPagination.value.size,
+            null // Global history for sidebar
+        )
+
+        if (data && data.content) {
+            if (page === 0) {
+                historyEntries.value = data.content
+            } else {
+                historyEntries.value = [...historyEntries.value, ...data.content]
+            }
+
+            historyPagination.value = {
+                ...historyPagination.value,
+                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number
+                    : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements : 0,
+                totalPages: data.totalPages !== undefined ? data.totalPages : 1
+            }
+
+            if (data.quantityByEntryType) {
+                historyKpis.value = {
+                    ...historyKpis.value,
+                    vente: data.quantityByEntryType.Sale || 0,
+                    achat: data.quantityByEntryType.Purchase || 0,
+                    rupt: data.quantityByEntryType.Rupture || 0
+                }
+            }
+        } else {
+            const items = Array.isArray(data) ? data : []
+            if (page === 0) {
+                historyEntries.value = items
+            } else {
+                historyEntries.value = [...historyEntries.value, ...items]
+            }
+            historyPagination.value.totalElements = historyEntries.value.length
+            historyPagination.value.page = 0
+            historyPagination.value.totalPages = 1
+        }
+    } catch (error) {
+        console.error('Error fetching sidebar history:', error)
+        if (page === 0) historyEntries.value = []
+    } finally {
+        isLoadingHistory.value = false
+        checkAndLoadMore()
+    }
+}
+
+const onHistoryScroll = (event) => {
+    const { scrollTop, clientHeight, scrollHeight } = event.target
+    // Load more when user is near bottom (20px threshold)
+    if (scrollTop + clientHeight >= scrollHeight - 20) {
+        if (!isLoadingHistory.value && historyPagination.value.page < historyPagination.value.totalPages - 1) {
+            fetchHistory(historyPagination.value.page + 1)
+        }
+    }
+}
+
+const dialogHistoryTableWrapper = ref(null)
+
+const checkAndLoadMoreDialog = async () => {
+    await nextTick()
+    if (dialogHistoryTableWrapper.value) {
+        const { scrollHeight, clientHeight } = dialogHistoryTableWrapper.value
+        // If content fits (no scrollbar) and we have more pages, load next page
+        if (scrollHeight <= clientHeight && dialogHistoryPagination.value.page < dialogHistoryPagination.value.totalPages - 1) {
+            fetchDialogHistory(dialogHistoryPagination.value.page + 1)
+        }
+    }
+}
+
+const onDialogHistoryScroll = (event) => {
+    const { scrollTop, clientHeight, scrollHeight } = event.target
+    // Load more when user is near bottom (20px threshold)
+    if (scrollTop + clientHeight >= scrollHeight - 20) {
+        if (!isLoadingDialogHistory.value && dialogHistoryPagination.value.page < dialogHistoryPagination.value.totalPages - 1) {
+            fetchDialogHistory(dialogHistoryPagination.value.page + 1)
+        }
+    }
+}
+
+const fetchDialogHistory = async (page = 0) => {
+    if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+
+    // Prevent duplicate calls if already loading
+    if (isLoadingDialogHistory.value) return
+
+    isLoadingDialogHistory.value = true
+    try {
+        const data = await store.fetchItemLedgerEntries(
+            selectedHistoryItem.value.no,
+            dialogSelectedYear.value,
+            page,
+            dialogHistoryPagination.value.size,
+            selectedCompanyId.value
+        )
+
+        if (data && data.content) {
+            if (page === 0) {
+                dialogHistoryEntries.value = data.content
+            } else {
+                dialogHistoryEntries.value = [...dialogHistoryEntries.value, ...data.content]
+            }
+
+            dialogHistoryPagination.value = {
+                ...dialogHistoryPagination.value,
+                page: data.page !== undefined ? data.page : (data.number !== undefined ? data.number
+                    : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements : 0,
+                totalPages: data.totalPages !== undefined ? data.totalPages : 1
+            }
+
+            if (data.quantityByEntryType) {
+                dialogHistoryKpis.value = {
+                    ...dialogHistoryKpis.value,
+                    vente: data.quantityByEntryType.Sale || 0,
+                    achat: data.quantityByEntryType.Purchase || 0,
+                    rupt: data.quantityByEntryType.Rupture || 0
+                }
+            }
+        } else {
+            const items = Array.isArray(data) ? data : []
+            if (page === 0) {
+                dialogHistoryEntries.value = items
+            } else {
+                dialogHistoryEntries.value = [...dialogHistoryEntries.value, ...items]
+            }
+            dialogHistoryPagination.value.totalElements = dialogHistoryEntries.value.length
+            dialogHistoryPagination.value.page = 0
+            dialogHistoryPagination.value.totalPages = 1
+        }
+    } catch (error) {
+        console.error('Error fetching dialog history:', error)
+        if (page === 0) dialogHistoryEntries.value = []
+    } finally {
+        isLoadingDialogHistory.value = false
+        checkAndLoadMoreDialog()
+    }
+}
+
+const changeYear = (delta) => {
+    selectedYear.value += delta
+}
+
+const changeDialogYear = (delta) => {
+    dialogSelectedYear.value += delta
+}
+
+const fetchIntercompanyStock = async () => {
+    if (!selectedHistoryItem.value || !selectedHistoryItem.value.no) return
+
+    isLoadingIntercompanyStock.value = true
+    try {
+        const data = await store.fetchIntercompanyStock(selectedHistoryItem.value.no)
+        intercompanyStocks.value = data || []
+    } catch (error) {
+        console.error('Error fetching intercompany stock:', error)
+        intercompanyStocks.value = []
+    } finally {
+        isLoadingIntercompanyStock.value = false
+    }
+}
+
+// Watch for selection or year changes to refresh sidebar history
+watch([selectedHistoryItem, selectedYear], () => {
+    if (selectedHistoryItem.value && !showHistoryDialog.value) {
+        fetchHistory(0)
+        fetchIntercompanyStock()
+    }
+}, { immediate: true })
+
+// Watch for dialog opening, company or dialog year changes to refresh history in dialog
+watch([showHistoryDialog, selectedCompanyId, dialogSelectedYear], () => {
+    if (showHistoryDialog.value && selectedHistoryItem.value) {
+        fetchDialogHistory(0)
+    }
+})
+
+const calculatePU = (entry) => {
+    if (!entry) return 0
+    const qty = Math.abs(entry.quantity) || 1
+
+    if (entry.entryType === 'Sale') {
+        const amount = entry.salesAmountActual || entry.salesAmountExpected || 0
+        return amount / qty
+    } else if (entry.entryType === 'Purchase') {
+        const amount = entry.costAmountActual || entry.costAmountExpected || 0
+        return amount / qty
+    }
+    return 0
+}
+
+const getEntryTypeLetter = (entryType) => {
+    if (!entryType) return ''
+    if (entryType === 'Sale') return 'S'
+    if (entryType === 'Purchase') return 'P'
+    if (entryType === 'Transfer') return 'T'
+    if (entryType === 'Rupture') return 'R'
+    return entryType.charAt(0).toUpperCase()
+}
+
+const getEntryTypeClass = (entryType) => {
+    if (!entryType) return ''
+    if (entryType === 'Sale') return 'type-s'
+    if (entryType === 'Purchase') return 'type-p'
+    if (entryType === 'Transfer') return 'type-t'
+    if (entryType === 'Rupture') return 'type-r'
+    return 'type-t'
+}
+
+const getMasterErpClass = (referenceMaster) => {
+    if (!referenceMaster) return ''
+
+    // Compare with the original full item number from props (which includes "MASTER")
+    // instead of the stripped masterItemNo used in the header
+    const currentMaster = line.value?.itemNo ? line.value.itemNo.trim() : ''
+    const refMaster = referenceMaster.toString().trim()
+
+    // Case-insensitive comparison
+    return currentMaster.toLowerCase() === refMaster.toLowerCase() ? 'master-erp-match' : 'master-erp-mismatch'
+}
+
+const isItemSelected = (item) => {
+    if (!selectedHistoryItem.value) return false
+    // If both have IDs, compare IDs
+    if (item.id !== undefined && selectedHistoryItem.value.id !== undefined) {
+        return item.id === selectedHistoryItem.value.id
+    }
+    // Otherwise fallback to comparing item numbers
+    return item.no === selectedHistoryItem.value.no
+}
+
+const getPercentageChange = (detail, field1, field2) => {
+    const value1 = detail[field1]
+    const value2 = detail[field2]
+
+    if (value2 === null || value2 === undefined || value2 === 0) return null
+    if (value1 === null || value1 === undefined) return null
+
+    const percentageChange = ((value1 - value2) / value2) * 100
+
+    if (Math.abs(percentageChange) < 0.01) return null // Don't show if ~0%
+    const arrow = percentageChange > 0 ? '↑' : percentageChange < 0 ? '↓' : ''
+    const sign = percentageChange > 0 ? '+' : ''
+
+    return `${arrow} ${sign}${percentageChange.toFixed(1)}%`
+}
+
+const calculatePercentageChange = (value1, value2) => {
+    if (value2 === null || value2 === undefined || value2 === 0) return null
+    if (value1 === null || value1 === undefined) return null
+
+    const percentageChange = ((value1 - value2) / value2) * 100
+
+    // Always show percentage, even if 0
+    const arrow = percentageChange > 0 ? '↑' : percentageChange < 0 ? '↓' : ''
+    const sign = percentageChange > 0 ? '+' : ''
+
+    return `${arrow} ${sign}${percentageChange.toFixed(1)}%`
+}
+
+const getPercentageClass = (percentageText) => {
+    if (!percentageText) return ''
+    if (percentageText.includes('↑')) return 'percentage-increase'
+    if (percentageText.includes('↓')) return 'percentage-decrease'
+    return 'percentage-neutral'
+}
+
+const fetchDetails = async (silent = false) => {
+    if (!props.compareQuoteNo)
+        return
+
+    if (!silent) {
+        isLoadingDetails.value = true
+        isLoadingSecondaryData.value = true
+        // Clear previous state before fetching to prevent mixing old data
+        quoteLineDetails.value = []
+        equivalenceItems.value = []
+        kitItems.value = []
+    }
+    try {
+        // Réinitialise les filtres + pagination FRS + caches secondaires
+        frsFilters.value = defaultFrsFilters()
+        quoteLineDetails.value = []
+        frsPage.value = 0
+        frsHasMore.value = true
+        lastInvoicedCosts.value = new Map()
+        purchasePricesByItem.value = new Map()
+
+        // Confirmation Achat : pagination serveur, on ne charge que la 1ère page (anti-burst)
+        await loadFrsPage()
+
+        // Show Suppliers table immediately
+        if (!silent) isLoadingDetails.value = false
+
+        if (quoteLineDetails.value.length > 0) {
+            const firstDetail = quoteLineDetails.value[0]
+            selectedDetail.value = firstDetail
+            selectedHistoryItem.value = firstDetail
+            historyKpis.value.stock = firstDetail.inventoryWithoutImport || 0
+
+            // 2. Load Equivalence
+            await fetchEquivalenceItems(firstDetail)
+
+            // 3. Load Kit
+            await fetchKitItems(firstDetail.no)
+
+            // Fetch total amount for the first detail
+            if (firstDetail.documentNo) {
+                selectedDocumentNo.value = firstDetail.documentNo
+                try {
+                    const amount = await store.fetchTotalAmount(firstDetail.documentNo)
+                    totalAmount.value = amount
+                } catch (error) {
+                    console.error('Error fetching total amount:', error)
+                    totalAmount.value = null
+                }
+            } else {
+                selectedDocumentNo.value = null
+                totalAmount.value = null
+            }
+
+            // 4. Stock intercompany de la ligne sélectionnée (1 seul appel ; le reste est chargé par lot)
+            try {
+                await fetchIntercompanyStock()
+            } catch (error) {
+                console.error('Error loading intercompany stock:', error)
+            } finally {
+                isLoadingSecondaryData.value = false
+            }
+        } else {
+            isLoadingSecondaryData.value = false
+        }
+    } catch (error) {
+        console.error('Error fetching details:', error)
+        isLoadingSecondaryData.value = false
+    } finally {
+        if (!silent) isLoadingDetails.value = false
+    }
+}
+
+const fetchEquivalenceItems = async (detail, page = 0) => {
+    // Le DTO QuoteLineBC sérialise le master en "ReferenceMaster" (majuscule, via @JsonProperty)
+    const refMaster = detail ? (detail.ReferenceMaster ?? detail.referenceMaster) : null
+    if (!detail || !refMaster || !detail.no) return
+
+    // Prevent duplicate calls only for pagination (not for initial load)
+    if (page > 0 && isLoadingEquivalence.value) return
+
+    // Reset scroll position if loading first page
+    if (page === 0 && equivalenceTableWrapper.value) {
+        equivalenceTableWrapper.value.scrollTop = 0
+    }
+
+    isLoadingEquivalence.value = true
+    try {
+        const data = await store.fetchEquivalenceItems(
+            refMaster,
+            detail.no,
+            page,
+            equivalencePagination.value.size,
+            props.compareQuoteNo
+        )
+
+        // Prevent stale results from overwriting if we switched items
+        if (detail.no !== (selectedDetail.value ? selectedDetail.value.no : null)) {
+            return
+        }
+
+        if (data && data.content) {
+            const newItems = data.content.map(item => ({
+                ...item,
+                quantityToOrder: 1
+            }))
+
+            if (page === 0) {
+                equivalenceItems.value = newItems
+            } else {
+                equivalenceItems.value = [...equivalenceItems.value, ...newItems]
+            }
+
+            equivalencePagination.value = {
+                ...equivalencePagination.value,
+                page: data.page !== undefined ? data.page : (data.number !==
+                    undefined ? data.number : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements
+                    : 0,
+                totalPages: data.totalPages !== undefined ? data.totalPages : 1
+            }
+        } else {
+            const items = Array.isArray(data) ? data : [data]
+            const newItems = items.map(item => ({
+                ...item,
+                quantityToOrder: 1
+            }))
+
+            if (page === 0) {
+                equivalenceItems.value = newItems
+            } else {
+                equivalenceItems.value = [...equivalenceItems.value, ...newItems]
+            }
+
+            equivalencePagination.value.totalElements =
+                equivalenceItems.value.length
+            equivalencePagination.value.page = 0
+            equivalencePagination.value.totalPages = 1
+        }
+    } catch (error) {
+        console.error('Error fetching equivalence items:', error)
+        if (page === 0) equivalenceItems.value = []
+    } finally {
+        isLoadingEquivalence.value = false
+    }
+}
+
+const onEquivalenceScroll = (event) => {
+    const { scrollTop, clientHeight, scrollHeight } = event.target
+    // Load more when user is near bottom (20px threshold)
+    if (scrollTop + clientHeight >= scrollHeight - 20) {
+        if (!isLoadingEquivalence.value && equivalencePagination.value.page < equivalencePagination.value.totalPages - 1) {
+            fetchEquivalenceItems(selectedDetail.value, equivalencePagination.value.page + 1)
+        }
+    }
+}
+
+const fetchKitItems = async (itemNo, page = 0) => {
+    if (!itemNo) return
+
+    isLoadingKit.value = true
+    try {
+        const data = await store.fetchKitItems(
+            itemNo,
+            page,
+            kitPagination.value.size,
+            props.compareQuoteNo
+        )
+
+        // Prevent stale results from overwriting if we switched items
+        if (itemNo !== (selectedDetail.value ? selectedDetail.value.no : null)) {
+            return
+        }
+
+        if (data && data.content) {
+            kitItems.value = data.content.map(item => ({
+                ...item,
+                quantityToOrder: 1
+            }))
+            kitPagination.value = {
+                ...kitPagination.value,
+                page: data.page !== undefined ? data.page : (data.number !==
+                    undefined ? data.number : 0),
+                totalElements: data.totalElements !== undefined ? data.totalElements
+                    : 0,
+                totalPages: data.totalPages !== undefined ? data.totalPages : 1
+            }
+        } else {
+            const items = Array.isArray(data) ? data : [data]
+            kitItems.value = items.map(item => ({
+                ...item,
+                quantityToOrder: 1
+            }))
+            kitPagination.value.totalElements = kitItems.value.length
+            kitPagination.value.page = 0
+            kitPagination.value.totalPages = 1
+        }
+    } catch (error) {
+        console.error('Error fetching kit items:', error)
+        kitItems.value = []
+    } finally {
+        isLoadingKit.value = false
+    }
+}
+
+// Watch for line changes to refetch data
+watch(() => props.compareQuoteNo, async () => {
+    selectedHistoryItem.value = null
+    selectedYear.value = new Date().getFullYear()
+    fetchOemCount()
+    await fetchDetails()
+    fetchVerificationStatus()
+    activeRightPanel.value = 'history'
+}, { deep: true })
+
+// Watch for verification dialog close to refresh data if an article was created
+watch(showVerificationDialog, (newValue) => {
+    if (!newValue && hasCreatedArticleMaster.value) {
+        fetchDetails()
+        fetchVerificationStatus()
+        hasCreatedArticleMaster.value = false
+    }
+})
+
+const activeRightPanel = ref('history') // 'history' or 'cart'
+const activeCartTab = ref('current') // 'current' or 'all'
+const cartFilters = ref({
+    compareQuoteNo: '',
+    status: null,
+    itemNo: '',
+    vendorNo: ''
+});
+
+let debounceTimeout = null;
+const debouncedFilter = () => {
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+        applyFilters();
+    }, 500);
+};
+
+const applyFilters = (page = 0) => {
+    const pageNum = typeof page === 'number' ? page : 0;
+    store.fetchCartItems(cartFilters.value, pageNum);
+};
+
+const switchCartTab = (tab) => {
+    activeCartTab.value = tab;
+    if (tab === 'current') {
+        cartFilters.value.compareQuoteNo = line.value ? props.compareQuoteNo : '';
+    } else {
+        cartFilters.value.compareQuoteNo = '';
+    }
+    applyFilters();
+};
+
+const openCartSidebar = () => {
+    if (activeRightPanel.value === 'cart') {
+        activeRightPanel.value = 'history';
+    } else {
+        activeRightPanel.value = 'cart';
+        activeCartTab.value = 'current';
+        // Reset filters
+        cartFilters.value = {
+            compareQuoteNo: line.value ? props.compareQuoteNo : '',
+            status: null,
+            itemNo: '',
+            vendorNo: ''
+        };
+        applyFilters();
+    }
+};
+onMounted(async () => {
+    window.addEventListener('keydown', handleKeyDown)
+    if (line.value && props.compareQuoteNo) {
+        store.fetchCartCount(props.compareQuoteNo)
+    }
+    fetchOemCount()
+    await fetchDetails()
+    fetchVerificationStatus()
+})
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeyDown)
+})
+
+const openHistory = (company, companyId = null, stock = 0) => {
+    selectedCompany.value = company
+    selectedCompanyId.value = companyId
+    dialogSelectedYear.value = new Date().getFullYear()
+    dialogHistoryKpis.value.stock = stock
+    showHistoryDialog.value = true
+}
+
+const textRight = {
+    textAlign: 'right'
+}
+
+const focusNextField = (currentField, detailId) => {
+    let nextFieldId = ''
+
+    if (currentField === 'askingPrice') {
+        nextFieldId = `askingQty-${detailId}`
+    } else if (currentField === 'askingQty') {
+        nextFieldId = `quantity-${detailId}`
+    } else if (currentField === 'quantity') {
+        nextFieldId = `validateBtn-${detailId}`
+    }
+
+    if (nextFieldId) {
+        const element = document.getElementById(nextFieldId)
+        if (element) {
+            element.focus()
+            if (currentField !== 'quantity') { // Don't select text for button
+                if (element instanceof HTMLInputElement) {
+                    element.select()
+                }
+            }
+        }
+    }
+}
+</script>
+
+<style scoped>
+.text-right {
+    text-align: right !important;
+}
+
+.clickable-cell {
+    cursor: pointer;
+    color: #2563eb;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    transition: all 0.2s;
+}
+
+.clickable-cell:hover {
+    color: #1d4ed8;
+    text-decoration-style: solid;
+    background-color: rgba(37, 99, 235, 0.05);
+}
+
+.line-detail-container {
+    padding: 0;
+    background-color: #f1f5f9;
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+}
+
+/* Top Header Styles */
+.top-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    gap: 0;
+    width: 100%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Header unifié Confirmation Achat : 3 zones ── */
+.detail-header-left {
+    flex: 0 1 auto;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+    max-width: 360px;
+    padding-right: 12px;
+}
+
+.detail-back-btn {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1.5px solid #e2e8f0;
+    background: #f8fafc;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.detail-back-btn:hover {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.detail-back-btn i {
+    font-size: 1.1rem;
+}
+
+.detail-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.detail-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.detail-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 340px;
+}
+
+.detail-no {
+    font-weight: 700;
+    color: #1e40af;
+}
+
+.detail-sep {
+    color: #cbd5e1;
+}
+
+.detail-desc {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #475569;
+}
+
+.detail-header-center {
+    flex: 1 1 auto;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    min-width: 0;
+    padding: 0 12px;
+}
+
+.detail-header-center .header-stocks {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
+.detail-header-center .order-total {
+    width: auto;
+    min-width: 90px;
+    flex-shrink: 0;
+}
+
+.detail-header-center .cart-btn {
+    width: 44px;
+    flex-shrink: 0;
+}
+
+.detail-header-right {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+    padding-left: 12px;
+}
+
+/* Zone action droite : bouton vert Confirmer Commande */
+.confirm-order-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid #16a34a;
+    border-radius: 10px;
+    background: #16a34a;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(22, 163, 74, 0.25);
+}
+
+.confirm-order-btn:hover {
+    background: #15803d;
+    border-color: #15803d;
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
+    transform: translateY(-1px);
+}
+
+.confirm-order-btn i {
+    font-size: 1.05rem;
+}
+
+@media (max-width: 1200px) {
+    .detail-subtitle {
+        display: none;
+    }
+
+    .detail-header-center .header-stocks {
+        max-width: none;
+    }
+}
+
+.back-btn {
+    width: 2%;
+    color: #3b82f6 !important;
+    padding: 0 !important;
+}
+
+.item-info {
+    width: 17%;
+    display: flex;
+    justify-content: space-between;
+    padding-left: 5px;
+    height: 54px;
+    margin: 10px;
+    align-items: center;
+}
+
+.info-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    padding: 4px 15px;
+    height: 100%;
+    border: 1px solid #3b82f6;
+    border-radius: 10px;
+    margin-right: 5px;
+    gap: 2px;
+}
+
+.item-no {
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin: 0;
+    color: #1e293b;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-bottom: 2px;
+}
+
+.item-desc {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.info-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    min-width: fit-content;
+    padding: 0;
+    height: 100%;
+    margin-left: auto;
+    gap: 5px;
+}
+
+.status-dot-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin: 0;
+    padding: 0;
+}
+
+
+
+.description-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.item-desc {
+    flex: 1;
+}
+
+.page-indicator-badge {
+    background-color: white;
+    color: #1e293b;
+    padding: 0 8px;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    border: 1px solid #3b82f6;
+    margin: 10px;
+    white-space: nowrap;
+}
+
+.header-middle {
+    width: 6%;
+    display: flex;
+    justify-content: center;
+    padding-right: 0;
+}
+
+.count-badge {
+    background-color: white;
+    color: #3b82f6;
+    padding: 0 4px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    border: 3px solid #3b82f6;
+    margin: 10px;
+}
+
+.count-badge.clickable:hover {
+    background-color: #eff6ff;
+    border-color: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+}
+
+.header-stocks {
+    width: 59%;
+    display: flex;
+    align-items: center;
+    border: 1px solid #3b82f6;
+    border-radius: 10px;
+    height: 54px;
+    overflow: hidden;
+    background-color: #f8fafc;
+}
+
+.stock-column {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.stock-column.label-column {
+    width: 10%;
+    justify-content: center;
+}
+
+.stock-column.dynamic-column {
+    flex: 1;
+}
+
+.stock-column:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 15%;
+    height: 70%;
+    width: 3px;
+    background-color: #3b82f6;
+    opacity: 0.6;
+}
+
+.stocks-label {
+    color: #3b82f6;
+    font-weight: 800;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    width: 100%;
+    text-align: center;
+}
+
+.stock-part {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 5px;
+    position: relative;
+}
+
+.stock-part.stock.clickable {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.stock-part.stock.clickable:hover {
+    background-color: #f1f5f9;
+}
+
+.stock-part.ste {
+    width: 35%;
+}
+
+.stock-part.stock {
+    width: 25%;
+}
+
+.stock-part.purchase {
+    width: 40%;
+}
+
+.stock-part:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 30%;
+    height: 40%;
+    width: 1px;
+    background-color: #e2e8f0;
+}
+
+.stock-label-mini {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.stock-value-main {
+    font-size: 1.0rem;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1.1;
+}
+
+.stock-value-main.company {
+    color: #3b82f6;
+    font-size: 0.9rem;
+}
+
+.stock-value-main.green {
+    color: #16a34a;
+}
+
+.stock-value-main.red {
+    color: #dc2626;
+}
+
+.stock-value-main.date {
+    font-size: 0.85rem;
+}
+
+.company-badge {
+    color: #3b82f6;
+    font-weight: 700;
+}
+
+.order-total {
+    width: 7%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid #3b82f6;
+    padding: 0 4px;
+    height: 54px;
+    border-radius: 8px;
+    color: #1e293b;
+    font-weight: 700;
+    font-size: 1.0rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    margin: 0 3px;
+}
+
+.order-total i {
+    color: #3b82f6;
+    font-size: 1rem;
+}
+
+.cart-btn {
+    width: 3%;
+    border: 1px solid #3b82f6;
+    border-radius: 10px;
+    padding: 0;
+    background: #fff;
+    cursor: pointer;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.cart-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #ef4444;
+    color: white;
+    border-radius: 10px;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 2px solid white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    padding: 0 4px;
+}
+
+.cart-btn:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.cart-btn i {
+    font-size: 1.6rem;
+    color: #f59e0b;
+}
+
+.cart-tabs {
+    display: flex;
+    gap: 10px;
+    margin-right: 10px;
+}
+
+.cart-tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 6px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+}
+
+.cart-tab-btn:hover {
+    background-color: #f1f5f9;
+    color: #334155;
+}
+
+.cart-tab-btn.active {
+    background-color: #3b82f6;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+/* Quantity Input Styles */
+.qty-input-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.qty-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.qty-input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    color: #1e293b;
+    background-color: #f8fafc;
+    transition: all 0.2s ease;
+    outline: none;
+    text-align: right;
+    appearance: none;
+    -moz-appearance: textfield;
+}
+
+.qty-input.mini {
+    padding: 6px 10px;
+    font-size: 0.95rem;
+}
+
+.qty-input-wrapper.mini {
+    margin-top: 4px;
+}
+
+.initial-tag {
+    background-color: #f1f5f9;
+    color: #64748b;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.info-icon {
+    color: #3b82f6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.info-icon:hover {
+    color: #2563eb;
+    transform: scale(1.2);
+}
+
+.validate-line-btn {
+    background: none;
+    border: none;
+    color: #16a34a;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.validate-line-btn:hover {
+    color: #16a34a;
+    background-color: #f0fdf4;
+}
+
+.validate-line-btn i {
+    font-size: 1rem;
+}
+
+.qty-input:hover {
+    border-color: #cbd5e1;
+    background-color: #fff;
+}
+
+.qty-input:focus {
+    border-color: #3b82f6;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Hide Spinners */
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.reason-select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    background-color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 28px;
+}
+
+.reason-select:hover {
+    border-color: #cbd5e1;
+    background-color: #fff;
+}
+
+.reason-select:focus {
+    border-color: #3b82f6;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.reason-select-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.clear-reason-btn {
+    position: absolute;
+    right: 32px;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    z-index: 1;
+}
+
+.clear-reason-btn:hover {
+    color: #ef4444;
+}
+
+.clear-reason-btn i {
+    font-size: 0.75rem;
+}
+
+/* Table Cell Styles */
+.cell-reference {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0f172a;
+    /* Slate 900 */
+    line-height: 1.2;
+    margin-bottom: 4px;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-favorable {
+    color: #16a34a !important;
+    /* Green 600 */
+}
+
+.status-unfavorable {
+    color: #dc2626 !important;
+    /* Red 600 */
+}
+
+.status-attention {
+    color: #f97316 !important;
+    /* Orange 500 */
+}
+
+/* Percentage Indicator Styles */
+.percentage-indicator {
+    display: inline-block;
+    margin-left: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.percentage-increase {
+    color: #ef4444 !important;
+    background-color: #fee2e2 !important;
+}
+
+.percentage-decrease {
+    color: #10b981 !important;
+    background-color: #d1fae5 !important;
+}
+
+.percentage-neutral {
+    color: #1e293b !important;
+    background-color: #f1f5f9 !important;
+}
+
+.cell-description {
+    font-size: 0.85rem;
+    color: #64748b;
+    /* Slate 500 */
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stock-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+    width: 100%;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+
+/* Favorable styles - Solid green background */
+.stock-tag.status-favorable {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46 !important;
+    border-color: #34d399;
+    font-weight: 800;
+}
+
+/* Unfavorable styles - Transparent with red border */
+.stock-tag.status-unfavorable {
+    background: transparent;
+    color: #dc2626 !important;
+    border-color: #dc2626;
+    border-width: 2px;
+    font-weight: 800;
+}
+
+/* Attention styles - Transparent with orange border */
+.stock-tag.status-attention {
+    background: transparent;
+    color: #ea580c !important;
+    border-color: #ea580c;
+    border-width: 2px;
+    font-weight: 800;
+}
+
+.stock-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Import-specific styles */
+.stock-tag.import-empty {
+    background: transparent;
+    color: #1e293b !important;
+    border-color: #3b82f6;
+    border-width: 2px;
+    font-weight: 700;
+}
+
+.stock-tag.import-available {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46 !important;
+    border-color: #34d399;
+    font-weight: 800;
+}
+
+/* Qte Cmd-specific styles */
+.stock-tag.qtecmd-empty {
+    background: transparent;
+    color: #1e293b !important;
+    border-color: #475569;
+    border-width: 2px;
+    font-weight: 700;
+}
+
+.stock-tag.qtecmd-available {
+    background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+    color: #7c2d12 !important;
+    border-color: #fb923c;
+    font-weight: 800;
+}
+
+.qty-tag {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    color: #475569;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border: 1px solid #e2e8f0;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.qty-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #3b82f6;
+    color: white;
+    padding: 2px 6px;
+    min-width: 20px;
+    height: 18px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-left: 6px;
+    vertical-align: middle;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+/* Main Layout Styles */
+.main-layout {
+    display: flex;
+    gap: 15px;
+    flex-grow: 1;
+    overflow: hidden;
+    width: 100%;
+}
+
+.left-column {
+    width: 73%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+    padding-right: 5px;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.right-column {
+    width: 27%;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: white;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    height: 100%;
+    overflow: hidden;
+}
+
+.right-column.expanded {
+    width: 50%;
+}
+
+.right-column.expanded~.left-column,
+.main-layout:has(.right-column.expanded) .left-column {
+    width: 50%;
+}
+
+/* Modern Table Styles */
+.table-container {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.left-column .table-container {
+    flex-shrink: 0;
+}
+
+.table-header-row {
+    background-color: #f8fafc;
+    padding: 15px 15px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    flex-grow: 1;
+    max-height: 600px;
+}
+
+/* Confirmation Achat : tableau FOURNISSEURS limité à ~4 lignes visibles (scroll interne) */
+.frs-scroll {
+    max-height: 310px;
+}
+
+/* En-têtes filtrables : libellé + bouton icône filtre */
+.th-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.th-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.th-filter-btn:hover {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.th-filter-btn.active {
+    color: #2563eb;
+    background: #dbeafe;
+}
+
+.th-filter-btn i {
+    font-size: 0.8rem;
+}
+
+/* Popover de filtre (moderne, compact, layout vertical) */
+.filter-popover {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 275px;
+    padding: 4px 2px;
+}
+
+.filter-popover-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.filter-popover-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.filter-popover-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.2;
+}
+
+.filter-popover-sub {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.filter-close-btn {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.filter-close-btn:hover {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.filter-close-btn i {
+    font-size: 0.8rem;
+}
+
+.filter-popover .filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filter-popover .filter-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.filter-popover .filter-full {
+    width: 100%;
+}
+
+.filter-popover .filter-full :deep(.p-inputtext),
+.filter-popover .filter-full :deep(.p-inputnumber),
+.filter-popover .filter-full :deep(.p-inputnumber-input),
+.filter-popover .filter-full :deep(.p-datepicker),
+.filter-popover .filter-full :deep(.p-datepicker-input),
+.filter-popover .filter-full :deep(.p-select) {
+    width: 100%;
+}
+
+.filter-popover .filter-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* ── Modernisation légère des tableaux FRS / EQV / KIT ── */
+/* Ombre discrète sous le header sticky */
+.modern-table thead th {
+    box-shadow: inset 0 -1px 0 #e2e8f0;
+}
+
+/* Ligne sélectionnée : accent bleu à gauche (lisible) */
+.modern-table tbody tr.bg-blue-100 {
+    box-shadow: inset 3px 0 0 #2563eb;
+}
+
+/* Hover de ligne plus net */
+.modern-table tbody tr:hover {
+    background-color: #eff6ff;
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.modern-table th {
+    background-color: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-align: left;
+    padding: 18px 15px;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.modern-table td {
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    height: 40px;
+    vertical-align: middle;
+    overflow: hidden;
+}
+
+.modern-table tbody tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.modern-table tbody tr:hover {
+    background-color: #f1f5f9;
+}
+
+/* Type Indicator Circles */
+.type-indicator-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: white;
+    margin: 0 auto;
+}
+
+.type-s {
+    background-color: #10b981;
+    /* Green 500 */
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.type-p {
+    background-color: #3b82f6;
+    /* Blue 500 */
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.type-t {
+    background-color: #f97316;
+    /* Orange 500 */
+    box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);
+}
+
+.type-r {
+    background-color: #ef4444;
+    /* Red 500 */
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+/* Table Footer & Pagination */
+.table-footer {
+    background-color: #f8fafc;
+    padding: 8px 15px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.top-pagination {
+    border-top: none;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 0;
+    border-radius: 0;
+}
+
+.pagination-info {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.p-btn {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.p-btn:hover {
+    background-color: #f1f5f9;
+    color: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.p-current {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #3b82f6;
+    padding: 0 10px;
+}
+
+/* Sidebar Specific Styles */
+.sidebar-header {
+    background-color: #f8fafc;
+    padding: 15px;
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.toggle-sidebar-btn {
+    width: 3% !important;
+    min-width: 32px;
+    color: #3b82f6 !important;
+    padding: 0 !important;
+}
+
+.item-title-inline {
+    flex-grow: 1;
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: #1e293b;
+    background: #f1f5f9;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.history-btn {
+    width: 17%;
+    background-color: #3b82f6;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.history-btn:hover {
+    background-color: #2563eb;
+}
+
+.year-selector {
+    width: 20%;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.05);
+}
+
+.year-arrow {
+    background: transparent;
+    border: none;
+    color: #3b82f6;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 6px;
+}
+
+.year-arrow:hover {
+    background-color: #eff6ff;
+    transform: scale(1.1);
+}
+
+.year-arrow i {
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.year-display {
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: #1e40af;
+    /* Blue 800 */
+    min-width: 45px;
+    text-align: center;
+}
+
+.stats-bar {
+    display: flex;
+    align-items: center;
+    border: 1px solid #fdba74;
+    border-radius: 8px;
+    height: 40px;
+    overflow: hidden;
+    background-color: #fff7ed;
+    flex-shrink: 0;
+    /* Prevent shrinking */
+}
+
+.stats-column {
+    width: 25%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    font-size: 0.85rem;
+    color: #3b82f6;
+    font-weight: 700;
+}
+
+.stats-column:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 20%;
+    height: 60%;
+    width: 1px;
+    background-color: #fed7aa;
+}
+
+.history-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.history-container .table-wrapper {
+    max-height: none !important;
+    flex: 1;
+    height: 0;
+    /* Force flex child to respect container height */
+    overflow-y: auto;
+}
+
+/* Panier d'achat : hauteur fixe pour garantir le scroll du DataTable PrimeVue */
+.cart-table-wrapper {
+    max-height: calc(100vh - 280px) !important;
+    overflow-y: auto;
+    overflow-x: auto;
+    flex: 1;
+}
+
+/* Dialog Specific Styles */
+.history-dialog :deep(.p-dialog-content) {
+    padding: 20px !important;
+    background-color: #f8fafc;
+    border-radius: 20px;
+}
+
+.dialog-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px !important;
+}
+
+.dialog-header {
+    background: transparent;
+    padding: 0;
+    border: none;
+}
+
+.dialog-stats-bar {
+    margin-bottom: 5px;
+    flex-shrink: 0;
+    /* Prevent shrinking */
+}
+
+.dialog-history-container {
+    border: 1px solid #e2e8f0;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.dialog-history-container .table-wrapper {
+    max-height: none !important;
+    flex: 1;
+    height: 0;
+    overflow-y: auto;
+}
+
+.centered-footer {
+    justify-content: center !important;
+}
+
+.pagination-controls.centered {
+    gap: 15px;
+}
+
+.status-badge {
+    background-color: #dcfce7;
+    color: #166534;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Navigation Arrows Styles */
+.nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    border-radius: 6px;
+}
+
+.nav-arrow:hover {
+    background: white;
+    color: #3b82f6;
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    width: 38px;
+}
+
+.nav-arrow:active {
+    transform: translateY(-50%) scale(0.98);
+}
+
+.nav-arrow.left {
+    left: 10px;
+}
+
+.nav-arrow.right {
+    right: 10px;
+}
+
+.nav-arrow i {
+    font-size: 1.2rem;
+}
+
+/* Article Info Dialog Styles */
+.info-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.info-dialog-container {
+    background: white;
+    width: 1200px;
+    max-width: 95vw;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e2e8f0;
+}
+
+.info-dialog-header {
+    padding: 15px 20px;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-dialog-header-title {
+    color: #1e293b;
+    /* Noir / Slate 900 */
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.info-dialog-header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.tecalliance-logo {
+    height: 50px;
+}
+
+.close-info-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    transition: color 0.2s;
+    padding: 5px;
+}
+
+.header-filter-container {
+    margin-left: auto;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.vendor-filter-select {
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    background-color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    min-width: 180px;
+}
+
+.vendor-filter-select:disabled {
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+}
+
+.vendor-filter-select:hover {
+    border-color: #cbd5e1;
+    background-color: #fff;
+}
+
+.vendor-filter-select:focus {
+    border-color: #3b82f6;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.preferential-icon {
+    font-size: 0.9rem;
+    margin-left: 6px;
+    vertical-align: middle;
+    color: #cbd5e1;
+    transition: all 0.2s ease;
+}
+
+.preferential-icon.active {
+    color: #10b981;
+    text-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+
+.preferential-icon.inactive {
+    color: #ef4444;
+}
+
+.close-info-btn:hover {
+    color: #ef4444;
+}
+
+.info-dialog-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.info-top-section {
+    display: flex;
+    gap: 20px;
+    height: 500px;
+}
+
+.info-gallery {
+    flex: 1;
+    display: flex;
+    gap: 15px;
+    border: 1px solid #f59e0b;
+    /* Orange border */
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.thumbnail-list {
+    width: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.thumb-item {
+    width: 70px;
+    height: 70px;
+    border: 1px solid #e2e8f0;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.thumb-item.active {
+    border-color: #f59e0b;
+}
+
+.thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.thumb-nav-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px;
+}
+
+.thumbnail-scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 5px;
+    /* Custom Scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.thumbnail-scroll-container::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+}
+
+.thumbnail-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 5px;
+    background: rgba(248, 250, 252, 0.8);
+    border-radius: 4px;
+}
+
+.thumb-page-btn {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.thumb-page-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.thumb-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.thumb-page-info {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    min-width: 40px;
+    text-align: center;
+}
+
+.main-image-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    position: relative;
+    background: #f8fafc;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.main-article-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.info-specs-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    border: 1px solid #16a34a;
+    /* Green border */
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.brand-header {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #16a34a;
+}
+
+.brand-logo {
+    height: 40px;
+}
+
+.brand-ref {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #1e293b;
+}
+
+.brand-desc {
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.specs-table {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 350px;
+    overflow-y: auto;
+    padding-right: 5px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.specs-table::-webkit-scrollbar {
+    width: 6px;
+}
+
+.specs-table::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.specs-table::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.specs-table::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+}
+
+.spec-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    padding: 4px 0;
+}
+
+.spec-label {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.spec-value {
+    color: #1e293b;
+    font-weight: 700;
+    text-align: right;
+    max-width: 60%;
+}
+
+.info-sections-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.info-section {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.info-section-header {
+    background: #f8fafc;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.95rem;
+}
+
+.info-section-header i {
+    color: #16a34a;
+}
+
+.info-section-content {
+    padding: 15px;
+}
+
+.content-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #334155;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+}
+
+.oe-numbers-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.oe-number-item {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #475569;
+    text-align: left;
+    padding: 2px 0;
+}
+
+.vehicles-list-container {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.vehicle-header {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #1e293b;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 15px;
+}
+
+.brand-group {
+    margin-bottom: 10px;
+}
+
+.brand-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    border-radius: 4px;
+}
+
+.brand-toggle-row:hover {
+    background: #f8fafc;
+}
+
+.brand-toggle-row i {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.brand-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #334155;
+    text-transform: uppercase;
+}
+
+.models-list {
+    padding-left: 35px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 5px;
+}
+
+.model-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+}
+
+.model-plus-icon {
+    font-size: 0.8rem;
+    color: #16a34a;
+    font-weight: 900;
+}
+
+.model-text {
+    font-size: 0.95rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+.no-data-message {
+    color: #94a3b8;
+    font-style: italic;
+    font-size: 0.9rem;
+    padding: 10px;
+    text-align: center;
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 15px;
+}
+
+.loading-state p {
+    color: #64748b;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* No Image Placeholder */
+.no-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 40px;
+    background: #f8fafc;
+    border-radius: 4px;
+}
+
+.no-image-placeholder p {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* Brand Name */
+.brand-name {
+    font-size: 0.85rem;
+    color: #16a34a;
+}
+
+.pdf-item:hover {
+    background: #f8fafc;
+    border-color: #3b82f6;
+    transform: translateX(4px);
+}
+
+.pdf-item i.pi-file-pdf {
+    color: #dc2626;
+    font-size: 1.2rem;
+}
+
+.pdf-item i.pi-external-link {
+    color: #3b82f6;
+    font-size: 0.9rem;
+    margin-left: auto;
+}
+
+.pdf-item span {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.info-dialog-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+/* Active Row Indicator */
+.bg-blue-100 {
+    background-color: #dbeafe !important;
+}
+
+.bg-blue-100 td:first-child {
+    position: relative;
+}
+
+.bg-blue-100 td:first-child::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #3b82f6;
+    box-shadow: 2px 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.cell-description {
+    font-size: 0.8rem;
+    color: #64748b;
+    text-align: left;
+}
+
+.comment-icon {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+}
+
+.comment-icon:hover {
+    color: #3b82f6;
+    transform: scale(1.1);
+}
+
+.comment-icon.has-comment {
+    color: #3b82f6;
+}
+
+.comment-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.comment-textarea:focus {
+    border-color: #3b82f6;
+}
+
+.comment-dialog :deep(.p-dialog-header) {
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.comment-dialog :deep(.p-dialog-content) {
+    padding: 1.5rem;
+}
+
+.comment-dialog :deep(.p-dialog-footer) {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.comment-icon {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+}
+
+.comment-icon:hover {
+    color: #3b82f6;
+    transform: scale(1.1);
+}
+
+.comment-icon.has-comment {
+    color: #3b82f6;
+}
+</style>
+
+<style>
+.p-overlaypanel.comment-overlay {
+    width: 25vw !important;
+    min-width: 25vw !important;
+    max-width: 25vw !important;
+}
+
+.p-overlaypanel.comment-overlay .p-overlaypanel-content {
+    padding: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+}
+
+.comment-content {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+}
+
+.comment-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 6px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.comment-title {
+    flex: 1 !important;
+}
+
+.comment-header .header-actions {
+    display: flex !important;
+    gap: 4px !important;
+}
+
+.comment-header .header-actions .p-button.p-button-icon-only {
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+}
+
+.comment-textarea {
+    width: 100% !important;
+    padding: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    font-family: inherit !important;
+    font-size: 0.9rem !important;
+    resize: none !important;
+    outline: none !important;
+    transition: border-color 0.2s !important;
+}
+
+/* Custom Status Dropdown Styles */
+.custom-status-dropdown .p-dropdown-label {
+    display: flex;
+    align-items: center;
+}
+
+.custom-status-dropdown-panel .p-dropdown-items {
+    padding: 4px !important;
+}
+
+.custom-status-dropdown-panel .p-dropdown-item {
+    border-radius: 6px !important;
+    margin-bottom: 2px !important;
+    padding: 8px 12px !important;
+    font-size: 0.85rem !important;
+    transition: all 0.2s !important;
+}
+
+.custom-status-dropdown-panel .p-dropdown-item:hover {
+    background-color: #f1f5f9 !important;
+    color: #3b82f6 !important;
+}
+
+.custom-status-dropdown-panel .p-dropdown-item.p-highlight {
+    background-color: #eff6ff !important;
+    color: #3b82f6 !important;
+    font-weight: 700 !important;
+}
+
+
+
+/* TecDoc Verification Styles */
+.status-dot-container {
+    position: relative;
+    display: inline-block;
+    height: 100%;
+}
+
+.status-badge-rect {
+    width: 140px;
+    height: 100%;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 6px;
+}
+
+.status-badge-rect.loading {
+    background-color: #94a3b8;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-badge-rect.success {
+    background-color: #10b981;
+}
+
+.status-badge-rect.warning {
+    background-color: #f59e0b;
+}
+
+.status-badge-rect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.status-badge-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+.status-dot-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #dc2626;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.5);
+    border: 2px solid white;
+    pointer-events: none;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-badge.status-created {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.status-not-created {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.status-new {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.status-badge.status-verified {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.create-am-btn {
+    background-color: white !important;
+    color: #3b82f6 !important;
+    border: 1px solid #3b82f6 !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    border-color: #3b82f6;
+}
+
+.comment-dialog :deep(.p-dialog-header) {
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.comment-dialog :deep(.p-dialog-content) {
+    padding: 1.5rem;
+}
+
+.comment-dialog :deep(.p-dialog-footer) {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.comment-icon {
+    padding: 6px;
+    transition: all 0.2s;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+}
+
+.comment-icon:hover {
+    background-color: #f1f5f9;
+    color: #3b82f6;
+    border-radius: 6px;
+}
+
+.comment-icon.has-comment {
+    color: #f97316 !important;
+}
+
+.comment-icon.has-comment:hover {
+    background-color: #fff7ed;
+    color: #ea580c !important;
+    transform: translateY(-1px);
+}
+
+.comment-icon:hover {
+    color: #3b82f6;
+    transform: scale(1.1);
+}
+
+.comment-icon.has-comment {
+    color: #3b82f6;
+}
+
+.rupture-row td {
+    color: #dc2626 !important;
+    font-weight: 600;
+}
+
+/* 360 Viewer Styles */
+.viewer-360-toggle-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    color: #3b82f6;
+}
+
+.viewer-360-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    background: #f8fafc;
+}
+
+.viewer-360-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    cursor: ew-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-360 {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.viewer-360-overlay {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+}
+
+.spin-icon {
+    animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-more {
+    text-align: center;
+    padding: 10px;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+</style>
+
+<style>
+.p-overlaypanel.comment-overlay {
+    width: 25vw !important;
+    min-width: 25vw !important;
+    max-width: 25vw !important;
+}
+
+.p-overlaypanel.comment-overlay .p-overlaypanel-content {
+    padding: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+}
+
+.comment-content {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+}
+
+.comment-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 6px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.comment-title {
+    flex: 1 !important;
+}
+
+.comment-header .header-actions {
+    display: flex !important;
+    gap: 4px !important;
+}
+
+.comment-header .header-actions .p-button.p-button-icon-only {
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+}
+
+.comment-textarea {
+    width: 100% !important;
+    padding: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    font-family: inherit !important;
+    font-size: 0.9rem !important;
+    resize: none !important;
+    outline: none !important;
+    transition: border-color 0.2s !important;
+}
+
+/* TecDoc Verification Styles */
+.status-dot-container {
+    position: relative;
+    display: inline-block;
+    height: 100%;
+}
+
+.status-badge-rect {
+    width: 140px;
+    height: 100%;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 6px;
+}
+
+.status-badge-rect.loading {
+    background-color: #94a3b8;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-badge-rect.success {
+    background-color: #10b981;
+}
+
+.status-badge-rect.warning {
+    background-color: #f59e0b;
+}
+
+.status-badge-rect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.status-badge-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+.status-dot-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #dc2626;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.5);
+    border: 2px solid white;
+    pointer-events: none;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-badge.status-created {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.status-not-created {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.create-am-btn {
+    background-color: white !important;
+    color: #3b82f6 !important;
+    border: 1px solid #3b82f6 !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    padding: 6px 12px !important;
+    transition: all 0.2s ease !important;
+}
+
+.create-am-btn:hover {
+    background-color: #eff6ff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
+}
+
+.verify-btn {
+    background-color: white !important;
+    color: #f59e0b !important;
+    border: 1px solid #f59e0b !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    padding: 6px 12px !important;
+    transition: all 0.2s ease !important;
+}
+
+.verify-btn:hover {
+    background-color: #fffbeb !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.15);
+}
+
+.header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.history-btn {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 24px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 200px;
+    text-align: center;
+}
+
+.dialog-btn {
+    padding: 10px 20px !important;
+    font-size: 1rem !important;
+    min-width: 120px !important;
+}
+
+.dialog-btn .p-button-icon {
+    font-size: 1.1rem !important;
+}
+
+
+
+.master-erp-match {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.master-erp-mismatch {
+    color: #dc2626;
+    font-weight: 700;
+}
+
+/* Custom Vendor Dropdown Style */
+.vendor-dropdown-custom {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    background-color: #f8fafc !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    height: 42px !important;
+    /* Fixed height for better visibility */
+    display: flex !important;
+    align-items: center !important;
+}
+
+.vendor-dropdown-custom:hover {
+    border-color: #cbd5e1 !important;
+    background-color: #fff !important;
+}
+
+.vendor-dropdown-custom.p-focus {
+    border-color: #3b82f6 !important;
+    background-color: #fff !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.vendor-dropdown-custom .p-dropdown-label {
+    padding: 0 12px !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.vendor-dropdown-custom .p-dropdown-trigger {
+    width: 2.5rem !important;
+    color: #64748b !important;
+}
+
+/* Dialog Layout Styles */
+.info-section {
+    margin-bottom: 20px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.info-section-header {
+    background: #f8fafc;
+    padding: 12px 15px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.95rem;
+}
+
+.info-section-header i {
+    color: #3b82f6;
+    font-size: 1.1rem;
+}
+
+.info-section-content {
+    padding: 15px;
+    /* Add padding to prevent text touching borders */
+}
+
+
+.spec-row:last-child {
+    border-bottom: none;
+}
+
+.spec-row:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.spec-label {
+    font-weight: 600;
+    color: #64748b;
+    font-size: 0.85rem;
+    width: 35%;
+    flex-shrink: 0;
+}
+
+.spec-value {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.9rem;
+    flex: 1;
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* Specific override for rows containing inputs/dropdowns */
+.spec-row:has(.vendor-dropdown-custom) .spec-value {
+    width: 65%;
+    flex: unset;
+}
+
+/* Cart action buttons */
+.action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.verify-btn {
+    color: #10b981;
+}
+
+.verify-btn:hover:not(:disabled) {
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+.cancel-btn {
+    color: #ef4444;
+}
+
+.cancel-btn:hover:not(:disabled) {
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+
+.cart-exists {
+    color: #3b82f6;
+}
+
+.loading-indicator {
+    padding: 10px;
+    text-align: center;
+    color: #64748b;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+.product-flag {
+    color: #3b82f6; /* master reference blue */
+    margin-left: 6px;
+    font-size: 0.85rem;
+    vertical-align: middle;
+    display: inline-block;
+}
+</style>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     REFONTE UI (passe 1) — style ERP moderne inspiré TailAdmin.
+     Surcouche purement visuelle : aucune logique modifiée.
+     Déclarée en dernier => prime sur les règles existantes (scoped).
+════════════════════════════════════════════════════════════════════ -->
+<style scoped>
+/* Fond général plus doux */
+.line-detail-container {
+    background-color: #f1f5f9;
+    gap: 16px;
+}
+
+/* Header en carte dashboard */
+.top-header {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 12px 18px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+
+.detail-title {
+    font-size: 1.18rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+}
+
+.detail-back-btn {
+    border-radius: 10px;
+}
+
+.confirm-order-btn {
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(22, 163, 74, 0.2);
+}
+
+/* Tableaux en cartes modernes */
+.table-container {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
+}
+
+.table-header-row {
+    background: #ffffff;
+    border-bottom: 1px solid #eef2f7;
+    padding: 14px 16px;
+}
+
+.table-title {
+    color: #0f172a;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+}
+
+/* Entêtes de colonnes nets, type admin */
+.modern-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: inset 0 -1px 0 #e5e7eb;
+}
+
+/* Lignes compactes mais lisibles */
+.modern-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+
+.modern-table tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+.modern-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Sélection de ligne élégante */
+.modern-table tbody tr.bg-blue-100 {
+    background-color: #eff6ff !important;
+    box-shadow: inset 3px 0 0 #2563eb;
+}
+
+/* Références / désignations plus lisibles */
+.cell-reference {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+}
+
+.cell-description {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* Badges stock / appro plus doux */
+.stock-tag {
+    border-radius: 8px;
+    border-width: 1.5px;
+    font-size: 0.8rem;
+}
+
+.qty-badge {
+    border-radius: 6px;
+}
+
+/* Indicateurs d'écart cohérents */
+.percentage-indicator {
+    border-radius: 6px;
+    font-weight: 700;
+}
+
+/* Inputs de ligne uniformisés */
+.qty-input {
+    border-radius: 8px;
+    border-color: #e5e7eb;
+    background: #ffffff;
+}
+
+.reason-select {
+    border-radius: 8px;
+    border-color: #e5e7eb;
+    background: #ffffff;
+}
+
+/* Boutons d'action plus uniformes */
+.validate-line-btn {
+    border-radius: 8px;
+}
+
+.info-icon,
+.comment-icon {
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.info-icon:hover,
+.comment-icon:hover {
+    transform: scale(1.12);
+}
+
+/* Pied de tableau / pagination plus net */
+.table-footer {
+    background: #f8fafc;
+    border-top: 1px solid #eef2f7;
+}
+
+.p-btn {
+    border-radius: 8px;
+    border-color: #e5e7eb;
+}
+
+/* Sidebar Historique moderne */
+.right-column {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
+}
+
+.sidebar-header {
+    background: #ffffff;
+    border-bottom: 1px solid #eef2f7;
+    border-radius: 12px 12px 0 0;
+}
+
+.history-btn {
+    border-radius: 9px;
+}
+
+.stats-bar {
+    border-radius: 10px;
+    border-color: #fed7aa;
+    background: linear-gradient(180deg, #fff7ed 0%, #fffbf5 100%);
+}
+
+.year-selector {
+    border-radius: 9px;
+}
+
+/* Filtres : icône et popover premium */
+.th-filter-btn {
+    border-radius: 6px;
+}
+
+.th-filter-btn.active {
+    color: #1d4ed8;
+    background: #dbeafe;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+.filter-popover {
+    width: 280px;
+}
+
+.filter-popover-title {
+    color: #0f172a;
+}
+
+/* Badge temporaire d'indication "REFONTE UI" */
+.detail-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.refonte-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #ffffff;
+    background: linear-gradient(135deg, #6366f1 0%, #2563eb 100%);
+    border-radius: 9999px;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+    text-transform: uppercase;
+}
+</style>

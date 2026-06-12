@@ -15,6 +15,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Dropdown from 'primevue/dropdown'
 import Drawer from 'primevue/drawer'
+import Tooltip from 'primevue/tooltip'
 
 import './assets/styles/main.css'
 import './assets/styles/pagination-fix.css'
@@ -33,6 +34,7 @@ app.component('InputIcon', InputIcon)
 
 app.component('Dropdown', Dropdown)
 app.component('Drawer', Drawer)
+app.directive('tooltip', Tooltip)
 
 app.use(createPinia())
 app.use(router)

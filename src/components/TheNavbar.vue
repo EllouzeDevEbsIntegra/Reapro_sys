@@ -59,6 +59,17 @@ const navItems = [
     label: 'Catalogue Partslink',
     icon: 'pi pi-desktop',
     route: '/partslink-viewer'
+  },
+  {
+    label: 'Confirmation Achat',
+    icon: 'pi pi-check-square',
+    route: '/confirmation-achat'
+  },
+  {
+    // PHASE 12 — Ancienne version (V1) pour démo/comparaison V1 vs V2
+    label: 'Ancien Confirmation Achat',
+    icon: 'pi pi-history',
+    route: '/ancien-confirmation-achat'
   }
 ];
 

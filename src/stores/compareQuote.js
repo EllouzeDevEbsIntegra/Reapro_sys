@@ -128,6 +128,53 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
+        // Confirmation Achat : récupère les lignes fournisseur d'un comparateur (paginé serveur).
+        // Depuis Phase 4C, l'endpoint renvoie un objet { content, totalElements, totalPages, page, size }.
+        // Cette méthode expose l'objet COMPLET (utilisée par le détail C2 pour le badge total + hasMore).
+        async fetchConfirmationQuoteLinesPaged(compareQuoteNo, page = 0, size = 20, filters = {}) {
+            try {
+                const params = { compareQuoteNo, page, size }
+                // Filtres optionnels (opérateur + valeur), appliqués côté backend AVANT pagination.
+                const hasValue = (v) => v !== undefined && v !== null && v !== ''
+                if (hasValue(filters.stockValue) && filters.stockOperator) {
+                    params.stockOperator = filters.stockOperator
+                    params.stockValue = filters.stockValue
+                }
+                if (hasValue(filters.dateDernierAchatValue) && filters.dateDernierAchatOperator) {
+                    params.dateDernierAchatOperator = filters.dateDernierAchatOperator
+                    params.dateDernierAchatValue = filters.dateDernierAchatValue
+                }
+                if (hasValue(filters.quantityValue) && filters.quantityOperator) {
+                    params.quantityOperator = filters.quantityOperator
+                    params.quantityValue = filters.quantityValue
+                }
+                // Filtre "1ère Conf" (qtyFirstConfirmation) — même logique numérique que Qté Cf
+                if (hasValue(filters.qtyFirstConfirmationValue) && filters.qtyFirstConfirmationOperator) {
+                    params.qtyFirstConfirmationOperator = filters.qtyFirstConfirmationOperator
+                    params.qtyFirstConfirmationValue = filters.qtyFirstConfirmationValue
+                }
+                // Filtre Réf / Désignation (référence article = no) — contains / equals
+                if (hasValue(filters.referenceValue) && filters.referenceOperator) {
+                    params.referenceOperator = filters.referenceOperator
+                    params.referenceValue = filters.referenceValue
+                }
+                const response = await axios.get('/api/bc/quote-lines/by-compare-quote', {
+                    params
+                })
+                return response.data
+            } catch (err) {
+                console.error('Fetch confirmation quote lines error:', err)
+                throw err
+            }
+        },
+
+        // Compat ascendante : renvoie UNIQUEMENT le tableau de lignes (utilisée par l'ancien
+        // composant ConfirmationAchatDetail.vue qui attend un tableau). Délègue à la version paginée.
+        async fetchConfirmationQuoteLines(compareQuoteNo, page = 0, size = 20, filters = {}) {
+            const data = await this.fetchConfirmationQuoteLinesPaged(compareQuoteNo, page, size, filters)
+            return Array.isArray(data) ? data : (data && Array.isArray(data.content) ? data.content : [])
+        },
+
         async fetchItemLedgerEntries(itemNo, year, page = 0, size = 20, companyId = null, sourceNo = null, allYears = false) {
             this.error = null
             try {
@@ -156,7 +203,7 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        async fetchEquivalenceItems(referenceMaster, no, page = 0, size = 10, compareQuoteNo = null) {
+        async fetchEquivalenceItems(referenceMaster, no, page = 0, size = 10, compareQuoteNo = null, filters = {}) {
             this.error = null
             try {
                 const params = {
@@ -168,6 +215,21 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 if (compareQuoteNo) {
                     params.compareQuoteNo = compareQuoteNo
                 }
+                // PHASE 6B : filtres EQV optionnels (stock / dernier achat), appliqués côté backend AVANT pagination
+                const hasValue = (v) => v !== undefined && v !== null && v !== ''
+                if (hasValue(filters.stockValue) && filters.stockOperator) {
+                    params.stockOperator = filters.stockOperator
+                    params.stockValue = filters.stockValue
+                }
+                if (hasValue(filters.dateDernierAchatValue) && filters.dateDernierAchatOperator) {
+                    params.dateDernierAchatOperator = filters.dateDernierAchatOperator
+                    params.dateDernierAchatValue = filters.dateDernierAchatValue
+                }
+                // Filtre Réf / Désignation (référence article = no) — contains / equals
+                if (hasValue(filters.referenceValue) && filters.referenceOperator) {
+                    params.referenceOperator = filters.referenceOperator
+                    params.referenceValue = filters.referenceValue
+                }
                 const response = await axios.get('/api/bc/itemsEqv', {
                     params
                 })
@@ -178,7 +240,7 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
-        async fetchKitItems(no, page = 0, size = 10, compareQuoteNo = null) {
+        async fetchKitItems(no, page = 0, size = 10, compareQuoteNo = null, filters = {}) {
             this.error = null
             try {
                 const params = {
@@ -188,6 +250,21 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 }
                 if (compareQuoteNo) {
                     params.compareQuoteNo = compareQuoteNo
+                }
+                // PHASE 6B : filtres KIT optionnels (stock / dernier achat), appliqués côté backend AVANT pagination
+                const hasValue = (v) => v !== undefined && v !== null && v !== ''
+                if (hasValue(filters.stockValue) && filters.stockOperator) {
+                    params.stockOperator = filters.stockOperator
+                    params.stockValue = filters.stockValue
+                }
+                if (hasValue(filters.dateDernierAchatValue) && filters.dateDernierAchatOperator) {
+                    params.dateDernierAchatOperator = filters.dateDernierAchatOperator
+                    params.dateDernierAchatValue = filters.dateDernierAchatValue
+                }
+                // Filtre Réf / Désignation (référence article = no) — contains / equals
+                if (hasValue(filters.referenceValue) && filters.referenceOperator) {
+                    params.referenceOperator = filters.referenceOperator
+                    params.referenceValue = filters.referenceValue
                 }
                 const response = await axios.get('/api/itemsKit', {
                     params
@@ -242,6 +319,20 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 return response.data
             } catch (err) {
                 console.error('Fetch last invoiced cost error:', err)
+                throw err
+            }
+        },
+
+        // Historique paginé "Der P" (vue View_ProjectReapro_LastInvoicedItemCost), trié date desc.
+        // Distinct de fetchLastInvoicedCost (/api/last-invoiced-cost) et fetchPurchasePrices.
+        async fetchLastInvoicedItemCosts(itemNo, page = 0, size = 20) {
+            try {
+                const response = await axios.get(`/api/sqlserver/last-invoiced-item-costs/${itemNo}`, {
+                    params: { page, size }
+                })
+                return response.data
+            } catch (err) {
+                console.error('Fetch last invoiced item costs error:', err)
                 throw err
             }
         },

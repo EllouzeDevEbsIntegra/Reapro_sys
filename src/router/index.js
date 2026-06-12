@@ -72,6 +72,26 @@ const routes = [
     name: 'PartslinkViewer',
     component: () => import('../views/PartslinkNativeViewer.vue'),
     meta: { title: 'Catalogue Partslink' }
+  },
+  {
+    path: '/confirmation-achat',
+    name: 'ConfirmationAchat',
+    component: () => import('../views/ConfirmationAchatView.vue'),
+    meta: { title: 'Confirmation Achat' }
+  },
+  {
+    // PHASE 12 — Ancienne version (V1) en parallèle, pour démo/comparaison V1 vs V2 (C2)
+    path: '/ancien-confirmation-achat',
+    name: 'AncienConfirmationAchat',
+    component: () => import('../views/AncienConfirmationAchatView.vue'),
+    meta: { title: 'Ancien Confirmation Achat' }
+  },
+  {
+    // Route TEMPORAIRE — laboratoire visuel (maquettes A/B/C), aucune logique métier
+    path: '/confirmation-achat-ui-lab',
+    name: 'ConfirmationAchatUiLab',
+    component: () => import('../views/ConfirmationAchatUiLabView.vue'),
+    meta: { title: 'Confirmation Achat — UI Lab' }
   }
 ]
 

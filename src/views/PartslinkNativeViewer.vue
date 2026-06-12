@@ -85,10 +85,27 @@
         <Button label="Réessayer" icon="pi pi-refresh" class="p-button-outlined p-button-danger mt-3" @click="handleVinSearch" />
       </div>
 
-      <!-- Main Layout (4 panels side-by-side) -->
-      <section v-else-if="vehicle" class="layout-grid">
+      <!-- Main Layout -->
+      <section v-else-if="vehicle" class="vehicle-workspace">
+        <div v-if="isDetailMode" class="selection-breadcrumb card">
+          <button class="crumb-button" @click="backToVehicleOverview">
+            <span class="crumb-label">VIN</span>
+            <span class="crumb-value">{{ vehicle.vin }}</span>
+          </button>
+          <i class="pi pi-angle-right crumb-separator"></i>
+          <button class="crumb-button" @click="backToGroupOverview">
+            <span class="crumb-label">Groupe</span>
+            <span class="crumb-value">{{ currentGroupName }}</span>
+          </button>
+          <i class="pi pi-angle-right crumb-separator"></i>
+          <div class="crumb-current">
+            <span class="crumb-label">Sous-groupe</span>
+            <span class="crumb-value">{{ currentSubgroupName }}</span>
+          </div>
+        </div>
+        <div class="layout-grid" :class="isDetailMode ? 'detail-mode' : 'explore-mode'">
         <!-- Panel 1: Vehicle Identification (Left) -->
-        <article class="panel panel-vehicle card">
+        <article v-if="!isDetailMode" class="panel panel-vehicle card">
           <div class="panel-header">
             <i class="pi pi-car panel-icon"></i>
             <h2>Véhicule</h2>
@@ -131,7 +148,7 @@
         </article>
 
         <!-- Panel 2: Main Groups (Middle Left) -->
-        <article class="panel panel-groups card">
+        <article v-if="!isDetailMode" class="panel panel-groups card">
           <div class="panel-header">
             <i class="pi pi-folder panel-icon"></i>
             <h2>Groupe Principal</h2>
@@ -198,12 +215,12 @@
         </article>
 
         <!-- Panel 4: Schematic Render & Parts Table (Right Column) -->
-        <article class="panel panel-render card">
+        <article v-if="isDetailMode" class="panel panel-render card">
           <div v-if="loadingDetails" class="render-loader">
             <i class="pi pi-spin pi-spinner spinner-icon"></i>
             <h3>Chargement du schéma et des pièces...</h3>
           </div>
-          <div v-else-if="!selectedSubgroupId" class="render-placeholder">
+          <div v-else-if="false" class="render-placeholder">
             <i class="pi pi-images placeholder-icon"></i>
             <h3>Aucun sous-groupe sélectionné</h3>
             <p>Veuillez sélectionner un groupe puis un sous-groupe pour afficher les détails techniques.</p>
@@ -286,6 +303,7 @@
             </div>
           </div>
         </article>
+        </div>
       </section>
 
       <!-- Welcome / Selection Panel -->
@@ -513,12 +531,21 @@ const filteredSubgroups = computed(() => {
   return list.filter((sg) => (`${sg.code} ${sg.name}`).toLowerCase().includes(query))
 })
 
+const currentGroupName = computed(() => {
+  if (!selectedGroupId.value) return 'Aucun groupe'
+  const id = String(selectedGroupId.value)
+  const found = normalizeGroups(groups.value).find((group) => String(group.id) === id)
+  return found?.name || found?.code || id
+})
+
 const currentSubgroupName = computed(() => {
   if (!selectedSubgroupId.value) return ''
   const id = String(selectedSubgroupId.value)
   const found = normalizeSubgroups(subgroups.value).find((sg) => String(sg.id) === id)
   return found?.name || found?.code || id
 })
+
+const isDetailMode = computed(() => Boolean(selectedSubgroupId.value))
 
 const imageStyle = computed(() => ({
   transform: `translate(${offsetX.value}px, ${offsetY.value}px) scale(${scale.value})`,
@@ -677,6 +704,25 @@ const selectSubgroup = async (subgroupId) => {
   }
 }
 
+const backToGroupOverview = () => {
+  selectedSubgroupId.value = null
+  details.value = null
+  loadingDetails.value = false
+  zoomReset()
+}
+
+const backToVehicleOverview = () => {
+  selectedGroupId.value = null
+  selectedSubgroupId.value = null
+  subgroups.value = []
+  details.value = null
+  loadingSubgroups.value = false
+  loadingDetails.value = false
+  groupFilter.value = ''
+  subgroupFilter.value = ''
+  zoomReset()
+}
+
 // Zoom & Pan Actions
 const zoomIn = () => {
   scale.value = Math.min(scale.value + 0.25, 4.0)
@@ -709,9 +755,26 @@ const endPan = () => {
 }
 
 // Global Actions
+const getBackendOrigin = () => {
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+
+  if (/^https?:\/\//i.test(apiBaseUrl)) {
+    return apiBaseUrl.replace(/\/api\/?$/i, '').replace(/\/$/, '')
+  }
+
+  if (typeof window !== 'undefined') {
+    return window.location.origin.replace(/\/$/, '')
+  }
+
+  return ''
+}
+
 const getSchematicImageUrl = (imagePath) => {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
-  return `${apiBaseUrl.replace(/\/$/, '')}${imagePath}`
+  if (!imagePath) return ''
+  if (/^https?:\/\//i.test(imagePath)) return imagePath
+
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`
+  return `${getBackendOrigin()}${normalizedPath}`
 }
 
 const copyToClipboard = (text) => {
@@ -827,12 +890,88 @@ const logError = (err, fallback) => {
 }
 
 /* Panel Layout styling */
+.vehicle-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.selection-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+}
+
+.crumb-button,
+.crumb-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+}
+
+.crumb-button {
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: var(--primary-blue-dark);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.crumb-button:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.crumb-current {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: var(--text-primary);
+}
+
+.crumb-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.crumb-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crumb-separator {
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
 .layout-grid {
   display: grid;
-  grid-template-columns: 300px 260px 260px 1fr;
   gap: 1rem;
   height: calc(100vh - 210px);
   min-height: 500px;
+  align-items: stretch;
+}
+
+.layout-grid.explore-mode {
+  grid-template-columns: minmax(220px, 20%) minmax(260px, 30%) minmax(360px, 50%);
+}
+
+.layout-grid.detail-mode {
+  grid-template-columns: minmax(340px, 50%) minmax(380px, 50%);
 }
 
 .panel {
@@ -1110,11 +1249,15 @@ const logError = (err, fallback) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0.75rem;
 }
 
 .schematic-img {
-  max-height: 95%;
-  max-width: 95%;
+  display: block;
+  max-height: 100%;
+  max-width: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   user-select: none;
 }
@@ -1138,7 +1281,20 @@ const logError = (err, fallback) => {
 .parts-table-wrapper {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  overflow: hidden;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+/* Custom Scrollbar for parts table wrapper */
+.parts-table-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+.parts-table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+.parts-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
 }
 
 .parts-table {
@@ -1150,6 +1306,9 @@ const logError = (err, fallback) => {
 }
 
 .parts-table th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background: #f8fafc;
   color: var(--text-secondary);
   padding: 0.75rem;

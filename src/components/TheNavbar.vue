@@ -1,11 +1,7 @@
 <script setup>
-import { ref, computed, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
-import Menubar from 'primevue/menubar';
-import Button from 'primevue/button';
-import Avatar from 'primevue/avatar';
-import Menu from 'primevue/menu';
 import ProfileDialog from './ProfileDialog.vue';
 
 const router = useRouter();
@@ -14,181 +10,133 @@ const authStore = useAuthStore();
 
 const showProfileDialog = ref(false);
 const isMobileMenuOpen = ref(false);
-const menu = ref();
+const profileOpen = ref(false);
 
-const userMenuItems = ref([
-  {
-    label: 'Profil',
-    icon: 'pi pi-user',
-    command: () => {
-      showProfileDialog.value = true;
-    }
-  },
-  {
-    separator: true
-  },
-  {
-    label: 'Deconnecter',
-    icon: 'pi pi-sign-out',
-    command: () => handleLogout()
-  }
-]);
-
+// 7 entrées à plat (labels courts, libellé complet en tooltip). Routes existantes, inchangées.
 const navItems = [
-  {
-    label: 'Comparateur Achat',
-    icon: 'pi pi-search-plus',
-    route: '/comparateur'
-  },
-  {
-    label: 'B2B',
-    icon: 'pi pi-users',
-    route: '/b2b'
-  },
-  {
-    label: 'Analyse Recherches B2B',
-    icon: 'pi pi-chart-line',
-    route: '/search-opportunities'
-  },
-  {
-    label: 'Sync Adaptable',
-    icon: 'pi pi-sync',
-    route: '/sync-adaptable'
-  },
-  {
-    label: 'Catalogue Partslink',
-    icon: 'pi pi-desktop',
-    route: '/partslink-viewer'
-  },
-  {
-    label: 'Confirmation Achat',
-    icon: 'pi pi-check-square',
-    route: '/confirmation-achat'
-  },
-  {
-    // PHASE 12 — Ancienne version (V1) pour démo/comparaison V1 vs V2
-    label: 'Ancien Confirmation Achat',
-    icon: 'pi pi-history',
-    route: '/ancien-confirmation-achat'
-  }
+  { label: 'Comparateur', full: 'Comparateur Achat', icon: 'pi pi-search-plus', route: '/comparateur' },
+  { label: 'Confirmation Achat', full: 'Confirmation Achat', icon: 'pi pi-check-square', route: '/confirmation-achat' },
+  { label: 'B2B', full: 'B2B', icon: 'pi pi-users', route: '/b2b' },
+  { label: 'Analyse B2B', full: 'Analyse Recherches B2B', icon: 'pi pi-chart-line', route: '/search-opportunities' },
+  { label: 'Sync Adaptable', full: 'Synchronisation Adaptable', icon: 'pi pi-sync', route: '/sync-adaptable' },
+  { label: 'Partslink', full: 'Catalogue Partslink', icon: 'pi pi-desktop', route: '/partslink-viewer' },
+  { label: 'Ancien Conf.', full: 'Ancien Confirmation Achat', icon: 'pi pi-history', route: '/ancien-confirmation-achat' },
 ];
 
-
-const items = computed(() =>
-  navItems.map(item => ({
-    ...item,
-    command: () => navigateTo(item.route)
-  }))
+const userName = computed(() =>
+  authStore.user?.lastname || authStore.user?.nom || authStore.user?.name || 'User'
 );
 
 const isRouteActive = (targetRoute) =>
   route.path === targetRoute || route.path.startsWith(`${targetRoute}/`);
 
-const closeMobileMenu = () => {
-  isMobileMenuOpen.value = false;
-};
-
-const toggleMobileMenu = () => {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value;
-};
+const closeAll = () => { profileOpen.value = false; isMobileMenuOpen.value = false; };
+const toggleProfile = () => { profileOpen.value = !profileOpen.value; };
+const toggleMobileMenu = () => { isMobileMenuOpen.value = !isMobileMenuOpen.value; };
 
 const navigateTo = (targetRoute) => {
-  closeMobileMenu();
-  if (route.path !== targetRoute) {
-    router.push(targetRoute);
-  }
+  closeAll();
+  if (route.path !== targetRoute) router.push(targetRoute);
 };
 
-const toggleMenu = (event) => {
-  menu.value.toggle(event);
-};
-
-watch(isMobileMenuOpen, (open) => {
-  document.body.style.overflow = open ? 'hidden' : '';
-});
-
-watch(
-  () => route.path,
-  () => closeMobileMenu()
-);
-
-onBeforeUnmount(() => {
-  document.body.style.overflow = '';
-});
+const openProfile = () => { closeAll(); showProfileDialog.value = true; };
 
 const handleLogout = () => {
-  closeMobileMenu();
+  closeAll();
   authStore.logout();
   router.push('/');
 };
+
+// Fermeture du dropdown profil au clic extérieur
+const onDocClick = () => { profileOpen.value = false; };
+
+onMounted(() => document.addEventListener('click', onDocClick));
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick);
+  document.body.style.overflow = '';
+});
+
+watch(isMobileMenuOpen, (open) => { document.body.style.overflow = open ? 'hidden' : ''; });
+watch(() => route.path, () => closeAll());
 </script>
 
 <template>
-  <Menubar :model="items" class="app-navbar">
-    <template #start>
-      <div class="flex items-center nav-brand-wrap">
-        <span class="nav-brand">Reapro Achat</span>
-      </div>
-    </template>
+  <header class="nav2">
+    <!-- ─── Bloc brand : capsule logo-mark + Reapro / ERP Achat (sky) ─── -->
+    <div class="nav2-brand">
+      <span class="nav2-mark">R</span>
+      <div class="nav2-brandtxt"><b>Reapro</b><em>ERP Achat</em></div>
+    </div>
 
-    <template #item="{ item, props, hasSubmenu }">
-      <router-link v-if="item.route" v-slot="{ href, navigate }" :to="item.route" custom>
-        <a :href="href" v-bind="props.action" @click="navigate" class="nav-item-link"
-          :class="{ 'nav-item-link--active': isRouteActive(item.route) }">
-          <span :class="item.icon" />
-          <span class="ml-2">{{ item.label }}</span>
-        </a>
-      </router-link>
-      <a v-else :href="item.url" :target="item.target" v-bind="props.action" class="nav-item-link">
-        <span :class="item.icon" />
-        <span class="ml-2">{{ item.label }}</span>
-        <span v-if="hasSubmenu" class="pi pi-fw pi-angle-down ml-2" />
-      </a>
-    </template>
+    <!-- ─── Track de navigation : 7 pills (scroll interne en repli) ─── -->
+    <nav class="nav2-track">
+      <RouterLink v-for="it in navItems" :key="it.route" :to="it.route" class="nav2-pill"
+        :class="{ 'is-active': isRouteActive(it.route) }" :title="it.full" @click="closeAll">
+        <i :class="it.icon"></i><span>{{ it.label }}</span>
+      </RouterLink>
+    </nav>
 
-    <template #end>
-      <div class="nav-actions">
-        <Button v-if="authStore.isAdmin" icon="pi pi-cog" text rounded class="nav-settings-btn" aria-label="Parametres"
-          @click="navigateTo('/admin/settings')" />
+    <div class="nav2-spacer"></div>
 
-        <div class="profile-menu-container">
-          <Button @click="toggleMenu" class="profile-button" text plain type="button">
-            <Avatar icon="pi pi-user" style="background-color: #dee9fc; color: #1a2551" shape="circle" />
-            <span class="font-bold text-white ml-2 profile-name">{{ authStore.user?.lastname || authStore.user?.nom ||
-              authStore.user?.name || 'User' }}</span>
-            <i class="pi pi-angle-down ml-2 text-sm profile-chevron"></i>
-          </Button>
-          <Menu ref="menu" :model="userMenuItems" :popup="true" :pt="{
-            root: { class: 'profile-dropdown-menu' },
-            itemlink: { class: 'profile-menu-item' },
-            itemicon: { class: 'profile-menu-icon' },
-            itemtext: { class: 'profile-menu-text' }
-          }" />
-        </div>
+    <!-- ─── Capsule actions : settings (admin) · séparateur · profil ─── -->
+    <div class="nav2-capsule">
+      <button v-if="authStore.isAdmin" type="button" class="nav2-iconbtn" title="Paramètres"
+        aria-label="Paramètres" @click="navigateTo('/admin/settings')">
+        <i class="pi pi-cog"></i>
+      </button>
+      <span v-if="authStore.isAdmin" class="nav2-divider"></span>
 
-        <Button icon="pi pi-bars" text rounded type="button" aria-label="Ouvrir le menu" class="mobile-menu-toggle"
-          @click="toggleMobileMenu" />
-      </div>
-    </template>
-  </Menubar>
-
-  <transition name="mobile-nav-fade">
-    <div v-if="isMobileMenuOpen" class="mobile-nav-overlay" @click="closeMobileMenu"></div>
-  </transition>
-
-  <transition name="mobile-nav-slide">
-    <aside v-if="isMobileMenuOpen" class="mobile-nav-panel" role="dialog" aria-label="Navigation mobile">
-      <div class="mobile-nav-header">
-        <span class="mobile-nav-title">Navigation</span>
-        <Button icon="pi pi-times" text rounded type="button" aria-label="Fermer le menu" class="mobile-nav-close"
-          @click="closeMobileMenu" />
-      </div>
-      <nav class="mobile-nav-list">
-        <button v-for="item in navItems" :key="item.route" type="button" class="mobile-nav-link"
-          :class="{ 'mobile-nav-link--active': isRouteActive(item.route) }" @click="navigateTo(item.route)">
-          <span :class="item.icon"></span>
-          <span>{{ item.label }}</span>
+      <div class="nav2-profile-wrap">
+        <button type="button" class="nav2-profile" :class="{ open: profileOpen }" @click.stop="toggleProfile">
+          <span class="nav2-avatar"><i class="pi pi-user"></i></span>
+          <span class="nav2-username">{{ userName }}</span>
+          <i class="pi pi-angle-down nav2-caret"></i>
         </button>
+        <div v-if="profileOpen" class="nav2-dropdown" @click.stop>
+          <button type="button" class="nav2-dropdown-item" @click="openProfile">
+            <i class="pi pi-user"></i><span>Profil</span>
+          </button>
+          <div class="nav2-dropdown-sep"></div>
+          <button type="button" class="nav2-dropdown-item danger" @click="handleLogout">
+            <i class="pi pi-sign-out"></i><span>Déconnexion</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="nav2-burger" title="Menu" aria-label="Ouvrir le menu"
+      @click.stop="toggleMobileMenu">
+      <i class="pi pi-bars"></i>
+    </button>
+  </header>
+
+  <!-- ─── Drawer mobile (assorti Z : navy C2) ─── -->
+  <transition name="nav2-fade">
+    <div v-if="isMobileMenuOpen" class="nav2-overlay" @click="closeAll"></div>
+  </transition>
+  <transition name="nav2-slide">
+    <aside v-if="isMobileMenuOpen" class="nav2-drawer" role="dialog" aria-label="Navigation mobile">
+      <div class="nav2-drawer-head">
+        <div class="nav2-brand">
+          <span class="nav2-mark">R</span>
+          <div class="nav2-brandtxt"><b>Reapro</b><em>ERP Achat</em></div>
+        </div>
+        <button type="button" class="nav2-iconbtn" aria-label="Fermer le menu" @click="closeAll">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+      <nav class="nav2-drawer-list">
+        <button v-for="it in navItems" :key="it.route" type="button" class="nav2-drawer-link"
+          :class="{ 'is-active': isRouteActive(it.route) }" @click="navigateTo(it.route)">
+          <i :class="it.icon"></i><span>{{ it.full }}</span>
+        </button>
+        <div class="nav2-drawer-sep"></div>
+        <button v-if="authStore.isAdmin" type="button" class="nav2-drawer-link"
+          @click="navigateTo('/admin/settings')"><i class="pi pi-cog"></i><span>Paramètres</span></button>
+        <button type="button" class="nav2-drawer-link" @click="openProfile">
+          <i class="pi pi-user"></i><span>Profil</span></button>
+        <button type="button" class="nav2-drawer-link danger" @click="handleLogout">
+          <i class="pi pi-sign-out"></i><span>Déconnexion</span></button>
       </nav>
     </aside>
   </transition>
@@ -196,365 +144,166 @@ const handleLogout = () => {
   <ProfileDialog v-model:visible="showProfileDialog" />
 </template>
 
-<style>
-.app-navbar.p-menubar {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
-  border: none !important;
-  border-radius: 0 !important;
-  padding: 0.75rem 1.5rem !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
-  position: relative;
-  z-index: 1000;
-}
-
-.app-navbar .p-menubar-root-list {
-  background: transparent !important;
-  gap: 0.35rem !important;
-}
-
-.app-navbar .p-menubar-item,
-.app-navbar .p-menubar-item *,
-.app-navbar .p-menubar-item-content,
-.app-navbar .p-menubar-item-content *,
-.app-navbar .p-menubar-item-link,
-.app-navbar .p-menubar-item-link * {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-}
-
-.nav-item-link,
-.nav-item-link.p-menuitem-link {
-  color: rgba(255, 255, 255, 0.92) !important;
-  padding: 0.6rem 1rem !important;
-  transition: all 0.2s ease !important;
-  display: flex !important;
-  align-items: center !important;
-  text-decoration: none !important;
-  border: none !important;
-  position: relative;
-  font-weight: 500 !important;
-  background: transparent !important;
-  background-color: transparent !important;
-}
-
-.nav-item-link .p-menuitem-text,
-.nav-item-link .p-menuitem-icon,
-.nav-item-link span {
-  color: rgba(255, 255, 255, 0.92) !important;
-  transition: color 0.2s ease !important;
-}
-
-.nav-item-link:hover,
-.nav-item-link.p-menuitem-link:hover,
-.nav-item-link.p-menuitem-link:focus,
-.nav-item-link.p-menuitem-link:active {
-  background: transparent !important;
-  background-color: transparent !important;
-}
-
-.nav-item-link:hover .p-menuitem-text,
-.nav-item-link:hover .p-menuitem-icon,
-.nav-item-link:hover span {
-  color: #ffffff !important;
-}
-
-.nav-item-link--active,
-.nav-item-link--active.p-menuitem-link {
-  background: transparent !important;
-  background-color: transparent !important;
-}
-
-.nav-item-link--active span:first-child {
-  color: #f97316 !important;
-  text-shadow: 0 0 12px rgba(249, 115, 22, 0.6);
-  transform: scale(1.1);
-  transition: all 0.3s ease;
-}
-
-.nav-item-link--active span.ml-2 {
-  color: #ffffff !important;
-}
-
-.nav-item-link--active .p-menuitem-text,
-.nav-item-link--active .p-menuitem-icon,
-.nav-item-link--active span {
-  color: #ffffff !important;
-}
-
-.nav-item-link:focus-visible {
-  outline: none !important;
-}
-
-.app-navbar .p-button.p-button-icon-only.p-button-rounded.p-button-text {
-  color: rgba(255, 255, 255, 0.9) !important;
-  transition: all 0.2s ease;
-}
-
-.app-navbar .p-button.p-button-icon-only.p-button-rounded.p-button-text:hover {
-  background-color: rgba(255, 255, 255, 0.12) !important;
-  color: #ffffff !important;
-  transform: scale(1.06);
-}
-
-.app-navbar .pi-angle-down {
-  color: rgba(255, 255, 255, 0.9) !important;
-  font-size: 0.8rem;
-}
-
-.app-navbar .p-menubar-end {
-  margin-left: auto !important;
-  display: flex !important;
-  align-items: center !important;
-}
-
-.app-navbar .p-menubar-button {
-  display: none !important;
-}
-
-.profile-dropdown-menu {
-  background: #ffffff !important;
-  border: none !important;
-  border-radius: 12px !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-  padding: 0.5rem !important;
-  margin-top: 0.5rem !important;
-  min-width: 200px !important;
-}
-
-.profile-dropdown-menu .p-menuitem-link {
-  border-radius: 8px !important;
-  margin: 0.25rem 0 !important;
-  padding: 0.75rem 1rem !important;
-  transition: all 0.2s ease !important;
-}
-
-.profile-dropdown-menu .p-menuitem-link:hover {
-  background-color: #f3f4f6 !important;
-}
-
-.profile-dropdown-menu .p-menuitem-text {
-  color: #374151 !important;
-  font-weight: 500 !important;
-}
-
-.profile-dropdown-menu .p-menuitem-icon {
-  color: #6b7280 !important;
-  margin-right: 0.75rem !important;
-}
-
-.profile-dropdown-menu .p-menuitem-link:hover .p-menuitem-text,
-.profile-dropdown-menu .p-menuitem-link:hover .p-menuitem-icon {
-  color: #1e40af !important;
-}
-
-.profile-dropdown-menu .p-submenu-header {
-  background: transparent !important;
-  color: #9ca3af !important;
-  font-weight: 600 !important;
-  font-size: 0.75rem !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  padding: 0.75rem 1rem 0.25rem !important;
-}
-
-.profile-dropdown-menu .p-menu-separator {
-  border-top: 1px solid #e5e7eb !important;
-  margin: 0.5rem 0 !important;
-}
-</style>
-
 <style scoped>
-.nav-brand {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: white;
-  letter-spacing: -0.025em;
-  background: linear-gradient(to right, #ffffff, #e0e7ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.profile-menu-container {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 0.75rem;
-}
-
-.profile-button {
-  display: inline-flex !important;
-  align-items: center;
-  padding: 0.5rem 0.75rem !important;
-  color: white !important;
-  white-space: nowrap;
-  border-radius: 9999px !important;
-  border: 1px solid transparent !important;
-  transition: background-color 0.2s ease, border-color 0.2s ease !important;
-}
-
-.profile-button:hover {
-  background-color: rgba(255, 255, 255, 0.12) !important;
-  border-color: rgba(191, 219, 254, 0.42) !important;
-}
-
-.profile-button .p-avatar {
-  background-color: #eff6ff !important;
-  color: #1e40af !important;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  width: 36px;
-  height: 36px;
-}
-
-.profile-button:hover .p-avatar {
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
-.nav-settings-btn {
-  margin-right: 0.2rem;
-}
-
-.mobile-menu-toggle {
-  display: none !important;
-  color: rgba(255, 255, 255, 0.92) !important;
-}
-
-.mobile-menu-toggle:hover {
-  background: rgba(255, 255, 255, 0.12) !important;
-}
-
-.mobile-nav-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(2px);
-  z-index: 1098;
-}
-
-.mobile-nav-panel {
-  position: fixed;
+/* ════════════ Navbar Reapro — « Z · C2 Native » ════════════
+   Construite avec les tokens de Confirmation Achat C2 :
+   matériau des en-têtes de zone (#1e293b→#243246, bordure #3b4a61),
+   track façon .c2-carttabs (piste blanche translucide, actif BLEU PLEIN #2563eb),
+   sous-label brand en sky #7dd3fc (label STOCKS), survols matière .c2-year.
+   L'orange reste réservé au panier (sémantique C2 préservée). */
+.nav2 {
+  position: sticky;
   top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(88vw, 360px);
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  box-shadow: -12px 0 30px rgba(15, 23, 42, 0.25);
-  z-index: 1099;
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-nav-header {
+  z-index: 1000;
+  height: 58px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1rem 0.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  gap: 16px;
+  padding: 0 16px;
+  background: linear-gradient(180deg, #1e293b, #243246);
+  border-bottom: 1px solid #3b4a61;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 2px 10px rgba(15, 23, 42, .25);
+  font-family: 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;
 }
 
-.mobile-nav-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1e3a8a;
+/* ─── Bloc brand (capsule) ─── */
+.nav2-brand {
+  display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px;
+  background: rgba(255, 255, 255, .10); border: 1px solid #3b4a61; border-radius: 12px;
+  flex-shrink: 0;
+}
+.nav2-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 31px; height: 31px; border-radius: 9px;
+  background: #2563eb; color: #fff; font-size: 1rem; font-weight: 800;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, .4);
+  user-select: none; flex-shrink: 0;
+}
+.nav2-brandtxt { display: flex; flex-direction: column; line-height: 1.15; }
+.nav2-brandtxt b { font-size: .95rem; font-weight: 800; color: #fff; letter-spacing: -.02em; }
+.nav2-brandtxt em {
+  font-style: normal; font-size: .6rem; font-weight: 700; color: #7dd3fc;
+  text-transform: uppercase; letter-spacing: .07em;
 }
 
-.mobile-nav-list {
-  display: flex;
-  flex-direction: column;
-  padding: 0.8rem;
-  gap: 0.4rem;
+/* ─── Track de navigation (façon c2-carttabs) ─── */
+.nav2-track {
+  display: flex; align-items: center; gap: 2px;
+  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 12px; padding: 3px;
+  min-width: 0; overflow-x: auto; scrollbar-width: none;
 }
-
-.mobile-nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: transparent;
-  color: #334155;
-  font-weight: 600;
-  padding: 0.8rem 0.9rem;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.nav2-track::-webkit-scrollbar { height: 0; display: none; }
+.nav2-pill {
+  display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px;
+  color: #cbd5e1; background: transparent; border: 1px solid transparent; border-radius: 9px;
+  font-weight: 650; font-size: .84rem; cursor: pointer; text-decoration: none; white-space: nowrap;
+  flex-shrink: 0; transition: color .15s ease, background .15s ease, box-shadow .15s ease;
 }
-
-.mobile-nav-link:hover {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #1e40af;
+.nav2-pill i { font-size: .9rem; color: #94a3b8; transition: color .15s ease; }
+.nav2-pill:hover { color: #fff; background: rgba(255, 255, 255, .10); }
+.nav2-pill:hover i { color: #cbd5e1; }
+.nav2-pill.is-active {
+  color: #fff; background: #2563eb; border-color: transparent;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, .4);
 }
+.nav2-pill.is-active i { color: #bfdbfe; }
 
-.mobile-nav-link--active {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1e3a8a;
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
+.nav2-spacer { flex: 1; min-width: 0; }
+
+/* ─── Capsule actions (droite) ─── */
+.nav2-capsule {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  background: rgba(255, 255, 255, .10); border: 1px solid #3b4a61; border-radius: 999px; padding: 3px;
 }
-
-.mobile-nav-fade-enter-active,
-.mobile-nav-fade-leave-active {
-  transition: opacity 0.2s ease;
+.nav2-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+  border: none; background: transparent; border-radius: 999px; cursor: pointer;
+  color: #94a3b8; transition: background .15s ease, color .15s ease;
 }
+.nav2-iconbtn:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.nav2-divider { width: 1px; height: 18px; background: rgba(255, 255, 255, .14); flex-shrink: 0; }
 
-.mobile-nav-fade-enter-from,
-.mobile-nav-fade-leave-to {
-  opacity: 0;
+.nav2-profile-wrap { position: relative; }
+.nav2-profile {
+  display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px 0 3px;
+  border: none; background: transparent; border-radius: 999px; cursor: pointer;
+  color: #cbd5e1; transition: background .15s ease, color .15s ease;
 }
-
-.mobile-nav-slide-enter-active,
-.mobile-nav-slide-leave-active {
-  transition: transform 0.24s ease, opacity 0.24s ease;
+.nav2-profile:hover, .nav2-profile.open { background: rgba(255, 255, 255, .12); color: #fff; }
+.nav2-avatar {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+  border-radius: 50%; background: #eff6ff; color: #1e40af; font-size: .85rem; flex-shrink: 0;
 }
+.nav2-username { font-weight: 700; font-size: .84rem; white-space: nowrap; }
+.nav2-caret { font-size: .7rem !important; color: #94a3b8; }
 
-.mobile-nav-slide-enter-from,
-.mobile-nav-slide-leave-to {
-  transform: translateX(22px);
-  opacity: 0;
+/* ─── Dropdown profil (surface claire, comme les dialogs C2) ─── */
+.nav2-dropdown {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 1001; min-width: 190px;
+  background: #fff; border: 1px solid #e8edf3; border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, .28); padding: 6px;
 }
+.nav2-dropdown-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px;
+  background: transparent; border: none; border-radius: 8px; cursor: pointer;
+  color: #334155; font-weight: 600; font-size: .84rem; text-align: left;
+  transition: background .15s ease, color .15s ease;
+}
+.nav2-dropdown-item i { font-size: .92rem; color: #64748b; }
+.nav2-dropdown-item:hover { background: #f1f5f9; color: #1e40af; }
+.nav2-dropdown-item:hover i { color: #1e40af; }
+.nav2-dropdown-item.danger:hover { background: #fef2f2; color: #b91c1c; }
+.nav2-dropdown-item.danger:hover i { color: #b91c1c; }
+.nav2-dropdown-sep { height: 1px; background: #e8edf3; margin: 5px 4px; }
 
+.nav2-burger { display: none; }
+
+/* ─── Drawer mobile (navy C2, assorti Z) ─── */
+.nav2-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); backdrop-filter: blur(2px); z-index: 1098; }
+.nav2-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(88vw, 340px); z-index: 1099;
+  display: flex; flex-direction: column;
+  background: linear-gradient(180deg, #1e293b, #1b2536); border-left: 1px solid #3b4a61;
+  box-shadow: -12px 0 30px rgba(15, 23, 42, .35);
+}
+.nav2-drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid #3b4a61;
+}
+.nav2-drawer-list { display: flex; flex-direction: column; gap: 4px; padding: 12px; overflow-y: auto; }
+.nav2-drawer-link {
+  display: flex; align-items: center; gap: 12px; padding: 11px 12px; width: 100%;
+  border: 1px solid transparent; border-radius: 10px; background: transparent; cursor: pointer;
+  color: #cbd5e1; font-weight: 600; font-size: .9rem; text-align: left; transition: all .15s ease;
+}
+.nav2-drawer-link i { font-size: 1rem; width: 18px; color: #94a3b8; }
+.nav2-drawer-link:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.nav2-drawer-link:hover i { color: #cbd5e1; }
+.nav2-drawer-link.is-active { background: #2563eb; border-color: transparent; color: #fff; box-shadow: 0 1px 3px rgba(37, 99, 235, .4); }
+.nav2-drawer-link.is-active i { color: #bfdbfe; }
+.nav2-drawer-link.danger:hover { background: rgba(220, 38, 38, .18); color: #fca5a5; }
+.nav2-drawer-link.danger:hover i { color: #fca5a5; }
+.nav2-drawer-sep { height: 1px; background: #3b4a61; margin: 8px 4px; }
+
+/* Transitions drawer */
+.nav2-fade-enter-active, .nav2-fade-leave-active { transition: opacity .2s ease; }
+.nav2-fade-enter-from, .nav2-fade-leave-to { opacity: 0; }
+.nav2-slide-enter-active, .nav2-slide-leave-active { transition: transform .24s ease, opacity .24s ease; }
+.nav2-slide-enter-from, .nav2-slide-leave-to { transform: translateX(22px); opacity: 0; }
+
+/* ─── Responsive ─── */
 @media (max-width: 1024px) {
-  .app-navbar.p-menubar {
-    padding: 0.6rem 0.8rem !important;
+  .nav2 { gap: 10px; padding: 0 12px; }
+  .nav2-track, .nav2-spacer { display: none; }
+  .nav2-capsule { margin-left: auto; }
+  .nav2-burger {
+    display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px;
+    border: none; background: transparent; border-radius: 9px; cursor: pointer; color: #cbd5e1;
   }
-
-  .app-navbar :deep(.p-menubar-root-list) {
-    display: none !important;
-  }
-
-  .nav-brand {
-    font-size: 1.22rem;
-  }
-
-  .profile-menu-container {
-    margin-left: 0.3rem;
-  }
-
-  .profile-button {
-    padding: 0.2rem !important;
-    min-width: 0;
-  }
-
-  .profile-name,
-  .profile-chevron {
-    display: none;
-  }
-
-  .mobile-menu-toggle {
-    display: inline-flex !important;
-  }
-}
-
-@media (max-width: 640px) {
-  .nav-brand {
-    font-size: 1.05rem;
-  }
+  .nav2-burger:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+  .nav2-username { display: none; }
+  .nav2-profile { padding: 0 3px; }
+  .nav2-profile .nav2-caret { display: none; }
 }
 </style>

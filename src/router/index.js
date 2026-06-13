@@ -85,22 +85,40 @@ const routes = [
     name: 'AncienConfirmationAchat',
     component: () => import('../views/AncienConfirmationAchatView.vue'),
     meta: { title: 'Ancien Confirmation Achat' }
-  },
+  }
+]
+
+// Routes laboratoire / prototypes UI — DEV UNIQUEMENT.
+// `import.meta.env.DEV` est statiquement remplacé par `false` au build Vite :
+// ces routes (et leurs vues en import dynamique) sont éliminées du bundle de prod
+// et ne sont donc jamais exposées en production.
+const devRoutes = [
   {
-    // Route TEMPORAIRE — laboratoire visuel (maquettes A/B/C), aucune logique métier
+    // laboratoire visuel (maquettes A/B/C), aucune logique métier
     path: '/confirmation-achat-ui-lab',
     name: 'ConfirmationAchatUiLab',
     component: () => import('../views/ConfirmationAchatUiLabView.vue'),
     meta: { title: 'Confirmation Achat — UI Lab' }
+  },
+  {
+    // laboratoire navbar (variantes sur mock C2), aucune logique métier
+    path: '/prototype-navbar',
+    name: 'PrototypeNavbar',
+    component: () => import('../views/PrototypeNavbarView.vue'),
+    meta: { title: 'Prototype Navbar' }
+  },
+  {
+    // laboratoire navigation VERTICALE gauche + mock C2, aucune logique métier
+    path: '/prototype-vertical-navbar',
+    name: 'PrototypeVerticalNavbar',
+    component: () => import('../views/PrototypeVerticalNavbarView.vue'),
+    meta: { title: 'Prototype Vertical Navbar' }
   }
 ]
 
-
-
-
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes: import.meta.env.DEV ? [...routes, ...devRoutes] : routes
 })
 
 export default router

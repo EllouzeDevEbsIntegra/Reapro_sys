@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Artefacts de debug/exploration DOM (jetables, ne jamais committer)
+debug_session.js
+dom_dump*.json
+dom_inputs.json

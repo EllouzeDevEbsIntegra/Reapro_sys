@@ -82,11 +82,10 @@
                       type="text"
                       v-model="form.code"
                       class="form-input"
-                      placeholder="Ex: MA_NOUVELLE_OPTION"
+                      placeholder="Ex: MA_NOUVELLE_OPTION (lettres majuscules, chiffres et tirets bas)"
                       :disabled="!!editingItem"
                       required
                     />
-                    <span class="field-hint" v-if="!editingItem">Lettres majuscules, chiffres et tirets bas uniquement.</span>
                   </div>
                   <div class="form-group flex-2">
                     <label class="form-label required">Libellé (Affiché) *</label>
@@ -275,6 +274,12 @@
           </template>
         </section>
       </div>
+
+      <!-- Footer de page (charte C2, structure standard §8.9) — discret, libellé structurel -->
+      <footer class="set-footer">
+        <span class="set-footer-label">Paramètres d'Analyse</span>
+        <span class="set-footer-sub">Administration</span>
+      </footer>
     </main>
 
     <!-- Delete Confirmation Modal -->
@@ -587,23 +592,39 @@ onMounted(() => {
 
 <style scoped>
 .page-layout { min-height: 100vh; background-color: #f8fafc; }
+/* Shell charte C2 (§12) : flex column plein viewport → header + corps (grid, body scroll
+   interne) + footer 48px toujours visible. */
 .main-content {
   width: 100%;
-  padding: 0.5rem 2rem 3rem;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: var(--c2-page-pad) var(--c2-page-pad);
+  --set-footer-h: 48px;
 }
 
 @media (max-width: 768px) {
   .main-content {
+    height: auto;
+    min-height: 100vh;
     padding: 1rem;
   }
 }
 
 /* Header bar styling */
 .header-bar {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  margin-bottom: 1.5rem;
+  flex-shrink: 0;
+  position: sticky;
+  top: var(--c2-head-sticky-top);
+  z-index: var(--c2-head-z);
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
+  height: var(--c2-head-h);
+  box-sizing: border-box;
+  margin-bottom: var(--c2-head-gap);
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -612,8 +633,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 1rem 1.5rem;
-  min-height: 90px;
+  padding: 0 1.5rem;
+  height: 100%;
   box-sizing: border-box;
 }
 .header-left {
@@ -637,8 +658,8 @@ onMounted(() => {
 }
 .header-bar h1 {
   font-size: 1.25rem;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 800;
+  color: var(--c2-head-title);
   margin: 0;
   white-space: nowrap;
 }
@@ -667,36 +688,58 @@ onMounted(() => {
 
 /* Grid Layout for vertical sidebar + main panel */
 .settings-grid {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 1.5rem;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-@media (max-width: 768px) {
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-}
+/* Barre d'onglets HORIZONTALE (fixe en haut) + contenu pleine largeur qui scrolle EN INTERNE (charte §12). */
+.settings-sidebar { flex-shrink: 0; }
+.settings-body { flex: 1; min-height: 0; overflow-y: auto; }
 
-/* Sidebar with vertical tabs */
+/* Footer de page standard C2 (§8/§8.9) — navy 48px, aligné footer sidebar, discret. */
+.set-footer {
+  flex-shrink: 0;
+  height: var(--set-footer-h);
+  margin-top: var(--c2-head-gap);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1.5rem;
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
+  position: sticky;
+  bottom: var(--c2-page-pad);
+  z-index: var(--c2-head-z);
+}
+.set-footer-label { color: #e2e8f0; font-size: .82rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+.set-footer-sub { color: #94a3b8; font-size: .76rem; font-weight: 600; white-space: nowrap; }
+
+/* Barre d'onglets HORIZONTALE (carte blanche, tabs en ligne) */
 .settings-sidebar {
   background: white;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  padding: 0.75rem;
+  padding: 0.5rem;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  height: fit-content;
 }
 
 .tab-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
+  gap: 0.6rem;
+  width: auto;
+  padding: 0.6rem 1.1rem;
   border: none;
   background: transparent;
   color: #475569;
@@ -706,6 +749,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
+  white-space: nowrap;
 }
 
 .tab-btn:hover {
@@ -715,10 +759,7 @@ onMounted(() => {
 
 .tab-btn.active {
   background: #eff6ff;
-  color: #1d4ed8;
-  border-left: 3px solid #1d4ed8;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  color: var(--c2-select-accent);   /* Cobalt (charte §4/§11) au lieu du bleu en dur */
 }
 
 .tab-btn .pi {
@@ -819,30 +860,38 @@ onMounted(() => {
   margin-top: 1px;
 }
 
+/* Bouton d'action principale = modèle « Rechercher » du panneau filtres B2B
+   (charte §10.1, réf. .filter-btn-search). À réutiliser pour tout bouton de ce sens. */
 .btn-save {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  height: 38px;
+  height: 40px;
   padding: 0 1.25rem;
-  border-radius: 9px;
-  border: none;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: var(--c2-primary);
   color: #fff;
+  border: 1px solid transparent;
+  border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
+  letter-spacing: .01em;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.15s;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.12);
+  transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
 }
+.btn-save .pi { font-size: .85rem; }
 .btn-save:hover:not(:disabled) {
-  opacity: 0.9;
+  background: var(--c2-primary-hover);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 89, 179, 0.30);
 }
+.btn-save:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 6px rgba(24, 89, 179, 0.24); }
+.btn-save:focus-visible { outline: 2px solid var(--c2-focus); outline-offset: 2px; }
 .btn-save:disabled {
-  opacity: 0.55;
+  background: #cbd5e1;
+  color: #94a3b8;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 /* Options List Table */
@@ -906,7 +955,8 @@ onMounted(() => {
 .so-row:hover td { background: #e2effe !important; }
 
 .code-badge {
-  font-family: monospace;
+  font-family: var(--c2-font-sans);   /* §14.8 : code métier en sans + tabular-nums, jamais mono */
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: #0f172a;
   background: #f1f5f9;
@@ -1030,7 +1080,8 @@ onMounted(() => {
 .ref-chip {
   background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5;
   border-radius: 20px; padding: 2px 12px; font-size: 0.8rem; font-weight: 700;
-  font-family: monospace;
+  font-family: var(--c2-font-sans);   /* §14.8 : réf métier en sans + tabular-nums */
+  font-variant-numeric: tabular-nums;
 }
 .modal-close-btn {
   width: 36px;

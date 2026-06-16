@@ -197,17 +197,27 @@ onMounted(() => {
   justify-content: space-between;
   gap: 1rem;
   align-items: flex-start;
+  position: sticky;
+  top: var(--c2-head-sticky-top);
+  z-index: var(--c2-head-z);
+  padding: 14px 18px;
+  margin-bottom: 1rem;
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
 }
 
 .viewer-header h1 {
   margin: 0;
   font-size: 1.4rem;
-  color: #0f2442;
+  font-weight: 800;
+  color: var(--c2-head-title);
 }
 
 .sub {
   margin: 0.35rem 0 0;
-  color: #4f607a;
+  color: #cbd5e1;
   font-size: 0.92rem;
 }
 

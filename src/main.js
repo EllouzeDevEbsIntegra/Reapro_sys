@@ -17,6 +17,7 @@ import Dropdown from 'primevue/dropdown'
 import Drawer from 'primevue/drawer'
 import Tooltip from 'primevue/tooltip'
 
+import './assets/styles/c2-charter.css'
 import './assets/styles/main.css'
 import './assets/styles/pagination-fix.css'
 import './assets/styles/custom-pagination.css'

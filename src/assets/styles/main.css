@@ -34,7 +34,7 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--c2-font-sans);
   background-color: var(--bg-page);
   color: var(--text-primary);
   min-height: 100vh;

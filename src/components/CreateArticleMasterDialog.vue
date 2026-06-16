@@ -2,21 +2,24 @@
   <Dialog
       v-model:visible="internalVisible"
       modal
-      :style="{ width: '50vw' }"
+      :style="{ width: 'min(760px, 94vw)' }"
       class="create-am-dialog"
       :showHeader="false"
       dismissableMask
       :pt="{
-        root: { style: 'border-radius: 16px; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.18);' },
-        content: { style: 'padding: 0; border-radius: 0; background-color: #f8fafc;' }
+        root: { style: 'border-radius: 14px; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.18); max-height: 88vh;' },
+        content: { style: 'padding: 0; border-radius: 0; background-color: #f8fafc; display: flex; flex-direction: column; min-height: 0;' }
       }"
   >
       <div class="dialog-content-wrapper">
           <div class="dialog-top-header">
               <div class="header-actions">
-                  <button class="history-btn">Créer Article Adaptable</button>
+                  <div class="cam-head-left">
+                      <button class="history-btn cam-title">Créer Article Adaptable</button>
+                      <span class="cam-sub" v-if="localCandidate">{{ localCandidate.masterItemNo }} · {{ localCandidate.manufacturerName }} · {{ localCandidate.articleNumber }}</span>
+                  </div>
                   <Button icon="pi pi-times" text rounded @click="internalVisible = false"
-                      class="close-dialog-btn" />
+                      class="close-dialog-btn cam-close" />
               </div>
           </div>
 
@@ -43,7 +46,7 @@
                                   <Select v-model="localCandidate.groupCode" :options="groups"
                                       optionLabel="displayName" optionValue="code" filter autoFilterFocus
                                       placeholder="Sélectionner un groupe" class="w-full vendor-dropdown-custom"
-                                      panelClass="b2b-client-panel"
+                                      panelClass="c2-dropdown-panel"
                                       @change="onGroupChange"
                                   >
                                       <template #option="{ option }">
@@ -62,7 +65,7 @@
                                   <Select v-model="localCandidate.subGroupCode"
                                       :options="subGroups" optionLabel="displayName" optionValue="code" filter autoFilterFocus
                                       placeholder="Sélectionner un sous-groupe"
-                                      panelClass="b2b-client-panel"
+                                      panelClass="c2-dropdown-panel"
                                       class="w-full vendor-dropdown-custom"
                                   >
                                       <template #option="{ option }">
@@ -120,7 +123,7 @@
                                   <Select v-model="localCandidate.vendorNo" :options="vendors"
                                       optionLabel="fullLabel" optionValue="number" filter autoFilterFocus scrollHeight="400px"
                                       placeholder="Sélectionner un fournisseur"
-                                      panelClass="b2b-client-panel"
+                                      panelClass="c2-dropdown-panel"
                                       class="w-full vendor-dropdown-custom"
                                       :class="{ 'p-invalid': !localCandidate.vendorNo }"
                                   >
@@ -285,13 +288,15 @@ const confirmCreateArticleMaster = async () => {
   flex-direction: column;
   gap: 0;
   background-color: #f8fafc;
+  flex: 1;
+  min-height: 0;        /* permet au corps de scroller en interne (dialog ≤ 88vh) */
 }
 
-/* Top header that naturally fills the rounded top of the dialog */
+/* Header Deep Ocean — bande pleine largeur, texte blanc (charte C2) */
 .dialog-top-header {
-  background-color: #ffffff;
-  padding: 14px 18px;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--c2-head-bg);
+  padding: 13px 18px;
+  border-bottom: none;
   flex-shrink: 0;
 }
 
@@ -299,31 +304,47 @@ const confirmCreateArticleMaster = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   width: 100%;
 }
+.cam-head-left { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 
-.history-btn {
-  background-color: #3b82f6;
-  color: white;
+/* Titre = libellé blanc (plus un bouton bleu) */
+.history-btn.cam-title {
+  background: transparent;
+  color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 8px 24px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  min-width: 200px;
-  text-align: center;
+  border-radius: 0;
+  padding: 0;
+  min-width: 0;
+  width: auto;
+  text-align: left;
+  font-weight: 800;
+  font-size: 1.02rem;
+  letter-spacing: .01em;
   cursor: default;
 }
-
-.close-dialog-btn {
-  color: #64748b !important;
+.cam-sub {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
+
+.close-dialog-btn.cam-close { color: #cbd5e1 !important; flex-shrink: 0; }
+.close-dialog-btn.cam-close:hover { color: #fff !important; background: rgba(255, 255, 255, .14) !important; }
 
 .info-dialog-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 20px 20px 0 20px;
+  padding: 18px 18px 0 18px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;     /* SEULE zone scrollable si formulaire long */
 }
 .info-section {
   margin-bottom: 20px;
@@ -344,7 +365,7 @@ const confirmCreateArticleMaster = async () => {
   font-size: 0.95rem;
 }
 .info-section-header i {
-  color: #3b82f6;
+  color: var(--c2-cobalt, #1859b3);
   font-size: 1.1rem;
 }
 .info-section-content {
@@ -473,20 +494,40 @@ const confirmCreateArticleMaster = async () => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 16px 20px 20px 20px;
+  padding: 14px 18px;
   border-top: 1px solid #e2e8f0;
-  background-color: #f8fafc;
-  margin-top: 4px;
+  background-color: #fcfdff;
+  flex-shrink: 0;
 }
 
 .dialog-btn {
   padding: 10px 20px !important;
-  font-size: 1rem !important;
+  font-size: 0.95rem !important;
   min-width: 120px !important;
+  border-radius: 8px !important;
 }
 .dialog-btn :deep(.p-button-icon) {
-  font-size: 1.1rem !important;
+  font-size: 1.05rem !important;
 }
+/* Bouton principal = Cobalt (charte C2) */
+.dialog-btn.p-button-primary {
+  background: var(--c2-cobalt, #1859b3) !important;
+  border-color: var(--c2-cobalt, #1859b3) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+.dialog-btn.p-button-primary:hover:not(:disabled) {
+  background: var(--c2-primary-hover, #12468f) !important;
+  border-color: var(--c2-primary-hover, #12468f) !important;
+}
+.dialog-btn.p-button-primary:focus-visible {
+  outline: 2px solid var(--c2-frozen, #82c9e5) !important;
+  outline-offset: 2px !important;
+}
+.dialog-btn.p-button-primary:disabled { opacity: .55 !important; }
+/* Bouton secondaire (Annuler) discret */
+.dialog-btn.p-button-secondary { color: #475569 !important; font-weight: 600 !important; }
+.dialog-btn.p-button-secondary:hover:not(:disabled) { background: #f1f5f9 !important; }
 
 /* ── Shared dropdown option styles (matching B2BView) ───────────────── */
 :deep(.p-select-option) {
@@ -540,7 +581,7 @@ const confirmCreateArticleMaster = async () => {
   white-space: nowrap;
   flex-shrink: 0;
   letter-spacing: 0.04em;
-  font-family: 'Courier New', monospace;
+  font-family: var(--c2-font-mono);
 }
 .option-sep {
   color: #d1d5db;

@@ -1,15 +1,5 @@
 <template>
   <div class="so-table-wrapper">
-    <div class="so-table-header">
-      <span class="so-table-title">
-        <i class="pi pi-list"></i>
-        Opportunités de recherche
-      </span>
-      <span class="so-table-count" v-if="!loading">
-        {{ totalElements.toLocaleString('fr-FR') }} résultat{{ totalElements !== 1 ? 's' : '' }}
-      </span>
-    </div>
-
     <div class="so-table-scroll">
       <table class="so-table">
         <thead>
@@ -134,49 +124,7 @@
       </table>
     </div>
 
-    <!-- Pagination -->
-    <div class="so-pagination" v-if="totalPages > 1 || items.length > 0">
-      <span class="page-info">
-        Page {{ currentPage + 1 }} / {{ Math.max(1, totalPages) }}
-      </span>
-      <div class="page-controls">
-        <button 
-          class="page-btn" 
-          :disabled="currentPage === 0" 
-          @click="$emit('page-change', currentPage - 1)"
-          type="button"
-        >
-          <i class="pi pi-chevron-left" style="pointer-events: none;"></i>
-        </button>
-        <button
-          v-for="p in visiblePages"
-          :key="p"
-          class="page-btn"
-          :class="{ active: p - 1 === currentPage, dots: p === '...' }"
-          :disabled="p === '...'"
-          @click="p !== '...' && $emit('page-change', p - 1)"
-          type="button"
-        >
-          {{ p }}
-        </button>
-        <button 
-          class="page-btn" 
-          :disabled="currentPage >= totalPages - 1" 
-          @click="$emit('page-change', currentPage + 1)"
-          type="button"
-        >
-          <i class="pi pi-chevron-right" style="pointer-events: none;"></i>
-        </button>
-      </div>
-      <div class="page-size-select">
-        <label>Lignes :</label>
-        <select :value="pageSize" @change="$emit('size-change', Number($event.target.value))" class="size-sel">
-          <option value="10">10</option>
-          <option value="20">20</option>
-          <option value="50">50</option>
-        </select>
-      </div>
-    </div>
+    <!-- Pagination déplacée dans le footer de page (parent) — charte §8.5 -->
   </div>
 </template>
 
@@ -232,7 +180,12 @@ function scoreClass(score) {
 </script>
 
 <style scoped>
+/* Flex column : en-tête + zone scrollable (flex:1) + pagination → scroll INTERNE
+   quand le composant est posé dans le shell flex de la page (charte §12). */
 .so-table-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: #fff;
   border-radius: 14px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.07);
@@ -241,6 +194,7 @@ function scoreClass(score) {
 }
 
 .so-table-header {
+  flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.9rem 1.2rem 0.7rem;
   border-bottom: 1px solid #f1f5f9;
@@ -254,7 +208,7 @@ function scoreClass(score) {
   padding: 3px 10px; border-radius: 20px; font-weight: 500;
 }
 
-.so-table-scroll { overflow-x: auto; }
+.so-table-scroll { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; }
 
 .so-table {
   width: 100%; border-collapse: collapse; min-width: 1150px;
@@ -329,7 +283,7 @@ function scoreClass(score) {
   margin-right: 4px;
   color: #94a3b8;
 }
-.ref-text { font-weight: 700; color: #1e3a8a; font-family: monospace; font-size: 0.85rem; }
+.ref-text { font-weight: 700; color: #1e3a8a; font-family: var(--c2-font-mono); font-size: 0.85rem; }
 
 .action-btns { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .act-btn {
@@ -362,6 +316,7 @@ function scoreClass(score) {
 
 /* Pagination */
 .so-pagination {
+  flex-shrink: 0;
   display: flex; align-items: center; gap: 1rem;
   padding: 0.75rem 1.2rem;
   border-top: 1px solid #f1f5f9;

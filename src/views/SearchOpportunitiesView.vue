@@ -34,8 +34,8 @@
             </button>
           </div>
           <div class="header-right">
-            <div class="header-divider"></div>
-            <SearchOpportunityStats :stats="stats" :loading="loadingStats" :error="statsError" />
+            <SearchOpportunityStats :stats="stats" :loading="loadingStats" :error="statsError"
+              :total-results="pagination.totalElements" :loading-results="loadingOpportunities" />
           </div>
         </div>
 
@@ -54,6 +54,25 @@
       <SearchOpportunityTable :items="opportunities" :loading="loadingOpportunities" :current-page="pagination.page"
         :total-pages="pagination.totalPages" :total-elements="pagination.totalElements" :page-size="pagination.size"
         @detail="openDetailModal" @close="openCloseModal" @page-change="onPageChange" @size-change="onSizeChange" />
+
+      <!-- Footer de page (charte C2, §8.5/§8.9) — libellé + pagination (style /sync-adaptable) -->
+      <footer class="so-footer">
+        <span class="so-footer-label">Analyse Recherches B2B</span>
+        <div class="cmp-pagination">
+          <Button icon="pi pi-angle-double-left" text rounded size="small"
+            :disabled="pagination.page <= 0" @click="onPageChange(0)" />
+          <Button icon="pi pi-angle-left" text rounded size="small"
+            :disabled="pagination.page <= 0" @click="onPageChange(pagination.page - 1)" />
+          <span class="cmp-page-box">{{ pagination.page + 1 }}</span>
+          <Button icon="pi pi-angle-right" text rounded size="small"
+            :disabled="pagination.page >= pagination.totalPages - 1" @click="onPageChange(pagination.page + 1)" />
+          <Button icon="pi pi-angle-double-right" text rounded size="small"
+            :disabled="pagination.page >= pagination.totalPages - 1" @click="onPageChange(pagination.totalPages - 1)" />
+          <Select :modelValue="pagination.size" :options="[10, 20, 50]"
+            class="rows-dropdown-sm" panelClass="c2-dropdown-panel"
+            @change="(e) => onSizeChange(e.value)" />
+        </div>
+      </footer>
     </main>
 
     <!-- Detail Modal -->
@@ -71,6 +90,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import Button from 'primevue/button'
+import Select from 'primevue/select'
 import TheNavbar from '@/components/TheNavbar.vue'
 import SearchOpportunityStats from '@/components/search-opportunities/SearchOpportunityStats.vue'
 import SearchOpportunityFilters from '@/components/search-opportunities/SearchOpportunityFilters.vue'
@@ -307,10 +328,16 @@ async function onSubmitClose(payload) {
   flex-direction: column;
 }
 
+/* Shell charte C2 (§12, réf. B2B) : flex column plein viewport → header (grandit avec
+   les filtres) + corps (table flex:1, scroll interne) + footer 48px toujours visible. */
 .main-content {
-  flex: 1;
   width: 100%;
-  padding: 0.5rem 2rem 3rem;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: var(--c2-page-pad) var(--c2-page-pad);
+  --so-footer-h: 48px;
 }
 
 @media (max-width: 768px) {
@@ -319,22 +346,87 @@ async function onSubmitClose(payload) {
   }
 }
 
+/* La table (composant enfant) remplit l'espace restant et scrolle EN INTERNE. */
+.main-content :deep(.so-table-wrapper) { flex: 1; min-height: 0; }
+
+/* Footer de page standard C2 (§8/§8.9) — navy 48px, aligné footer sidebar, discret. */
+.so-footer {
+  flex-shrink: 0;
+  height: var(--so-footer-h);
+  margin-top: var(--c2-head-gap);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1.5rem;
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
+  position: sticky;
+  bottom: var(--c2-page-pad);
+  z-index: var(--c2-head-z);
+}
+.so-footer-label { color: #e2e8f0; font-size: .82rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+
+/* Pagination dans le footer — style identique à /sync-adaptable & /comparateur (§8.5) */
+.cmp-pagination { display: flex; align-items: center; gap: .35rem; }
+.cmp-pagination :deep(.p-button.p-button-text) { width: 30px; height: 30px; color: #cbd5e1; transition: background .15s ease, color .15s ease; }
+.cmp-pagination :deep(.p-button.p-button-text:not(:disabled):hover) { background: rgba(255, 255, 255, .12); color: #fff; }
+.cmp-pagination :deep(.p-button.p-button-text:not(:disabled):hover .p-button-icon) { color: #fff; }
+.cmp-pagination :deep(.p-button.p-button-text:disabled) { color: rgba(203, 213, 225, .32); opacity: 1; }
+.cmp-page-box {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 46px; height: 30px; padding: 0 8px; margin: 0 .25rem;
+  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16); border-radius: 8px;
+  color: #fff; font-weight: 700; font-size: .82rem; font-variant-numeric: tabular-nums;
+}
+.cmp-pagination :deep(.rows-dropdown-sm.p-select) {
+  height: 32px !important; min-height: 32px !important; margin-left: .4rem !important;
+  display: inline-flex !important; align-items: center;
+  background: rgba(255, 255, 255, .08) !important; border: 1px solid rgba(255, 255, 255, .16) !important;
+  border-radius: 8px !important; box-shadow: none !important;
+}
+.cmp-pagination :deep(.rows-dropdown-sm.p-select:hover) { background: rgba(255, 255, 255, .12) !important; border-color: rgba(255, 255, 255, .28) !important; }
+.cmp-pagination :deep(.rows-dropdown-sm.p-select.p-focus) { border-color: var(--c2-focus) !important; box-shadow: 0 0 0 2px rgba(125, 211, 252, .22) !important; }
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-label) { color: #e2e8f0 !important; background: transparent !important; font-size: .82rem !important; font-weight: 600 !important; padding: 0 .15rem 0 .6rem !important; display: flex; align-items: center; }
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-dropdown) { color: #cbd5e1 !important; background: transparent !important; width: 1.7rem !important; }
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-dropdown-icon),
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-dropdown svg),
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-dropdown .p-icon) { color: #cbd5e1 !important; fill: currentColor !important; width: .8rem !important; height: .8rem !important; }
+
 /* Header */
 .header-bar {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  margin-bottom: 1.5rem;
+  flex-shrink: 0;
+  position: sticky;
+  top: var(--c2-head-sticky-top);
+  z-index: var(--c2-head-z);
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
+  height: var(--c2-head-h);
+  box-sizing: border-box;
+  margin-bottom: var(--c2-head-gap);
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Filtres ouverts : le header grandit pour révéler .advanced-filters-panel (fix régression) */
+.header-bar.expanded {
+  height: auto;
+  overflow: hidden;   /* clippe les coins du panneau filtres aux angles arrondis du header */
+}
+.header-bar.expanded .header-main-row {
+  height: var(--c2-head-h);
 }
 .header-main-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 1rem 1.5rem;
-  min-height: 90px;
+  padding: 0 1.5rem;
+  height: 100%;
   box-sizing: border-box;
 }
 .header-left {
@@ -356,8 +448,8 @@ async function onSubmitClose(payload) {
 }
 .header-bar h1 {
   font-size: 1.25rem;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 800;
+  color: var(--c2-head-title);
   margin: 0;
   white-space: nowrap;
 }
@@ -434,19 +526,20 @@ async function onSubmitClose(payload) {
   border-top: none;
   background: #f8fafc;
   padding: 0 1.5rem;
-  max-height: 0;
+  /* Hauteur RÉELLE animée via grid-rows 0fr→1fr : fluide et exact (pas d'overshoot de max-height) */
+  display: grid;
+  grid-template-rows: 0fr;
   opacity: 0;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.25s ease-in-out,
-              padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: grid-template-rows 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.16s ease;
 }
+.advanced-filters-panel > * { overflow: hidden; min-height: 0; }
 .advanced-filters-panel.expanded {
   border-top: 1px solid #f1f5f9;
   padding: 1.25rem 1.5rem;
-  max-height: 500px;
+  grid-template-rows: 1fr;
   opacity: 1;
 }
 
@@ -526,6 +619,40 @@ async function onSubmitClose(payload) {
 .toast-slide-leave-to {
   opacity: 0;
   transform: translateX(30px);
+}
+</style>
+
+<!-- Panneau déroulant du select "lignes par page" — NON scoped (overlay téléporté dans <body>).
+     Ciblé via panelClass="rows-dropdown-panel" → identique à /sync-adaptable & /comparateur. -->
+<style>
+.rows-dropdown-panel.p-select-overlay {
+    background: #fff;
+    border: 1px solid #e8edf3;
+    border-radius: 10px;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .22);
+    margin-top: 6px;
+    overflow: hidden;
+}
+.rows-dropdown-panel .p-select-list { padding: 5px; display: flex; flex-direction: column; gap: 2px; }
+.rows-dropdown-panel .p-select-option {
+    padding: 8px 12px;
+    border-radius: 7px;
+    font-size: .84rem;
+    font-weight: 600;
+    color: #334155;
+    transition: background .12s ease, color .12s ease;
+}
+.rows-dropdown-panel .p-select-option:not(.p-select-option-selected):hover,
+.rows-dropdown-panel .p-select-option.p-focus {
+    background: #f1f5f9;
+    color: #1e40af;
+}
+.rows-dropdown-panel .p-select-option.p-select-option-selected {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+.rows-dropdown-panel .p-select-option.p-select-option-selected.p-focus {
+    background: #e0ecff;
 }
 </style>
 

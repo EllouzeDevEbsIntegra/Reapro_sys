@@ -298,19 +298,23 @@ const getStatusClass = (status) => {
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    padding: 1rem 1.5rem;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    margin-bottom: 1.5rem;
-    min-height: 90px;
+    padding: 0 1.5rem;
+    position: sticky;
+    top: var(--c2-head-sticky-top);
+    z-index: var(--c2-head-z);
+    background: var(--c2-head-bg);
+    border: 1px solid var(--c2-head-border);
+    border-radius: var(--c2-head-radius);
+    box-shadow: var(--c2-head-shadow);
+    margin-bottom: var(--c2-head-gap);
+    height: var(--c2-head-h);
     box-sizing: border-box;
 }
 
 .header-bar h1 {
     font-size: 1.25rem;
-    font-weight: 700;
-    color: #1e293b;
+    font-weight: 800;
+    color: var(--c2-head-title);
     margin: 0;
     white-space: nowrap;
 }

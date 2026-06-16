@@ -1,0 +1,147 @@
+/* ════════════════════════════════════════════════════════════════════════
+   Charte C2 — tokens partagés (refonte design globale, ÉTAPE 1 : headers).
+   Source UNIQUE de vérité pour le look des en-têtes de page (navy dégradé,
+   bordure, rayon, ombre, accents sky) issu du header Confirmation Achat C2.
+   Chaque page applique ces variables à son propre .header-bar (CSS scoped),
+   ce qui évite la duplication des valeurs littérales.
+   N.B. : ne touche ni la logique métier, ni les tableaux/cartes/contenu.
+   ════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ════════ PALETTE OFFICIELLE Reapro / C2 — source unique. NE JAMAIS coder une couleur bleue en dur. ════════ */
+  /* Primaire */
+  --c2-deep-ocean: #002A51;   /* navy profond — CIBLE des surfaces header/footer/sidebar (voir §11 charte) */
+  --c2-cobalt:     #1859B3;   /* bleu primaire — boutons principaux + sélection active */
+  --c2-frozen:     #82C9E5;   /* bleu glacé — focus + accents fins */
+  --c2-dusty:      #6F8197;   /* gris-bleu — muted / bordures bleutées */
+  /* Secondaire */
+  --c2-abyss:      #032735;   /* navy alternatif très profond */
+  --c2-azure:      #58BBFF;   /* azur — accent vif */
+  --c2-pacific:    #517992;   /* gris-bleu foncé */
+  --c2-sky:        #91D4FF;   /* ciel clair */
+
+  /* ── Rôles dérivés (À UTILISER dans les composants, jamais une couleur en dur) ── */
+  --c2-primary:       var(--c2-cobalt);   /* action principale : Rechercher / Valider / Synchroniser / Sauvegarder */
+  --c2-primary-hover: #12468f;            /* cobalt plus profond (hover bouton principal) */
+  --c2-focus:         var(--c2-frozen);   /* anneau de focus (toujours visible) */
+  --c2-muted-blue:    var(--c2-dusty);    /* texte muted / bordures bleutées */
+  --c2-navy-deep:     var(--c2-deep-ocean);
+  --c2-navy-surface:  #0a3a68;            /* haut du dégradé navy (cible ocean) */
+
+  /* ════════ Chrome header / footer / sidebar ════════ */
+  --c2-head-bg: linear-gradient(180deg, var(--c2-navy-surface), var(--c2-navy-deep));  /* Deep Ocean (#0a3a68 → #002A51) — chrome navy officiel */
+  --c2-head-border: #14497a;   /* bordure navy-bleu (lisible sur ocean ET sur fond clair) */
+  --c2-head-radius: 12px;
+  --c2-head-shadow: 0 4px 14px rgba(15, 23, 42, .25);
+  --c2-head-title: #ffffff;
+  --c2-head-muted: #94a3b8;
+  --c2-head-accent: var(--c2-frozen);     /* accent sky officiel (#82C9E5, ex-#7dd3fc) */
+  --c2-select-accent: var(--c2-primary);  /* sélection active = cobalt (était #1d4ed8) */
+  --c2-page-pad: 0.5rem;       /* padding HAUT/GAUCHE/DROITE commun du contenu des pages — compact
+                                  (top conservé comme avant ; côtés alignés sur ce même top compact) */
+  --c2-head-sticky-top: var(--c2-page-pad);  /* = padding-top du contenu → header collé sans saut */
+  --c2-head-h: 76px;           /* hauteur FIXE commune (header page + carte brand) — dimensionnée
+                                  pour le cas le plus haut (KPI B2B ~62px) ; les KPI ne la changent plus */
+  --c2-head-gap: var(--c2-page-pad);  /* espace sous le header = padding top page (compact, cohérent) */
+  --c2-head-z: 40;
+
+  /* ════════ Typographie — police unifiée (charte §14). ≤ 2 familles. ════════ */
+  --c2-font-sans: 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;   /* police principale (héritée partout) */
+  --c2-font-mono: ui-monospace, 'SF Mono', 'Roboto Mono', 'Courier New', monospace;  /* UNIQUEMENT codes/réfs/n° techniques */
+}
+
+/* Helper réutilisable pour de NOUVELLES pages (header navy sticky charte C2).
+   Les pages existantes appliquent les mêmes tokens via leur .header-bar scoped. */
+.c2-pagehead {
+  position: sticky;
+  top: var(--c2-head-sticky-top);
+  z-index: var(--c2-head-z);
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
+  color: var(--c2-head-title);
+}
+/* ════════════════════════════════════════════════════════════════════════
+   Liste déroulante COMMUNE (PrimeVue Select) — charte C2. Source unique.
+   À utiliser via panelClass="c2-dropdown-panel" sur tout PrimeVue <Select>.
+   NON scopé / global : l'overlay PrimeVue est téléporté dans <body>.
+   Basé sur le style validé de la pagination Comparateur (rows-dropdown-panel).
+   ════════════════════════════════════════════════════════════════════════ */
+.c2-dropdown-panel.p-select-overlay {
+  background: #ffffff;
+  border: 1px solid #e8edf3;
+  border-radius: 10px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, .22);
+  margin-top: 6px;
+  overflow: hidden;
+  font-family: var(--c2-font-sans);
+}
+.c2-dropdown-panel .p-select-list { padding: 5px; display: flex; flex-direction: column; gap: 2px; }
+.c2-dropdown-panel .p-select-option {
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: .84rem;
+  font-weight: 600;
+  color: #334155;
+  transition: background .12s ease, color .12s ease;
+}
+.c2-dropdown-panel .p-select-option:not(.p-select-option-selected):hover,
+.c2-dropdown-panel .p-select-option.p-focus {
+  background: #f1f5f9;
+  color: var(--c2-cobalt);
+}
+.c2-dropdown-panel .p-select-option.p-select-option-selected {
+  background: #eff6ff;
+  color: var(--c2-cobalt);
+  font-weight: 800;
+}
+.c2-dropdown-panel .p-select-option.p-select-option-selected.p-focus { background: #e0ecff; }
+/* État vide */
+.c2-dropdown-panel .p-select-empty-message { padding: 10px 12px; font-size: .82rem; color: #94a3b8; font-style: italic; }
+/* Barre de défilement discrète si liste longue */
+.c2-dropdown-panel .p-select-list-container { max-height: 280px; }
+.c2-dropdown-panel .p-select-list-container::-webkit-scrollbar { width: 8px; }
+.c2-dropdown-panel .p-select-list-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+.c2-dropdown-panel .p-select-list-container::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Variante : options RICHES avec template #option (.option-row = code + nom) ── */
+.c2-dropdown-panel .p-select-option:has(.option-row) { padding: 0; }   /* padding porté par .option-row */
+.c2-dropdown-panel .option-row {
+  display: flex; align-items: center; gap: .5rem; width: 100%;
+  padding: 8px 12px; border-radius: 7px; transition: background .12s ease;
+  overflow: hidden;
+}
+.c2-dropdown-panel .p-select-option:not(.p-select-option-selected):hover .option-row { background: #f1f5f9; }
+.c2-dropdown-panel .p-select-option.p-select-option-selected .option-row { background: #eff6ff; }
+/* `.option-row` ajouté aux sélecteurs → spécificité (0,3,0) qui prime sur un
+   `.option-code`/`.option-name` scopé à une page (ex. B2B), afin d'UNIFIER le rendu
+   des options riches de TOUTE liste c2-dropdown-panel (sans toucher au déclencheur fermé). */
+.c2-dropdown-panel .option-row .option-code {
+  font-size: .72rem; font-weight: 700; color: var(--c2-cobalt);
+  background: #eff6ff; border: 1px solid #dbeafe; border-radius: 5px;
+  padding: .1rem .45rem; white-space: nowrap; flex-shrink: 0; letter-spacing: .02em;
+  font-family: var(--c2-font-sans); font-variant-numeric: tabular-nums;   /* sans, pas de mono (charte §14.8) */
+}
+.c2-dropdown-panel .p-select-option.p-select-option-selected .option-code { background: #dbeafe; }
+.c2-dropdown-panel .option-row .option-sep { color: #cbd5e1; flex-shrink: 0; font-size: .8rem; }
+.c2-dropdown-panel .option-row .option-name {
+  font-size: .84rem; color: #334155; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.c2-dropdown-panel .p-select-option.p-select-option-selected .option-name { color: var(--c2-cobalt); font-weight: 700; }
+
+/* ── En-tête de filtre (Select avec `filter`) ── */
+.c2-dropdown-panel .p-select-header { padding: 6px; border-bottom: 1px solid #f1f5f9; background: #fff; }
+.c2-dropdown-panel .p-select-filter {
+  width: 100%; border: 1px solid #e8edf3; border-radius: 7px;
+  padding: 7px 10px; font-size: .84rem; color: #1e293b; background: #fff;
+  outline: none; box-shadow: none; font-family: var(--c2-font-sans);
+}
+.c2-dropdown-panel .p-select-filter::placeholder { color: #94a3b8; font-style: italic; }
+.c2-dropdown-panel .p-select-filter:focus { border-color: var(--c2-frozen); box-shadow: 0 0 0 3px rgba(130, 201, 229, .22); }
+
+.c2-pagehead h1 {
+  color: var(--c2-head-title);
+  font-weight: 800;
+  letter-spacing: -.01em;
+}

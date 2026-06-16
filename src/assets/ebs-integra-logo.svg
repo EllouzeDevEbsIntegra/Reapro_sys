@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54 28" role="img" aria-label="EBS">
+  <!-- Logo "EBS" simplifié — teal de marque #017D85, police Yaro Rg Bold (repli sans-serif).
+       Affiché sur pastille claire du footer (couleur fidèle + lisible). Remplaçable par le PNG/SVG exact (même chemin). -->
+  <text x="1" y="22" font-family="'Yaro Rg','Yaro','Segoe UI',Arial,sans-serif" font-size="24" font-weight="bold" letter-spacing="0.5" fill="#017D85">EBS</text>
+</svg>

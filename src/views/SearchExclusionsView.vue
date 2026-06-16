@@ -307,7 +307,7 @@ onMounted(() => {
 .page-layout { min-height: 100vh; background-color: #f8fafc; }
 .main-content {
   width: 100%;
-  padding: 0.5rem 2rem 3rem;
+  padding: var(--c2-page-pad) var(--c2-page-pad) 3rem;
 }
 
 @media (max-width: 768px) {
@@ -318,10 +318,16 @@ onMounted(() => {
 
 /* Header styling matching opportunities page */
 .header-bar {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  margin-bottom: 1.5rem;
+  position: sticky;
+  top: var(--c2-head-sticky-top);
+  z-index: var(--c2-head-z);
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
+  height: var(--c2-head-h);
+  box-sizing: border-box;
+  margin-bottom: var(--c2-head-gap);
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -330,8 +336,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 1rem 1.5rem;
-  min-height: 90px;
+  padding: 0 1.5rem;
+  height: 100%;
   box-sizing: border-box;
 }
 .header-left {
@@ -348,8 +354,8 @@ onMounted(() => {
 }
 .header-bar h1 {
   font-size: 1.25rem;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 800;
+  color: var(--c2-head-title);
   margin: 0;
   white-space: nowrap;
 }
@@ -520,7 +526,7 @@ onMounted(() => {
 .ref-text {
   font-weight: 700;
   color: #1e3a8a;
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
   font-size: 0.85rem;
 }
 .reason-text { font-weight: 500; color: #334155; }
@@ -619,7 +625,7 @@ onMounted(() => {
 .ref-chip {
   background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5;
   border-radius: 20px; padding: 2px 12px; font-size: 0.8rem; font-weight: 700;
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
 }
 .modal-close-btn {
   width: 36px;

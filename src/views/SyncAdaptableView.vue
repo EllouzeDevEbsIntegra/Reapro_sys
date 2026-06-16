@@ -4,7 +4,7 @@
 
     <main class="main-content">
       <!-- ─── HEADER BAR ──────────────────────────────────────────────── -->
-      <div class="header-bar mb-5">
+      <div class="header-bar mb-5" :class="{ 'expanded': isFiltersVisible }">
         <div class="header-main-row">
           <div class="header-left">
             <h1>Synchronisation Adaptable</h1>
@@ -161,7 +161,7 @@
                 showClear
                 placeholder="Toutes les marques"
                 class="filter-select"
-                panelClass="b2b-client-panel"
+                panelClass="c2-dropdown-panel"
                 @change="fetchData(1)"
               >
                 <template #option="{ option }">
@@ -186,7 +186,7 @@
                 showClear
                 placeholder="Tous les groupes"
                 class="filter-select"
-                panelClass="b2b-client-panel"
+                panelClass="c2-dropdown-panel"
                 @change="onGroupChange"
               >
                 <template #option="{ option }">
@@ -212,7 +212,7 @@
                 :disabled="!selectedGroup"
                 placeholder="Tous les sous-groupes"
                 class="filter-select"
-                panelClass="b2b-client-panel"
+                panelClass="c2-dropdown-panel"
                 @change="fetchData(1)"
               >
                 <template #option="{ option }">
@@ -235,6 +235,14 @@
                 @input="onSearchInput"
               />
             </div>
+
+            <div class="filter-actions">
+              <button class="filter-reset-btn" :disabled="!hasActiveFilters" @click="resetFilters" type="button"
+                title="Réinitialiser les filtres">
+                <i class="pi pi-filter-slash"></i>
+                Réinitialiser
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -242,12 +250,10 @@
       <div class="table-container">
         <DataTable
           :value="syncData"
+          scrollable
+          scrollHeight="flex"
           :lazy="true"
-          :paginator="true"
-          :rows="pageSize"
-          :totalRecords="totalRecords"
-          :first="first"
-          @page="onPage"
+          :paginator="false"
           :loading="loading"
           dataKey="id"
           class="p-datatable-sm custom-datatable"
@@ -280,14 +286,33 @@
           </template>
         </DataTable>
       </div>
+
+      <!-- Footer de page (charte C2, §8.5/§8.9) — libellé + pagination (style /comparateur) -->
+      <footer class="sync-footer">
+        <span class="sync-footer-label">Synchronisation Adaptable</span>
+        <div class="cmp-pagination">
+          <Button icon="pi pi-angle-double-left" text rounded size="small"
+            :disabled="currentPage <= 1" @click="goToPage(1)" />
+          <Button icon="pi pi-angle-left" text rounded size="small"
+            :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)" />
+          <span class="cmp-page-box">{{ currentPage }}</span>
+          <Button icon="pi pi-angle-right" text rounded size="small"
+            :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)" />
+          <Button icon="pi pi-angle-double-right" text rounded size="small"
+            :disabled="currentPage >= totalPages" @click="goToPage(totalPages)" />
+          <Select v-model="pageSize" :options="[10, 20, 50, 100]"
+            class="rows-dropdown-sm" panelClass="c2-dropdown-panel" @change="onPageSizeChange" />
+        </div>
+      </footer>
     </main>
 
-    <TecDocArticleDialog 
-      v-model:visible="isTecdocDialogVisible"
-      :article-ref="selectedTecdocRef"
-      :manufacturer-id="selectedTecdocBrandId"
-      :description-structured="selectedTecdocDesc"
-      :manufacturer-name="selectedTecdocBrandName"
+    <!-- Dialog Info Article TecDoc — composant PARTAGÉ unique (charte §15) -->
+    <TecDocArticleInfoDialog
+      v-model:visible="showInfoDialog"
+      :item="selectedInfoItem"
+      :loading="selectedInfoItem?.isLoading"
+      :is-master="false"
+      @load-vehicle-models="fetchVehiclesForBrand"
     />
 
     <!-- Create Article Master Dialog -->
@@ -303,10 +328,11 @@
 import { ref, onMounted, computed } from 'vue'
 import TheNavbar from '@/components/TheNavbar.vue'
 import Select from 'primevue/select'
+import Button from 'primevue/button'
 import { getSyncAdaptableData, triggerSync, getSyncStatus } from '@/api/syncAdaptableService'
 import { useToast } from 'primevue/usetoast'
 import { useCompareQuoteStore } from '@/stores/compareQuote'
-import TecDocArticleDialog from '@/components/TecDocArticleDialog.vue'
+import TecDocArticleInfoDialog from '@/components/tecdoc/TecDocArticleInfoDialog.vue'
 import CreateArticleMasterDialog from '@/components/CreateArticleMasterDialog.vue'
 
 const syncData = ref([])
@@ -352,6 +378,18 @@ const onSearchInput = () => {
   }, 300)
 }
 
+// Réinitialiser les filtres (marque / groupe / sous-groupe / réf master) puis recharger
+const hasActiveFilters = computed(() =>
+  !!selectedBrand.value || !!selectedGroup.value || !!selectedSubGroup.value || !!(searchMaster.value && searchMaster.value.trim())
+)
+const resetFilters = () => {
+  selectedBrand.value = null
+  selectedGroup.value = null
+  selectedSubGroup.value = null
+  searchMaster.value = ''
+  fetchData(1)
+}
+
 // Sync states
 const syncing = ref(false)
 let statusPollInterval = null
@@ -388,19 +426,104 @@ const startPollingStatus = () => {
   }, 3000)
 }
 
-// TecDoc Dialog details states
-const isTecdocDialogVisible = ref(false)
-const selectedTecdocRef = ref('')
-const selectedTecdocBrandId = ref(null)
-const selectedTecdocDesc = ref('')
-const selectedTecdocBrandName = ref('')
+// Dialog Info Article — composant PARTAGÉ (charte §15) : le PARENT récupère les
+// données TecDoc et les passe via `item` ; le dialog est purement présentationnel.
+const showInfoDialog = ref(false)
+const selectedInfoItem = ref(null)
 
-const showTecdocDetails = (row) => {
-  selectedTecdocRef.value = row.tdRef
-  selectedTecdocBrandId.value = row.tdBrandId
-  selectedTecdocDesc.value = row.description
-  selectedTecdocBrandName.value = row.tdBrandName
-  isTecdocDialogVisible.value = true
+const formatConstructionDate = (dateNum) => {
+  if (!dateNum) return '...'
+  const str = dateNum.toString()
+  if (str.length !== 6) return str
+  return `${str.substring(4, 6)}.${str.substring(0, 4)}`
+}
+
+const showTecdocDetails = async (row) => {
+  showInfoDialog.value = true
+  // État initial (chargement) — formes de champs lues par le dialog partagé
+  selectedInfoItem.value = {
+    no: row.tdRef,
+    articleNumber: row.tdRef,
+    descriptionStructured: row.description,
+    description: row.description,
+    brand: row.tdBrandName || '',
+    isLoading: true,
+    brandLogo: '', thumbnails: [], images360: [], specs: [],
+    oemNumbers: [], vehicles: [], pdfs: [], articleParts: [], gtins: []
+  }
+  try {
+    const articleRef = row.tdRef
+    const manufacturerId = row.tdBrandId
+    if (!articleRef || !manufacturerId) { selectedInfoItem.value.isLoading = false; return }
+
+    const response = await store.fetchTecdocArticleDetails(articleRef, manufacturerId)
+    if (response && response.articles && response.articles.length > 0) {
+      const article = response.articles[0]
+      const thumbnails = [], images360 = []
+      ;(article.images || []).forEach(img => {
+        if (img.fileName && img.fileName.toUpperCase().endsWith('.ZIP')) images360.push(img.imageURL800)
+        else thumbnails.push(img.imageURL800)
+      })
+      const specs = article.articleCriteria?.map(c => ({ label: c.criteriaDescription, value: c.formattedValue })) || []
+      const oemNumbers = article.oemNumbers?.map(o => ({ mfrName: o.mfrName, articleNumber: o.articleNumber })) || []
+      selectedInfoItem.value = {
+        ...selectedInfoItem.value,
+        articleId: article.genericArticles?.[0]?.legacyArticleId,
+        isLoading: false,
+        brand: article.mfrName || row.tdBrandName || '',
+        brandLogo: article.supplierLogoUrl || '/images/articles/febi_logo.png',
+        thumbnails,
+        images360,
+        mainImage: thumbnails[0] || '',
+        specs,
+        oemNumbers,
+        pdfs: article.pdfs || [],
+        genericDescription: article.genericArticles?.[0]?.genericArticleDescription || row.description,
+        vehicles: article.linkedVehicles?.map(v => ({ brand: v.manuName, id: v.manuId, models: [] })) || [],
+        gtins: article.gtins || [],
+        articleParts: article.articleParts || []
+      }
+    } else {
+      selectedInfoItem.value.isLoading = false
+    }
+  } catch (error) {
+    console.error('Erreur récupération détails TecDoc:', error)
+    selectedInfoItem.value.isLoading = false
+  }
+}
+
+// load-vehicle-models : le parent garde l'appel API véhicules (charte §15)
+const fetchVehiclesForBrand = async (brandGroup) => {
+  if (!selectedInfoItem.value?.articleId || !brandGroup.id) return
+  brandGroup.isLoading = true
+  try {
+    const vehicles = await store.fetchArticleVehicles(selectedInfoItem.value.articleId, brandGroup.id)
+    const groupedModels = {}
+    vehicles.forEach(v => {
+      if (!groupedModels[v.modelDesc]) {
+        groupedModels[v.modelDesc] = {
+          manuDesc: v.manuDesc, modelDesc: v.modelDesc,
+          minYear: v.yearOfConstructionFrom, maxYear: v.yearOfConstructionTo,
+          minHp: v.powerHpFrom, maxHp: v.powerHpFrom, count: 0
+        }
+      }
+      const group = groupedModels[v.modelDesc]
+      group.count++
+      if (v.yearOfConstructionFrom < group.minYear) group.minYear = v.yearOfConstructionFrom
+      if (v.yearOfConstructionTo > group.maxYear) group.maxYear = v.yearOfConstructionTo
+      if (v.powerHpFrom < group.minHp) group.minHp = v.powerHpFrom
+      if (v.powerHpFrom > group.maxHp) group.maxHp = v.powerHpFrom
+    })
+    brandGroup.models = Object.values(groupedModels).map(g => {
+      const minDate = formatConstructionDate(g.minYear)
+      const maxDate = g.maxYear ? formatConstructionDate(g.maxYear) : '...'
+      return `${g.manuDesc} ${g.modelDesc} ( ${minDate} - ${maxDate} , ${g.minHp} - ${g.maxHp} CH)`
+    })
+  } catch (error) {
+    console.error('Erreur récupération véhicules:', error)
+  } finally {
+    brandGroup.isLoading = false
+  }
 }
 
 // Create Article Master Dialog states
@@ -480,12 +603,13 @@ const fetchData = async (page = 1) => {
   }
 }
 
-const onPage = (event) => {
-  first.value = event.first
-  // PrimeVue paginator is 0-indexed for pages, API is 1-indexed
-  const newPage = event.page + 1
-  fetchData(newPage)
+// Pagination déplacée dans le footer (style /comparateur). currentPage = 1-indexé.
+const totalPages = computed(() => Math.max(1, Math.ceil((totalRecords.value || 0) / (pageSize.value || 1))))
+const goToPage = (p) => {
+  const target = Math.min(Math.max(1, p), totalPages.value)
+  if (target !== currentPage.value) fetchData(target)
 }
+const onPageSizeChange = () => { fetchData(1) }
 
 const formatNumber = (val) => {
   if (val === null || val === undefined) return '0'
@@ -512,17 +636,40 @@ onMounted(async () => {
   background-color: #f1f5f9;
 }
 
+/* Shell charte C2 (§12, réf. B2B) : flex column plein viewport → header (grandit avec
+   les filtres) + corps (flex:1, scroll interne table) + footer 48px toujours visible. */
 .main-content {
   width: 100%;
-  padding: 0.5rem 2rem 3rem;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: var(--c2-page-pad) var(--c2-page-pad);
+  --sync-footer-h: 48px;
 }
 
 .header-bar {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  margin-bottom: 1.5rem;
+  flex-shrink: 0;
+  position: sticky;
+  top: var(--c2-head-sticky-top);
+  z-index: var(--c2-head-z);
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
+  height: var(--c2-head-h);
+  box-sizing: border-box;
+  margin-bottom: var(--c2-head-gap);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Filtres ouverts : le header grandit pour révéler .advanced-filters-panel (fix régression) */
+.header-bar.expanded {
+  height: auto;
+  overflow: hidden;   /* clippe les coins du panneau filtres aux angles arrondis du header */
+}
+.header-bar.expanded .header-main-row {
+  height: var(--c2-head-h);
 }
 
 .header-main-row {
@@ -530,8 +677,8 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: 1rem 1.5rem;
-  min-height: 90px;
+  padding: 0 1.5rem;
+  height: 100%;
   box-sizing: border-box;
 }
 
@@ -543,33 +690,41 @@ onMounted(async () => {
 
 .header-left h1 {
   font-size: 1.25rem;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 800;
+  color: var(--c2-head-title);
   margin: 0;
   white-space: nowrap;
 }
 
+/* Même style que le bouton « Actualiser » de Search Opportunities (.so-refresh-btn) :
+   bouton blanc neutre, bordure grise, texte slate, accent Cobalt au survol. */
 .so-sync-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: #3b82f6;
-  border: 1px solid #2563eb;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  color: #475569;
   border-radius: 8px;
-  color: #ffffff;
-  font-size: 0.875rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
 }
 
 .so-sync-btn:hover:not(:disabled) {
-  background: #2563eb;
+  border-color: var(--c2-primary);
+  color: var(--c2-primary);
+  box-shadow: 0 2px 8px rgba(24, 89, 179, 0.10);
 }
 
+.so-sync-btn:focus-visible { outline: 2px solid var(--c2-focus); outline-offset: 2px; }
+
 .so-sync-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -619,7 +774,9 @@ onMounted(async () => {
 }
 
 .kpi-card {
-  min-width: 140px;
+  width: 250px;            /* largeur KPI uniforme (= Search Opportunities) */
+  flex: 0 0 250px;
+  box-sizing: border-box;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
@@ -786,21 +943,21 @@ onMounted(async () => {
   border-top: none;
   background: #f8fafc;
   padding: 0 1.5rem;
-  max-height: 0;
+  /* Hauteur RÉELLE animée via grid-rows 0fr→1fr : fluide et exact (pas d'overshoot de max-height) */
+  display: grid;
+  grid-template-rows: 0fr;
   opacity: 0;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.25s ease-in-out,
-              padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: grid-template-rows 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.16s ease;
 }
+.advanced-filters-panel > * { overflow: hidden; min-height: 0; }
 
 .advanced-filters-panel.expanded {
   border-top: 1px solid #f1f5f9;
   padding: 1.25rem 1.5rem;
-  max-height: 250px;
+  grid-template-rows: 1fr;
   opacity: 1;
 }
 
@@ -849,6 +1006,20 @@ onMounted(async () => {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
+
+/* Bouton Réinitialiser — secondaire neutre (charte §10.2), aligné avec les champs (40px) */
+.filter-actions { flex: 0 0 auto; display: flex; align-items: flex-end; }
+.filter-reset-btn {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  height: 40px; padding: 0 1.1rem; box-sizing: border-box;
+  background: #ffffff; border: 1.5px solid #e2e8f0; color: #475569;
+  border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  white-space: nowrap; transition: all 0.15s;
+}
+.filter-reset-btn .pi { font-size: 0.85rem; }
+.filter-reset-btn:hover:not(:disabled) { border-color: var(--c2-primary); color: var(--c2-primary); background: #f8fafc; }
+.filter-reset-btn:focus-visible { outline: 2px solid var(--c2-focus); outline-offset: 2px; }
+.filter-reset-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .advanced-filters-panel :deep(.p-select) {
   width: 100% !important;
@@ -919,7 +1090,7 @@ onMounted(async () => {
   white-space: nowrap;
   flex-shrink: 0;
   letter-spacing: 0.04em;
-  font-family: 'Courier New', monospace;
+  font-family: var(--c2-font-mono);
 }
 
 .option-sep {
@@ -978,50 +1149,117 @@ onMounted(async () => {
   color: #93c5fd !important;
 }
 
+/* Bouton secondaire « +AM » — charte §10.2 : outline Cobalt (tokens) → rempli au survol */
 .add-am-btn {
   background-color: #ffffff;
-  color: #3b82f6;
-  border: 1.5px solid #3b82f6;
+  color: var(--c2-primary);
+  border: 1px solid var(--c2-primary);
   border-radius: 8px;
-  padding: 0.35rem 0.85rem;
-  font-size: 0.85rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
-
+.add-am-btn .pi { font-size: 0.78rem; }
 .add-am-btn:hover {
-  background-color: #eff6ff;
+  background-color: var(--c2-primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(24, 89, 179, 0.25);
 }
+.add-am-btn:focus-visible { outline: 2px solid var(--c2-focus); outline-offset: 2px; }
 
+/* Icône d'action « i » — charte §12.5 : icône-bouton gris au repos, Cobalt + fond doux au survol */
 .info-icon-btn {
-  color: #3b82f6;
-  font-size: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-
 .info-icon-btn:hover {
-  color: #2563eb;
-  transform: scale(1.05);
+  background: #f5f9ff;
+  color: var(--c2-primary);
 }
 
+/* Corps = espace restant entre header (variable) et footer ; la table scrolle EN INTERNE. */
 .table-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   padding: 1rem;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .custom-datatable {
+  flex: 1;
+  min-height: 0;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
 }
+
+/* Footer de page standard C2 (§8/§8.9) — navy 48px, aligné avec le footer sidebar, discret. */
+.sync-footer {
+  flex-shrink: 0;
+  height: var(--sync-footer-h);
+  margin-top: var(--c2-head-gap);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1.5rem;
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
+  position: sticky;
+  bottom: var(--c2-page-pad);
+  z-index: var(--c2-head-z);
+}
+.sync-footer-label { color: #e2e8f0; font-size: .82rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+
+/* Pagination dans le footer — style identique à /comparateur & Confirmation Achat (§8.5) */
+.cmp-pagination { display: flex; align-items: center; gap: .35rem; }
+.cmp-pagination :deep(.p-button.p-button-text) { width: 30px; height: 30px; color: #cbd5e1; transition: background .15s ease, color .15s ease; }
+.cmp-pagination :deep(.p-button.p-button-text:not(:disabled):hover) { background: rgba(255, 255, 255, .12); color: #fff; }
+.cmp-pagination :deep(.p-button.p-button-text:not(:disabled):hover .p-button-icon) { color: #fff; }
+.cmp-pagination :deep(.p-button.p-button-text:disabled) { color: rgba(203, 213, 225, .32); opacity: 1; }
+.cmp-page-box {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 46px; height: 30px; padding: 0 8px; margin: 0 .25rem;
+  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16); border-radius: 8px;
+  color: #fff; font-weight: 700; font-size: .82rem; font-variant-numeric: tabular-nums;
+}
+.cmp-pagination :deep(.rows-dropdown-sm.p-select) {
+  height: 32px !important; min-height: 32px !important; margin-left: .4rem !important;
+  display: inline-flex !important; align-items: center;
+  background: rgba(255, 255, 255, .08) !important; border: 1px solid rgba(255, 255, 255, .16) !important;
+  border-radius: 8px !important; box-shadow: none !important;
+}
+.cmp-pagination :deep(.rows-dropdown-sm.p-select:hover) { background: rgba(255, 255, 255, .12) !important; border-color: rgba(255, 255, 255, .28) !important; }
+.cmp-pagination :deep(.rows-dropdown-sm.p-select.p-focus) { border-color: var(--c2-focus) !important; box-shadow: 0 0 0 2px rgba(125, 211, 252, .22) !important; }
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-label) { color: #e2e8f0 !important; background: transparent !important; font-size: .82rem !important; font-weight: 600 !important; padding: 0 .15rem 0 .6rem !important; display: flex; align-items: center; }
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-dropdown) { color: #cbd5e1 !important; background: transparent !important; width: 1.7rem !important; }
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-dropdown-icon),
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-dropdown svg),
+.cmp-pagination :deep(.rows-dropdown-sm .p-select-dropdown .p-icon) { color: #cbd5e1 !important; fill: currentColor !important; width: .8rem !important; height: .8rem !important; }
 
 .empty-state {
   text-align: center;
@@ -1039,5 +1277,40 @@ onMounted(async () => {
 
 .mb-3 {
   margin-bottom: 0.75rem;
+}
+</style>
+
+<!-- Panneau déroulant du select "lignes par page" — NON scoped (PrimeVue téléporte
+     l'overlay dans <body>, hors sous-arbre scoped). Ciblé via panelClass="rows-dropdown-panel"
+     → identique à la pagination du Comparateur. N'affecte aucun autre select. -->
+<style>
+.rows-dropdown-panel.p-select-overlay {
+    background: #fff;
+    border: 1px solid #e8edf3;
+    border-radius: 10px;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .22);
+    margin-top: 6px;
+    overflow: hidden;
+}
+.rows-dropdown-panel .p-select-list { padding: 5px; display: flex; flex-direction: column; gap: 2px; }
+.rows-dropdown-panel .p-select-option {
+    padding: 8px 12px;
+    border-radius: 7px;
+    font-size: .84rem;
+    font-weight: 600;
+    color: #334155;
+    transition: background .12s ease, color .12s ease;
+}
+.rows-dropdown-panel .p-select-option:not(.p-select-option-selected):hover,
+.rows-dropdown-panel .p-select-option.p-focus {
+    background: #f1f5f9;
+    color: #1e40af;
+}
+.rows-dropdown-panel .p-select-option.p-select-option-selected {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+.rows-dropdown-panel .p-select-option.p-select-option-selected.p-focus {
+    background: #e0ecff;
 }
 </style>

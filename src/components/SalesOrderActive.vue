@@ -344,7 +344,7 @@ watch(() => store.highlightedReference, (newRef) => {
   border: 1px solid rgba(59, 130, 246, 0.12);
 }
 .order-meta { display: flex; align-items: center; gap: 8px; }
-.order-id { font-weight: 700; font-size: 0.8rem; color: #64748b; font-family: monospace; }
+.order-id { font-weight: 700; font-size: 0.8rem; color: #64748b; font-family: var(--c2-font-mono); }
 .order-status {
   font-size: 0.7rem;
   font-weight: 700;
@@ -438,7 +438,7 @@ watch(() => store.highlightedReference, (newRef) => {
   min-width: 0;
 }
 .ref-val {
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
   font-size: 0.75rem;
   font-weight: 600;
   color: #1e40af;
@@ -469,7 +469,7 @@ watch(() => store.highlightedReference, (newRef) => {
   padding: 1px 4px;
   border-radius: 4px;
   margin-left: 6px;
-  font-family: sans-serif;
+  font-family: var(--c2-font-sans);
   font-weight: bold;
   text-transform: uppercase;
 }

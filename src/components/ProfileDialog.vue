@@ -12,23 +12,27 @@
                 </button>
 
                 <div class="header-content">
-                    <div class="avatar-section">
-                        <Avatar icon="pi pi-user" size="xlarge" shape="circle" class="profile-avatar" />
-                        <div class="user-info">
+                    <div class="identity">
+                        <Avatar icon="pi pi-user" shape="circle" class="profile-avatar" />
+                        <div class="identity-text">
                             <h2 class="user-name">{{ profileForm.firstname }} {{ profileForm.lastname }}</h2>
                             <span class="user-role">{{ profileForm.role === 'ROLE_ADMIN' ? 'Administrateur' :
                                 (profileForm.role === 'ROLE_USER' ? 'Utilisateur' : profileForm.role) }}</span>
-                            <div class="user-meta">
-                                <i class="pi pi-envelope"></i> {{ profileForm.email }}
-                            </div>
-                            <div class="user-meta" v-if="authStore.user?.bcCompanyName">
-                                <i class="pi pi-building"></i> {{ authStore.user.bcCompanyName }}
-                            </div>
                         </div>
                     </div>
+                    <div class="header-meta">
+                        <span class="meta-chip">
+                            <i class="pi pi-envelope"></i><span>{{ profileForm.email }}</span>
+                        </span>
+                        <span class="meta-chip" v-if="authStore.user?.bcCompanyName">
+                            <i class="pi pi-building"></i><span>{{ authStore.user.bcCompanyName }}</span>
+                        </span>
+                    </div>
                 </div>
+            </div>
 
-                <!-- Custom Tabs Navigation -->
+            <!-- Barre d'onglets à fond clair (hors du header navy → header plus bas) -->
+            <div class="profile-tabbar">
                 <div class="custom-tabs">
                     <button v-for="tab in ['Account', 'Security']" :key="tab" @click="activeTab = tab"
                         :class="['tab-btn', { active: activeTab === tab }]">
@@ -68,7 +72,7 @@
                                 <label>Société</label>
                                 <Select v-model="profileForm.bcCompanyId" :options="authStore.companies"
                                     optionLabel="displayName" optionValue="id" placeholder="Sélectionner une société"
-                                    class="w-full company-dropdown" />
+                                    class="w-full company-dropdown" panelClass="c2-dropdown-panel" />
                             </div>
                         </div>
 
@@ -266,9 +270,8 @@ const handleChangePassword = async () => {
 }
 
 .profile-header-modern {
-    background-color: white;
-    padding: 2rem 2rem 0 2rem;
-    border-bottom: 1px solid #e9ecef;
+    background: var(--c2-head-bg);   /* Deep Ocean (charte §11/§16 : header de dialog navy) */
+    padding: 0.9rem 2rem;            /* navy compact : juste la ligne d'identité */
     position: relative;
 }
 
@@ -290,65 +293,121 @@ const handleChangePassword = async () => {
 }
 
 .dialog-close-btn:hover {
-    background-color: #f1f3f5;
+    background-color: rgba(255, 255, 255, 0.12);
 }
 
 .dialog-close-btn i {
-    color: #6c757d;
+    color: #cbd5e1;
     font-size: 1.2rem;
 }
 
 .dialog-close-btn:hover i {
-    color: #212529;
+    color: #ffffff;
 }
 
 .header-content {
     display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
-    margin-bottom: 2rem;
-    padding-right: 3rem;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 0;
+    padding-right: 2.5rem;
     /* Space for close button */
 }
 
-.avatar-section {
+.identity {
     display: flex;
-    gap: 1.5rem;
+    gap: 0.9rem;
     align-items: center;
+    min-width: 0;
 }
 
 .profile-avatar {
-    width: 80px;
-    height: 80px;
+    width: 48px !important;
+    height: 48px !important;
     border-radius: 50%;
-    background-color: #e9ecef;
-    color: #495057;
-    font-size: 2rem;
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(130, 201, 229, 0.55);   /* anneau Frozen */
+    color: #ffffff;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
-.user-info {
+.profile-avatar :deep(.p-avatar-icon),
+.profile-avatar i {
+    color: #ffffff;
+}
+
+.identity-text {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+/* Email / société → chips translucides alignés à droite (équilibre le header) */
+.header-meta {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    max-width: 55%;
+}
+
+.meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: 280px;
+    padding: 0.32rem 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.meta-chip i {
+    color: var(--c2-head-accent);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.meta-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .user-name {
     margin: 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #212529;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .user-role {
-    color: #6c757d;
-    font-size: 0.95rem;
+    color: var(--c2-head-accent);   /* Frozen — accent sky sur navy */
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
 
 .user-meta {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #adb5bd;
+    color: #94a3b8;
     font-size: 0.85rem;
     margin-top: 0.25rem;
 }
@@ -375,42 +434,42 @@ const handleChangePassword = async () => {
     color: #adb5bd;
 }
 
-/* Custom Tabs */
+/* Barre d'onglets à FOND CLAIR (sortie du header navy → header bleu plus bas) */
+.profile-tabbar {
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0 2rem;
+    flex-shrink: 0;
+}
+
+/* Onglets soulignés sur fond clair — actif = Cobalt (sélection, charte §4/§11) */
 .custom-tabs {
     display: flex;
-    gap: 2rem;
+    gap: 1.75rem;
 }
 
 .tab-btn {
     background: none;
     border: none;
-    padding: 1rem 0;
-    font-size: 0.95rem;
-    color: #6c757d;
+    padding: 0.8rem 0;
+    font-size: 0.9rem;
+    color: #64748b;
     cursor: pointer;
     position: relative;
-    font-weight: 500;
-    transition: color 0.2s;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;   /* le soulignement chevauche la bordure de la barre */
+    transition: color 0.15s ease, border-color 0.15s ease;
 }
 
 .tab-btn:hover {
-    color: #495057;
+    color: #334155;
 }
 
 .tab-btn.active {
-    color: #6366f1;
-    /* Purple/Blue like reference */
-    font-weight: 600;
-}
-
-.tab-btn.active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background-color: #6366f1;
+    color: var(--c2-select-accent);
+    border-bottom-color: var(--c2-select-accent);
+    font-weight: 700;
 }
 
 /* Content Section */
@@ -495,8 +554,8 @@ const handleChangePassword = async () => {
 
 .form-group input:focus,
 .form-group :deep(.p-inputtext:focus) {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+    border-color: var(--c2-focus);
+    box-shadow: 0 0 0 3px rgba(130, 201, 229, 0.22);   /* anneau Frozen (charte §10/§11) */
 }
 
 .form-actions {
@@ -504,7 +563,7 @@ const handleChangePassword = async () => {
 }
 
 .update-btn {
-    background-color: #6366f1;
+    background-color: var(--c2-primary);   /* Cobalt — bouton principal (charte §10/§11) */
     border: none;
     padding: 0.75rem 1.5rem;
     font-weight: 600;
@@ -513,7 +572,7 @@ const handleChangePassword = async () => {
 }
 
 .update-btn:hover {
-    background-color: #4f46e5;
+    background-color: var(--c2-primary-hover);
 }
 
 .tab-content-anim {

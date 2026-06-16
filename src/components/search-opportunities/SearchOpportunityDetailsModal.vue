@@ -24,7 +24,7 @@
         <div class="so-modal-body">
           <!-- Loading -->
           <div v-if="loading" class="modal-loading">
-            <i class="pi pi-spin pi-spinner" style="font-size:2rem; color:#1e40af;"></i>
+            <i class="pi pi-spin pi-spinner" style="font-size:2rem; color:var(--c2-primary);"></i>
             <span>Chargement des détails...</span>
           </div>
 
@@ -147,19 +147,20 @@ function formatDate(dt) {
   position: fixed; inset: 0;
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(4px);
-  z-index: 1000;
+  z-index: 1200;
   display: flex; align-items: center; justify-content: center;
   padding: 1rem;
   animation: fadeIn 0.18s ease;
+  font-family: var(--c2-font-sans);
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .so-modal {
   background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.32);
   display: flex; flex-direction: column;
-  max-height: 90vh;
+  max-height: 88vh;
   animation: slideUp 0.22s ease;
 }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -167,32 +168,36 @@ function formatDate(dt) {
 .so-detail-modal { width: 860px; max-width: 98vw; }
 
 /* Header */
+/* Header Deep Ocean — texte blanc (charte §16) */
 .so-modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 1.25rem 1.5rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 1.1rem 1.25rem;
+  background: var(--c2-head-bg);
+  border-bottom: 1px solid var(--c2-head-border);
 }
-.modal-title-wrap { display: flex; align-items: center; gap: 1rem; }
+.modal-title-wrap { display: flex; align-items: center; gap: 0.85rem; }
 .modal-icon-wrap {
-  width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, #1e3a8a, #1e40af);
+  width: 40px; height: 40px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(130, 201, 229, 0.5);   /* anneau Frozen */
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 1.2rem; flex-shrink: 0;
+  color: #ffffff; font-size: 1.15rem; flex-shrink: 0;
 }
-.modal-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin: 0; }
-.modal-subtitle { margin-top: 2px; }
+.modal-title { font-size: 1rem; font-weight: 800; color: #ffffff; margin: 0; line-height: 1.3; }
+.modal-subtitle { margin-top: 3px; }
 .ref-chip {
-  background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
-  border-radius: 20px; padding: 2px 12px; font-size: 0.8rem; font-weight: 700;
-  font-family: monospace;
+  background: rgba(255, 255, 255, 0.12); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px; padding: 2px 12px; font-size: 0.8rem; font-weight: 700;
+  font-family: var(--c2-font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .modal-close-btn {
-  width: 36px; height: 36px; border-radius: 9px; border: 1.5px solid #e2e8f0;
-  background: #f8fafc; color: #64748b; cursor: pointer; font-size: 1rem;
+  width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--c2-head-border);
+  background: #0e3f6e; color: #cbd5e1; cursor: pointer; font-size: 1rem;
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
+  transition: all 0.15s; flex-shrink: 0;
 }
-.modal-close-btn:hover { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+.modal-close-btn:hover { background: #155088; color: #ffffff; }
 
 /* Body */
 .so-modal-body {
@@ -235,9 +240,10 @@ function formatDate(dt) {
 .detail-row:hover td { background: #f8fafc; }
 
 .date-cell { font-size: 0.75rem; color: #64748b; white-space: nowrap; }
-.mono-text { font-family: monospace; font-size: 0.82rem; color: #1e3a8a; font-weight: 600; }
+/* §14.8 : texte/réf métier en sans + tabular-nums (jamais mono) */
+.mono-text { font-family: var(--c2-font-sans); font-variant-numeric: tabular-nums; font-size: 0.82rem; color: #1e293b; font-weight: 600; }
 .company-name { font-weight: 600; color: #1e293b; }
-.ext-id { font-family: monospace; font-size: 0.78rem; color: #64748b; }
+.ext-id { font-family: var(--c2-font-sans); font-variant-numeric: tabular-nums; font-size: 0.78rem; color: #64748b; }
 .type-badge {
   background: #f1f5f9; color: #475569; border-radius: 12px;
   padding: 2px 8px; font-size: 0.7rem; font-weight: 600;
@@ -267,12 +273,13 @@ function formatDate(dt) {
 }
 .btn-secondary:hover { background: #e2e8f0; }
 
+/* Action principale → Cobalt (charte §10) ; la confirmation forte (vert) est dans le modal de clôture */
 .btn-primary {
   display: flex; align-items: center; gap: 0.5rem;
   padding: 0.55rem 1.3rem; border-radius: 9px; border: none;
-  background: linear-gradient(135deg, #16a34a, #15803d);
+  background: var(--c2-primary);
   color: #fff; font-size: 0.875rem; font-weight: 600;
-  cursor: pointer; transition: opacity 0.15s, transform 0.15s;
+  cursor: pointer; transition: background 0.15s, transform 0.15s;
 }
-.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-primary:hover { background: var(--c2-primary-hover); transform: translateY(-1px); }
 </style>

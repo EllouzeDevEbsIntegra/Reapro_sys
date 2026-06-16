@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import ProfileDialog from './ProfileDialog.vue';
+import ebsLogo from '../assets/ebs-integra-logo.svg';
 
 const router = useRouter();
 const route = useRoute();
@@ -12,7 +13,18 @@ const showProfileDialog = ref(false);
 const isMobileMenuOpen = ref(false);
 const profileOpen = ref(false);
 
-// 7 entrées à plat (labels courts, libellé complet en tooltip). Routes existantes, inchangées.
+// Logo footer : utilise EN PRIORITÉ le fichier réel déposé dans public/ (ex. public/ebs-logo.png).
+// Tant qu'il n'existe pas, repli automatique sur la recréation SVG (aucune image cassée).
+const ebsLogoSrc = ref('/ebs-logo.png');
+const onLogoError = () => { if (ebsLogoSrc.value !== ebsLogo) ebsLogoSrc.value = ebsLogo; };
+
+// Collapse desktop — PERSISTÉ : la navbar est re-montée à chaque navigation
+// (montée par vue), donc on conserve l'état dans localStorage pour éviter un reset.
+const COLLAPSE_KEY = 'reapro.nav.collapsed';
+const collapsed = ref(false);
+try { collapsed.value = localStorage.getItem(COLLAPSE_KEY) === '1'; } catch (e) { /* noop */ }
+
+// 7 entrées à plat (label court + libellé complet en tooltip). Routes existantes, inchangées.
 const navItems = [
   { label: 'Comparateur', full: 'Comparateur Achat', icon: 'pi pi-search-plus', route: '/comparateur' },
   { label: 'Confirmation Achat', full: 'Confirmation Achat', icon: 'pi pi-check-square', route: '/confirmation-achat' },
@@ -20,19 +32,35 @@ const navItems = [
   { label: 'Analyse B2B', full: 'Analyse Recherches B2B', icon: 'pi pi-chart-line', route: '/search-opportunities' },
   { label: 'Sync Adaptable', full: 'Synchronisation Adaptable', icon: 'pi pi-sync', route: '/sync-adaptable' },
   { label: 'Partslink', full: 'Catalogue Partslink', icon: 'pi pi-desktop', route: '/partslink-viewer' },
-  { label: 'Ancien Conf.', full: 'Ancien Confirmation Achat', icon: 'pi pi-history', route: '/ancien-confirmation-achat' },
 ];
 
 const userName = computed(() =>
   authStore.user?.lastname || authStore.user?.nom || authStore.user?.name || 'User'
 );
 
+// Titre de marque = nom de la société du user (fallback Reapro si non chargé)
+const companyName = computed(() =>
+  authStore.user?.bcCompanyName || authStore.user?.companyName || 'Reapro'
+);
+
 const isRouteActive = (targetRoute) =>
   route.path === targetRoute || route.path.startsWith(`${targetRoute}/`);
+
+// Le contenu des vues est décalé par padding-left = var(--rv-w) (240/70px),
+// mis à jour ici (compatible tous navigateurs, sans :has).
+const applyWidth = () => {
+  try {
+    document.documentElement.style.setProperty('--rv-w', collapsed.value ? '70px' : '240px');
+  } catch (e) { /* noop */ }
+};
 
 const closeAll = () => { profileOpen.value = false; isMobileMenuOpen.value = false; };
 const toggleProfile = () => { profileOpen.value = !profileOpen.value; };
 const toggleMobileMenu = () => { isMobileMenuOpen.value = !isMobileMenuOpen.value; };
+const toggleCollapse = () => {
+  collapsed.value = !collapsed.value;
+  try { localStorage.setItem(COLLAPSE_KEY, collapsed.value ? '1' : '0'); } catch (e) { /* noop */ }
+};
 
 const navigateTo = (targetRoute) => {
   closeAll();
@@ -50,260 +78,303 @@ const handleLogout = () => {
 // Fermeture du dropdown profil au clic extérieur
 const onDocClick = () => { profileOpen.value = false; };
 
-onMounted(() => document.addEventListener('click', onDocClick));
+onMounted(() => {
+  applyWidth();
+  document.addEventListener('click', onDocClick);
+});
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick);
   document.body.style.overflow = '';
 });
 
+watch(collapsed, applyWidth);
 watch(isMobileMenuOpen, (open) => { document.body.style.overflow = open ? 'hidden' : ''; });
 watch(() => route.path, () => closeAll());
 </script>
 
 <template>
-  <header class="nav2">
-    <!-- ─── Bloc brand : capsule logo-mark + Reapro / ERP Achat (sky) ─── -->
-    <div class="nav2-brand">
-      <span class="nav2-mark">R</span>
-      <div class="nav2-brandtxt"><b>Reapro</b><em>ERP Achat</em></div>
+  <!-- ═══════════ SIDEBAR VERTICALE (desktop fixe / mobile drawer) ═══════════
+       Premier enfant du wrapper de page ; fixe → ne décale pas les dialogs/toasts
+       téléportés dans <body> (centrage Confirmation Achat préservé). -->
+  <aside class="rv-sidebar" :class="{ collapsed, open: isMobileMenuOpen }">
+    <!-- 1. Brand : carte navy. Expanded → texte + collapse ; collapsed → collapse seul. -->
+    <div class="rv-brandcard">
+      <div class="rv-brandtxt"><b :title="companyName">{{ companyName }}</b></div>
+      <button type="button" class="rv-collapse" :title="collapsed ? 'Déployer le menu' : 'Réduire le menu'"
+        :aria-label="collapsed ? 'Déployer le menu' : 'Réduire le menu'" @click="toggleCollapse">
+        <svg class="rv-burger" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <line x1="4" y1="7" x2="20" y2="7" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="17" x2="20" y2="17" />
+        </svg>
+      </button>
     </div>
 
-    <!-- ─── Track de navigation : 7 pills (scroll interne en repli) ─── -->
-    <nav class="nav2-track">
-      <RouterLink v-for="it in navItems" :key="it.route" :to="it.route" class="nav2-pill"
+    <!-- 2. Menu principal (zone scrollable) -->
+    <div class="rv-section">Navigation</div>
+    <nav class="rv-menu">
+      <RouterLink v-for="it in navItems" :key="it.route" :to="it.route" class="rv-link"
         :class="{ 'is-active': isRouteActive(it.route) }" :title="it.full" @click="closeAll">
-        <i :class="it.icon"></i><span>{{ it.label }}</span>
+        <i :class="it.icon"></i><span class="rv-label">{{ it.label }}</span>
       </RouterLink>
     </nav>
 
-    <div class="nav2-spacer"></div>
-
-    <!-- ─── Capsule actions : settings (admin) · séparateur · profil ─── -->
-    <div class="nav2-capsule">
-      <button v-if="authStore.isAdmin" type="button" class="nav2-iconbtn" title="Paramètres"
-        aria-label="Paramètres" @click="navigateTo('/admin/settings')">
-        <i class="pi pi-cog"></i>
+    <!-- 3. Zone compte (séparée, ancrée en bas) : Paramètres (admin) + profil -->
+    <div class="rv-actions">
+      <button v-if="authStore.isAdmin" type="button" class="rv-link" title="Paramètres"
+        @click="navigateTo('/admin/settings')">
+        <i class="pi pi-cog"></i><span class="rv-label">Paramètres</span>
       </button>
-      <span v-if="authStore.isAdmin" class="nav2-divider"></span>
 
-      <div class="nav2-profile-wrap">
-        <button type="button" class="nav2-profile" :class="{ open: profileOpen }" @click.stop="toggleProfile">
-          <span class="nav2-avatar"><i class="pi pi-user"></i></span>
-          <span class="nav2-username">{{ userName }}</span>
-          <i class="pi pi-angle-down nav2-caret"></i>
+      <div class="rv-profile-wrap">
+        <button type="button" class="rv-link" :class="{ open: profileOpen }" :title="userName"
+          @click.stop="toggleProfile">
+          <span class="rv-avatar"><i class="pi pi-user"></i></span>
+          <span class="rv-label">{{ userName }}</span>
+          <i class="pi pi-angle-up rv-caret"></i>
         </button>
-        <div v-if="profileOpen" class="nav2-dropdown" @click.stop>
-          <button type="button" class="nav2-dropdown-item" @click="openProfile">
+        <div v-if="profileOpen" class="rv-dropup" @click.stop>
+          <button type="button" class="rv-dropup-item" @click="openProfile">
             <i class="pi pi-user"></i><span>Profil</span>
           </button>
-          <div class="nav2-dropdown-sep"></div>
-          <button type="button" class="nav2-dropdown-item danger" @click="handleLogout">
+          <div class="rv-dropup-sep"></div>
+          <button type="button" class="rv-dropup-item danger" @click="handleLogout">
             <i class="pi pi-sign-out"></i><span>Déconnexion</span>
           </button>
         </div>
       </div>
     </div>
 
-    <button type="button" class="nav2-burger" title="Menu" aria-label="Ouvrir le menu"
-      @click.stop="toggleMobileMenu">
-      <i class="pi pi-bars"></i>
-    </button>
-  </header>
-
-  <!-- ─── Drawer mobile (assorti Z : navy C2) ─── -->
-  <transition name="nav2-fade">
-    <div v-if="isMobileMenuOpen" class="nav2-overlay" @click="closeAll"></div>
-  </transition>
-  <transition name="nav2-slide">
-    <aside v-if="isMobileMenuOpen" class="nav2-drawer" role="dialog" aria-label="Navigation mobile">
-      <div class="nav2-drawer-head">
-        <div class="nav2-brand">
-          <span class="nav2-mark">R</span>
-          <div class="nav2-brandtxt"><b>Reapro</b><em>ERP Achat</em></div>
-        </div>
-        <button type="button" class="nav2-iconbtn" aria-label="Fermer le menu" @click="closeAll">
-          <i class="pi pi-times"></i>
-        </button>
+    <!-- 4. Pied : rappel navy (version + chip) -->
+    <div class="rv-foot">
+      <div class="rv-foot-card">
+        <span class="rv-foot-version">V2.5</span>
+        <img class="rv-foot-logo" :src="ebsLogoSrc" @error="onLogoError" alt="EBS" />
       </div>
-      <nav class="nav2-drawer-list">
-        <button v-for="it in navItems" :key="it.route" type="button" class="nav2-drawer-link"
-          :class="{ 'is-active': isRouteActive(it.route) }" @click="navigateTo(it.route)">
-          <i :class="it.icon"></i><span>{{ it.full }}</span>
-        </button>
-        <div class="nav2-drawer-sep"></div>
-        <button v-if="authStore.isAdmin" type="button" class="nav2-drawer-link"
-          @click="navigateTo('/admin/settings')"><i class="pi pi-cog"></i><span>Paramètres</span></button>
-        <button type="button" class="nav2-drawer-link" @click="openProfile">
-          <i class="pi pi-user"></i><span>Profil</span></button>
-        <button type="button" class="nav2-drawer-link danger" @click="handleLogout">
-          <i class="pi pi-sign-out"></i><span>Déconnexion</span></button>
-      </nav>
-    </aside>
+    </div>
+  </aside>
+
+  <!-- Bouton hamburger (mobile uniquement) -->
+  <button type="button" class="rv-mobile-toggle" title="Menu" aria-label="Ouvrir le menu"
+    @click.stop="toggleMobileMenu">
+    <i class="pi pi-bars"></i>
+  </button>
+
+  <!-- Overlay mobile -->
+  <transition name="rv-fade">
+    <div v-if="isMobileMenuOpen" class="rv-overlay" @click="closeAll"></div>
   </transition>
 
   <ProfileDialog v-model:visible="showProfileDialog" />
 </template>
 
 <style scoped>
-/* ════════════ Navbar Reapro — « Z · C2 Native » ════════════
-   Construite avec les tokens de Confirmation Achat C2 :
-   matériau des en-têtes de zone (#1e293b→#243246, bordure #3b4a61),
-   track façon .c2-carttabs (piste blanche translucide, actif BLEU PLEIN #2563eb),
-   sous-label brand en sky #7dd3fc (label STOCKS), survols matière .c2-year.
-   L'orange reste réservé au panier (sémantique C2 préservée). */
-.nav2 {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  height: 58px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 0 16px;
-  background: linear-gradient(180deg, #1e293b, #243246);
-  border-bottom: 1px solid #3b4a61;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 2px 10px rgba(15, 23, 42, .25);
-  font-family: 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;
+/* ════════════ Sidebar verticale Reapro — tokens Confirmation Achat C2 ════════════ */
+.rv-sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; z-index: 950;
+  width: 240px; display: flex; flex-direction: column;
+  background: #f7f9fc;                          /* clair, mais pas blanc pur */
+  border-right: 1px solid #dde4ee;
+  box-shadow: 1px 0 4px rgba(16, 24, 40, .05);
+  font-family: var(--c2-font-sans);
+  transition: width .22s ease, transform .22s ease;
 }
+.rv-sidebar.collapsed { width: 70px; }
 
-/* ─── Bloc brand (capsule) ─── */
-.nav2-brand {
-  display: flex; align-items: center; gap: 10px; padding: 5px 12px 5px 5px;
-  background: rgba(255, 255, 255, .10); border: 1px solid #3b4a61; border-radius: 12px;
+/* 1. Brand — carte navy alignée (haut/bas) avec le matériau des en-têtes C2. */
+.rv-brandcard {
+  display: flex; align-items: center; gap: 10px;
+  /* Aligné sur le header de page : même top (--c2-page-pad = padding-top du contenu)
+     et même hauteur (--c2-head-h) → top ET bottom alignés sur toutes les pages. */
+  margin: var(--c2-page-pad) 10px 8px; padding: 10px 14px; min-height: var(--c2-head-h, 72px); box-sizing: border-box;
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border); border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 4px 14px rgba(15, 23, 42, .18);
   flex-shrink: 0;
 }
-.nav2-mark {
+.rv-brandtxt { display: flex; flex-direction: column; line-height: 1.2; flex: 1; min-width: 0; }
+.rv-brandtxt b { font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv-brandtxt em {
+  font-style: normal; font-size: .62rem; font-weight: 700; color: var(--c2-head-accent);
+  text-transform: uppercase; letter-spacing: .08em;
+}
+/* Bouton collapse/expand — intégré, ghost navy net, icône centrée */
+.rv-collapse {
+  margin-left: auto; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  width: 31px; height: 31px; border-radius: 9px;
-  background: #2563eb; color: #fff; font-size: 1rem; font-weight: 800;
-  box-shadow: 0 1px 3px rgba(37, 99, 235, .4);
-  user-select: none; flex-shrink: 0;
+  width: 32px; height: 32px; border-radius: 10px; padding: 0; line-height: 0;
+  background: rgba(255, 255, 255, .07); border: 1px solid transparent;
+  color: #cbd5e1; cursor: pointer; font-size: .8rem;
+  transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .12s ease;
 }
-.nav2-brandtxt { display: flex; flex-direction: column; line-height: 1.15; }
-.nav2-brandtxt b { font-size: .95rem; font-weight: 800; color: #fff; letter-spacing: -.02em; }
-.nav2-brandtxt em {
-  font-style: normal; font-size: .6rem; font-weight: 700; color: #7dd3fc;
-  text-transform: uppercase; letter-spacing: .07em;
+/* Hover = accent Frozen (charte) : teinte + bordure + anneau doux, icône blanche */
+.rv-collapse:hover {
+  background: rgba(130, 201, 229, .16);
+  border-color: rgba(130, 201, 229, .45);
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(130, 201, 229, .12);
 }
+.rv-collapse:active { transform: scale(.92); background: rgba(130, 201, 229, .24); }
+.rv-collapse:focus-visible { outline: 2px solid var(--c2-focus); outline-offset: 2px; }
+/* Icône menu moderne (3 traits fins, bouts arrondis, dernier raccourci) */
+.rv-collapse .rv-burger { width: 18px; height: 18px; display: block; }
 
-/* ─── Track de navigation (façon c2-carttabs) ─── */
-.nav2-track {
-  display: flex; align-items: center; gap: 2px;
-  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 12px; padding: 3px;
-  min-width: 0; overflow-x: auto; scrollbar-width: none;
+/* 2. Menu — libellé de section + zone scrollable + items homogènes */
+.rv-section {
+  padding: 4px 16px 6px; font-size: .62rem; font-weight: 800; letter-spacing: .08em;
+  text-transform: uppercase; color: #64748b; flex-shrink: 0;
 }
-.nav2-track::-webkit-scrollbar { height: 0; display: none; }
-.nav2-pill {
-  display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px;
-  color: #cbd5e1; background: transparent; border: 1px solid transparent; border-radius: 9px;
-  font-weight: 650; font-size: .84rem; cursor: pointer; text-decoration: none; white-space: nowrap;
-  flex-shrink: 0; transition: color .15s ease, background .15s ease, box-shadow .15s ease;
+.rv-menu {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px; padding: 2px 10px 8px;
 }
-.nav2-pill i { font-size: .9rem; color: #94a3b8; transition: color .15s ease; }
-.nav2-pill:hover { color: #fff; background: rgba(255, 255, 255, .10); }
-.nav2-pill:hover i { color: #cbd5e1; }
-.nav2-pill.is-active {
-  color: #fff; background: #2563eb; border-color: transparent;
-  box-shadow: 0 1px 3px rgba(37, 99, 235, .4);
-}
-.nav2-pill.is-active i { color: #bfdbfe; }
-
-.nav2-spacer { flex: 1; min-width: 0; }
-
-/* ─── Capsule actions (droite) ─── */
-.nav2-capsule {
-  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
-  background: rgba(255, 255, 255, .10); border: 1px solid #3b4a61; border-radius: 999px; padding: 3px;
-}
-.nav2-iconbtn {
-  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
-  border: none; background: transparent; border-radius: 999px; cursor: pointer;
-  color: #94a3b8; transition: background .15s ease, color .15s ease;
-}
-.nav2-iconbtn:hover { background: rgba(255, 255, 255, .12); color: #fff; }
-.nav2-divider { width: 1px; height: 18px; background: rgba(255, 255, 255, .14); flex-shrink: 0; }
-
-.nav2-profile-wrap { position: relative; }
-.nav2-profile {
-  display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px 0 3px;
-  border: none; background: transparent; border-radius: 999px; cursor: pointer;
-  color: #cbd5e1; transition: background .15s ease, color .15s ease;
-}
-.nav2-profile:hover, .nav2-profile.open { background: rgba(255, 255, 255, .12); color: #fff; }
-.nav2-avatar {
-  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
-  border-radius: 50%; background: #eff6ff; color: #1e40af; font-size: .85rem; flex-shrink: 0;
-}
-.nav2-username { font-weight: 700; font-size: .84rem; white-space: nowrap; }
-.nav2-caret { font-size: .7rem !important; color: #94a3b8; }
-
-/* ─── Dropdown profil (surface claire, comme les dialogs C2) ─── */
-.nav2-dropdown {
-  position: absolute; top: calc(100% + 10px); right: 0; z-index: 1001; min-width: 190px;
-  background: #fff; border: 1px solid #e8edf3; border-radius: 12px;
-  box-shadow: 0 18px 44px rgba(15, 23, 42, .28); padding: 6px;
-}
-.nav2-dropdown-item {
-  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px;
-  background: transparent; border: none; border-radius: 8px; cursor: pointer;
-  color: #334155; font-weight: 600; font-size: .84rem; text-align: left;
+.rv-menu::-webkit-scrollbar { width: 6px; }
+.rv-menu::-webkit-scrollbar-thumb { background: #d3dbe6; border-radius: 999px; }
+.rv-link {
+  position: relative; display: flex; align-items: center; gap: 11px;
+  min-height: 40px; padding: 0 12px; width: 100%;
+  color: #475569; border-radius: 10px; border: none; background: transparent;
+  font-weight: 600; font-size: .86rem; text-decoration: none; text-align: left; cursor: pointer;
+  font-family: inherit;
   transition: background .15s ease, color .15s ease;
 }
-.nav2-dropdown-item i { font-size: .92rem; color: #64748b; }
-.nav2-dropdown-item:hover { background: #f1f5f9; color: #1e40af; }
-.nav2-dropdown-item:hover i { color: #1e40af; }
-.nav2-dropdown-item.danger:hover { background: #fef2f2; color: #b91c1c; }
-.nav2-dropdown-item.danger:hover i { color: #b91c1c; }
-.nav2-dropdown-sep { height: 1px; background: #e8edf3; margin: 5px 4px; }
-
-.nav2-burger { display: none; }
-
-/* ─── Drawer mobile (navy C2, assorti Z) ─── */
-.nav2-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); backdrop-filter: blur(2px); z-index: 1098; }
-.nav2-drawer {
-  position: fixed; top: 0; right: 0; bottom: 0; width: min(88vw, 340px); z-index: 1099;
-  display: flex; flex-direction: column;
-  background: linear-gradient(180deg, #1e293b, #1b2536); border-left: 1px solid #3b4a61;
-  box-shadow: -12px 0 30px rgba(15, 23, 42, .35);
+.rv-link i { font-size: .98rem; color: #7c8898; width: 22px; text-align: center; flex-shrink: 0; transition: color .15s ease; }
+.rv-link .rv-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv-link:hover { background: #eef3f9; color: #0f172a; }
+.rv-link:hover i { color: #475569; }
+.rv-link.is-active {
+  background: linear-gradient(90deg, #dbeafe, #eaf2ff);
+  color: var(--c2-select-accent); font-weight: 700;
 }
-.nav2-drawer-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px; border-bottom: 1px solid #3b4a61;
+.rv-link.is-active i { color: var(--c2-select-accent); }
+.rv-link.is-active::before {
+  content: ''; position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 18px; border-radius: 3px; background: var(--c2-select-accent);
 }
-.nav2-drawer-list { display: flex; flex-direction: column; gap: 4px; padding: 12px; overflow-y: auto; }
-.nav2-drawer-link {
-  display: flex; align-items: center; gap: 12px; padding: 11px 12px; width: 100%;
-  border: 1px solid transparent; border-radius: 10px; background: transparent; cursor: pointer;
-  color: #cbd5e1; font-weight: 600; font-size: .9rem; text-align: left; transition: all .15s ease;
+
+/* 3. Actions bas de menu (Paramètres / profil) — ancrées, séparateur fin */
+.rv-actions { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-top: 1px solid #e4eaf2; flex-shrink: 0; }
+.rv-profile-wrap { position: relative; }
+.rv-link.open { background: #eef3f9; color: #0f172a; }
+.rv-avatar {
+  display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+  border-radius: 50%; background: #eff6ff; color: #1e40af; font-size: .78rem; flex-shrink: 0;
+  margin-left: -3px;
 }
-.nav2-drawer-link i { font-size: 1rem; width: 18px; color: #94a3b8; }
-.nav2-drawer-link:hover { background: rgba(255, 255, 255, .07); color: #fff; }
-.nav2-drawer-link:hover i { color: #cbd5e1; }
-.nav2-drawer-link.is-active { background: #2563eb; border-color: transparent; color: #fff; box-shadow: 0 1px 3px rgba(37, 99, 235, .4); }
-.nav2-drawer-link.is-active i { color: #bfdbfe; }
-.nav2-drawer-link.danger:hover { background: rgba(220, 38, 38, .18); color: #fca5a5; }
-.nav2-drawer-link.danger:hover i { color: #fca5a5; }
-.nav2-drawer-sep { height: 1px; background: #3b4a61; margin: 8px 4px; }
+.rv-caret { margin-left: auto; font-size: .7rem !important; color: #94a3b8; }
 
-/* Transitions drawer */
-.nav2-fade-enter-active, .nav2-fade-leave-active { transition: opacity .2s ease; }
-.nav2-fade-enter-from, .nav2-fade-leave-to { opacity: 0; }
-.nav2-slide-enter-active, .nav2-slide-leave-active { transition: transform .24s ease, opacity .24s ease; }
-.nav2-slide-enter-from, .nav2-slide-leave-to { transform: translateX(22px); opacity: 0; }
+/* Menu profil — s'ouvre vers le HAUT (surface claire, comme les dialogs C2) */
+.rv-dropup {
+  position: absolute; bottom: calc(100% + 8px); left: 6px; z-index: 1001; min-width: 190px;
+  background: #fff; border: 1px solid #e8edf3; border-radius: 12px;
+  box-shadow: 0 -10px 34px rgba(15, 23, 42, .22); padding: 6px;
+}
+.rv-dropup-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px;
+  background: transparent; border: none; border-radius: 8px; cursor: pointer;
+  color: #334155; font-weight: 600; font-size: .84rem; text-align: left; font-family: inherit;
+  transition: background .15s ease, color .15s ease;
+}
+.rv-dropup-item i { font-size: .92rem; color: #64748b; }
+.rv-dropup-item:hover { background: #f1f5f9; color: #1e40af; }
+.rv-dropup-item:hover i { color: #1e40af; }
+.rv-dropup-item.danger:hover { background: #fef2f2; color: #b91c1c; }
+.rv-dropup-item.danger:hover i { color: #b91c1c; }
+.rv-dropup-sep { height: 1px; background: #e8edf3; margin: 5px 4px; }
 
-/* ─── Responsive ─── */
+/* 4. Pied — rappel navy header (version + chip) */
+/* padding-bas = var(--c2-page-pad) (8px) → footer navbar aligné au pixel avec le footer de page */
+.rv-foot { padding: 10px 10px var(--c2-page-pad); flex-shrink: 0; }
+.rv-foot-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  height: 48px; box-sizing: border-box;   /* = hauteur du footer de page (uniformisé) */
+  padding: 0 12px; border-radius: 10px;
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+}
+.rv-foot-version { font-size: .74rem; font-weight: 700; color: #cbd5e1; white-space: nowrap; }
+.rv-foot-app { font-size: inherit; color: inherit; }
+/* Pastille claire → le logo s'affiche avec ses couleurs de marque exactes, lisible sur navy.
+   Dimension ajustée à l'espace du footer 48px. */
+/* Logo sur fond transparent (pas de pastille). Taille ajustée à l'espace du footer 48px. */
+.rv-foot-logo {
+  height: 26px; width: auto; max-width: 150px; display: block; flex-shrink: 0;
+  object-fit: contain;
+}
+
+/* ─── Mode COLLAPSED (70px) : icônes seules ; brand = collapse seul ─── */
+.rv-sidebar.collapsed .rv-brandcard { justify-content: center; gap: 0; margin: var(--c2-page-pad) 8px 8px; padding: 9px 6px; }
+.rv-sidebar.collapsed .rv-brandtxt { display: none; }
+.rv-sidebar.collapsed .rv-collapse { margin-left: 0; width: 30px; height: 30px; }
+.rv-sidebar.collapsed .rv-section { display: none; }
+.rv-sidebar.collapsed .rv-menu { padding: 6px 8px; }
+.rv-sidebar.collapsed .rv-link { justify-content: center; gap: 0; padding: 0; }
+.rv-sidebar.collapsed .rv-link .rv-label { display: none; }
+.rv-sidebar.collapsed .rv-link i { width: auto; }
+.rv-sidebar.collapsed .rv-link.is-active::before { display: none; }
+.rv-sidebar.collapsed .rv-caret { display: none; }
+.rv-sidebar.collapsed .rv-avatar { margin-left: 0; }
+.rv-sidebar.collapsed .rv-dropup { left: calc(100% + 8px); bottom: 0; }   /* popover latéral en réduit */
+.rv-sidebar.collapsed .rv-foot-card { justify-content: center; padding: 9px 6px; }
+.rv-sidebar.collapsed .rv-foot-app, .rv-sidebar.collapsed .rv-foot-logo { display: none; }
+
+/* ─── Hamburger + overlay (mobile uniquement) ─── */
+.rv-mobile-toggle { display: none; }
+.rv-overlay { display: none; }
+
+/* Transitions overlay */
+.rv-fade-enter-active, .rv-fade-leave-active { transition: opacity .2s ease; }
+.rv-fade-enter-from, .rv-fade-leave-to { opacity: 0; }
+
 @media (max-width: 1024px) {
-  .nav2 { gap: 10px; padding: 0 12px; }
-  .nav2-track, .nav2-spacer { display: none; }
-  .nav2-capsule { margin-left: auto; }
-  .nav2-burger {
-    display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px;
-    border: none; background: transparent; border-radius: 9px; cursor: pointer; color: #cbd5e1;
+  /* Sidebar = drawer off-canvas ; le collapse desktop est neutralisé */
+  .rv-sidebar { transform: translateX(-100%); z-index: 1099; width: 240px; }
+  .rv-sidebar.open { transform: translateX(0); }
+  .rv-sidebar.collapsed { width: 240px; }
+  .rv-sidebar.collapsed .rv-brandcard { justify-content: flex-start; gap: 10px; margin: var(--c2-page-pad) 10px 8px; padding: 10px 14px; }
+  .rv-sidebar.collapsed .rv-brandtxt { display: flex; }
+  .rv-sidebar.collapsed .rv-collapse { display: none; }
+  .rv-sidebar.collapsed .rv-section { display: block; }
+  .rv-sidebar.collapsed .rv-menu { padding: 2px 10px 8px; }
+  .rv-sidebar.collapsed .rv-link { justify-content: flex-start; gap: 11px; padding: 0 12px; }
+  .rv-sidebar.collapsed .rv-link.is-active::before { display: block; }
+  .rv-sidebar.collapsed .rv-link .rv-label { display: inline; }
+  .rv-sidebar.collapsed .rv-caret { display: inline; }
+  .rv-sidebar.collapsed .rv-avatar { margin-left: -3px; }
+  .rv-sidebar.collapsed .rv-dropup { left: 6px; bottom: calc(100% + 8px); }
+  .rv-sidebar.collapsed .rv-foot-card { justify-content: space-between; padding: 9px 12px; }
+  .rv-sidebar.collapsed .rv-foot-app { display: inline; }
+  .rv-sidebar.collapsed .rv-foot-logo { display: block; }
+  /* En desktop le collapse cache le chevron-haut sur le bouton collapse ; rien à faire ici */
+  .rv-collapse { display: none; }
+
+  .rv-overlay { display: block; position: fixed; inset: 0; background: rgba(15, 23, 42, .5); backdrop-filter: blur(2px); z-index: 1098; }
+  .rv-mobile-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    position: fixed; top: 12px; left: 12px; z-index: 1097;
+    width: 40px; height: 40px; border: 1px solid var(--c2-head-border); border-radius: 10px;
+    background: var(--c2-head-bg); color: #cbd5e1; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .3);
   }
-  .nav2-burger:hover { background: rgba(255, 255, 255, .12); color: #fff; }
-  .nav2-username { display: none; }
-  .nav2-profile { padding: 0 3px; }
-  .nav2-profile .nav2-caret { display: none; }
+}
+</style>
+
+<!-- Décalage GLOBAL (non scoped) du contenu des vues qui montent la sidebar.
+     padding-left sur le wrapper (et non marge sur le contenu width:100%) → aucun
+     débordement horizontal. Ces classes wrapper n'existent que sur les pages
+     authentifiées ; les pages d'auth (.login-container) ne sont pas affectées.
+     Largeur via --rv-w (240px / 70px) mise à jour par le composant. -->
+<style>
+.page-layout,
+.dashboard-layout,
+.customers-layout {
+  padding-left: var(--rv-w, 240px);
+  transition: padding-left .22s ease;
+}
+@media (max-width: 1024px) {
+  .page-layout,
+  .dashboard-layout,
+  .customers-layout { padding-left: 0; }
 }
 </style>

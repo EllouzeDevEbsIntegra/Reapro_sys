@@ -1,5 +1,5 @@
 <template>
-  <div class="page-layout animate-fade-in">
+  <div class="page-layout">
     <TheNavbar />
 
     <main class="main-content">
@@ -7,7 +7,6 @@
       <header class="viewer-header-bar">
         <div class="title-section">
           <h1>Catalogue Pièces</h1>
-          <p class="subtitle">Recherche native par VIN via Partslink24</p>
         </div>
 
         <div class="header-controls">
@@ -307,7 +306,7 @@
       </section>
 
       <!-- Welcome / Selection Panel -->
-      <section v-else>
+      <section v-else class="brands-state">
         <!-- Grille de sélection des marques -->
         <div v-if="!selectedBrand" class="brands-selection-container animate-fade-in">
           <div class="brands-header-card card">
@@ -401,6 +400,12 @@
           </div>
         </div>
       </section>
+
+      <!-- Footer de page (charte C2, structure standard §8.9) — discret, libellé structurel -->
+      <footer class="pl-footer">
+        <span class="pl-footer-label">Catalogue Partslink</span>
+        <span class="pl-footer-sub" v-if="vehicle && vehicle.vin">VIN {{ vehicle.vin }}</span>
+      </footer>
     </main>
   </div>
 </template>
@@ -803,37 +808,48 @@ const logError = (err, fallback) => {
   flex-direction: column;
 }
 
+/* Shell charte C2 (§12) : flex column plein viewport → header + corps (grid flex:1,
+   panneaux à scroll interne) + footer 48px toujours visible. Plus de calc(100vh-Npx) figé. */
 .main-content {
-  flex: 1;
-  padding: 1.25rem 2rem;
+  height: 100vh;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: var(--c2-page-pad) var(--c2-page-pad);   /* padding page harmonisé (token commun) */
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--c2-head-gap);       /* espace sous header harmonisé */
+  --pl-footer-h: 48px;
 }
 
 .viewer-header-bar {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 1.5rem;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 1.2rem 1.8rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: var(--c2-head-sticky-top);
+  z-index: var(--c2-head-z);
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  padding: 0 1.8rem;
+  height: var(--c2-head-h);
+  box-sizing: border-box;
+  box-shadow: var(--c2-head-shadow);
 }
 
 .title-section h1 {
   margin: 0;
   font-size: 1.6rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: var(--c2-head-title);
 }
 
 .subtitle {
   margin: 0.25rem 0 0;
-  color: var(--text-secondary);
+  color: #cbd5e1;
   font-size: 0.88rem;
 }
 
@@ -872,7 +888,7 @@ const logError = (err, fallback) => {
   border-color: #cbd5e1 !important;
   color: var(--text-primary) !important;
   border-radius: 10px !important;
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
   font-size: 1.1rem;
   letter-spacing: 0.05em;
   padding: 0.6rem 0.9rem;
@@ -891,12 +907,15 @@ const logError = (err, fallback) => {
 
 /* Panel Layout styling */
 .vehicle-workspace {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
 .selection-breadcrumb {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -961,10 +980,35 @@ const logError = (err, fallback) => {
 .layout-grid {
   display: grid;
   gap: 1rem;
-  height: calc(100vh - 210px);
-  min-height: 500px;
+  flex: 1;
+  min-height: 0;
   align-items: stretch;
 }
+
+/* État sélection marque : remplit le corps + scroll interne (charte §12). */
+.brands-state { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* Footer de page standard C2 (§8/§8.9) — navy 48px, aligné footer sidebar, discret.
+   Pas de margin-top : .main-content a déjà gap var(--c2-head-gap). */
+.pl-footer {
+  flex-shrink: 0;
+  height: var(--pl-footer-h);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1.5rem;
+  background: var(--c2-head-bg);
+  border: 1px solid var(--c2-head-border);
+  border-radius: var(--c2-head-radius);
+  box-shadow: var(--c2-head-shadow);
+  position: sticky;
+  bottom: var(--c2-page-pad);
+  z-index: var(--c2-head-z);
+}
+.pl-footer-label { color: #e2e8f0; font-size: .82rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+.pl-footer-sub { color: #94a3b8; font-size: .76rem; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
 
 .layout-grid.explore-mode {
   grid-template-columns: minmax(220px, 20%) minmax(260px, 30%) minmax(360px, 50%);
@@ -1069,7 +1113,7 @@ const logError = (err, fallback) => {
 }
 
 .item-code {
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
   font-weight: 700;
   font-size: 0.82rem;
   background: #f1f5f9;
@@ -1122,7 +1166,7 @@ const logError = (err, fallback) => {
 }
 
 .vin-badge {
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
   font-weight: 700;
   font-size: 1.15rem;
   color: var(--primary-blue-dark);
@@ -1329,11 +1373,11 @@ const logError = (err, fallback) => {
 .pos-cell {
   font-weight: 700;
   color: var(--text-primary);
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
 }
 
 .part-number-cell {
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
 }
 
 .part-no-copy {
@@ -1374,6 +1418,8 @@ const logError = (err, fallback) => {
 .loading-panel,
 .error-panel,
 .welcome-panel {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1718,7 +1764,7 @@ const logError = (err, fallback) => {
   border-color: #cbd5e1 !important;
   color: var(--text-primary) !important;
   border-radius: 12px !important;
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
   font-size: 1.25rem;
   letter-spacing: 0.08em;
   padding: 0.8rem 1.2rem !important;

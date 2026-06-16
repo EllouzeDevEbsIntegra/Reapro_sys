@@ -3,14 +3,12 @@
     <main class="app-content">
       <router-view />
     </main>
-    <TheFooter />
   </div>
   <Toast class="custom-toast" />
 </template>
 
 <script setup>
 import Toast from 'primevue/toast'
-import TheFooter from './components/TheFooter.vue'
 </script>
 
 <style scoped>

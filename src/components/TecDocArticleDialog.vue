@@ -1241,7 +1241,7 @@ watch(showInfoDialog, (newVal) => {
 .option-code {
     font-size: 0.72rem; font-weight: 700; color: #3b82f6; background: #eff6ff;
     border-radius: 4px; padding: 0.1rem 0.45rem; white-space: nowrap; flex-shrink: 0;
-    letter-spacing: 0.04em; font-family: 'Courier New', monospace;
+    letter-spacing: 0.04em; font-family: var(--c2-font-mono);
 }
 .option-sep { color: #d1d5db; font-size: 0.8rem; flex-shrink: 0; }
 .option-name {
@@ -1388,7 +1388,7 @@ watch(showInfoDialog, (newVal) => {
     background: #eff6ff; border: 1px solid #bfdbfe;
     color: #2563eb; border-radius: 999px;
     padding: 0.2rem 0.75rem; font-size: 0.75rem; font-weight: 700;
-    letter-spacing: 0.05em; font-family: 'Courier New', monospace;
+    letter-spacing: 0.05em; font-family: var(--c2-font-mono);
     width: fit-content;
 }
 
@@ -1426,7 +1426,7 @@ watch(showInfoDialog, (newVal) => {
     font-size: 0.875rem; font-weight: 600; color: #1e293b;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.info-value.mono { font-family: 'Courier New', monospace; color: #2563eb; font-size: 0.85rem; }
+.info-value.mono { font-family: var(--c2-font-mono); color: #2563eb; font-size: 0.85rem; }
 
 /* Footer */
 .dialog-footer {
@@ -1576,7 +1576,7 @@ watch(showInfoDialog, (newVal) => {
     color: #0f172a;
     line-height: 1.2;
     margin-bottom: 2px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--c2-font-sans);
     letter-spacing: -0.025em;
     white-space: nowrap;
     overflow: hidden;

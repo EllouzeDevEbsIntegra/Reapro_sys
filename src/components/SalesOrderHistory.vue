@@ -7,7 +7,7 @@
       <div class="history-filters-group">
         <div class="history-filter-col-status">
           <Select v-model="filters.status" :options="statusOptions" placeholder="Statut"
-            class="history-custom-select" panelClass="history-status-dropdown-panel" showClear />
+            class="history-custom-select" panelClass="c2-dropdown-panel" showClear />
         </div>
         <div class="history-filter-col-date">
           <DatePicker v-model="filters.dateFrom" placeholder="Début" dateFormat="yy-mm-dd"
@@ -444,13 +444,13 @@ onMounted(() => {
 }
 
 .order-num {
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
   font-weight: 700;
   color: #1e3a8a;
 }
 
 .bc-num {
-  font-family: monospace;
+  font-family: var(--c2-font-mono);
   font-weight: 700;
   color: #0284c7;
 }

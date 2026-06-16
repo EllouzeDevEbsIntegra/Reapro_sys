@@ -43,13 +43,13 @@ const mockEqv = [
 
     <!-- ═══════════ SIDEBAR VERTICALE ═══════════ -->
     <aside class="pv-sidebar" :class="{ open: sidebarOpen, collapsed }">
-      <!-- 1. Brand : CARTE navy arrondie alignée avec le header C2 ; le bouton
-           collapse/expand est INTÉGRÉ dans la carte (ghost discret, plus de pastille flottante) -->
+      <!-- 1. Brand : CARTE navy alignée (haut/bas) avec le header C2.
+           Expanded → texte "Reapro / ERP Achat" + bouton collapse.
+           Collapsed → bouton collapse SEUL (ni titre, ni icône app). -->
       <div class="pv-brandcard">
-        <span class="pv-mark"><i class="pi pi-shopping-bag"></i></span>
         <div class="pv-brandtxt"><b>Reapro</b><em>ERP Achat</em></div>
         <button type="button" class="pv-collapse" :title="collapsed ? 'Déployer le menu' : 'Réduire le menu'"
-          @click="collapsed = !collapsed">
+          :aria-label="collapsed ? 'Déployer le menu' : 'Réduire le menu'" @click="collapsed = !collapsed">
           <i :class="collapsed ? 'pi pi-angle-right' : 'pi pi-angle-left'"></i>
         </button>
       </div>
@@ -187,38 +187,34 @@ const mockEqv = [
   position: sticky; top: 0; height: 100vh;
   transition: width .22s ease;
 }
-.pv-sidebar.collapsed { width: 88px; }   /* assez large pour mark + chevron sur UNE ligne */
+.pv-sidebar.collapsed { width: 70px; }   /* -20% (88px → 70px) : bouton collapse centré seul */
 
 /* 1. Brand — CARTE navy arrondie : même marge haute (12px), même radius (12px) et
    hauteur calée sur la carte header C2 du contenu → haut ET bas alignés, une seule
    ligne visuelle gauche/droite. */
 .pv-brandcard {
   display: flex; align-items: center; gap: 10px;
-  margin: 12px 10px 8px; padding: 10px 12px; min-height: 64px; box-sizing: border-box;
+  /* Hauteur calée sur le header C2 : top (margin 12) = top du header (.pv-c2 padding 12),
+     min-height = hauteur rendue du header → bas alignés, plus d'écart (ligne rouge). */
+  margin: 12px 10px 8px; padding: 10px 14px; min-height: 73px; box-sizing: border-box;
   background: linear-gradient(180deg, #1e293b, #243246);
   border: 1px solid #3b4a61; border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 4px 14px rgba(15, 23, 42, .18);
   flex-shrink: 0;
 }
 
-/* Bouton collapse/expand — INTÉGRÉ dans la carte brand (ghost navy discret,
-   même langage que les boutons du header C2 ; plus de pastille blanche flottante) */
+/* Bouton collapse/expand — INTÉGRÉ dans la carte brand (ghost navy net, même
+   langage que les boutons du header C2). Carré 30px, icône parfaitement centrée. */
 .pv-collapse {
   margin-left: auto; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px; border-radius: 8px;
-  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14);
-  color: #94a3b8; cursor: pointer; font-size: .66rem;
-  transition: background .15s ease, color .15s ease;
+  width: 30px; height: 30px; border-radius: 9px; padding: 0; line-height: 0;
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .16);
+  color: #cbd5e1; cursor: pointer; font-size: .8rem;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
-.pv-collapse:hover { background: rgba(255, 255, 255, .16); color: #fff; }
-.pv-mark {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border-radius: 10px;
-  background: #2563eb; color: #fff; font-weight: 800;
-  box-shadow: 0 1px 4px rgba(37, 99, 235, .45); user-select: none; flex-shrink: 0;
-}
-.pv-mark i { font-size: 1.05rem; }
+.pv-collapse:hover { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .28); color: #fff; }
+.pv-collapse:active { background: rgba(255, 255, 255, .2); }
 .pv-brandtxt { display: flex; flex-direction: column; line-height: 1.2; }
 .pv-brandtxt b { font-size: 1.05rem; font-weight: 800; color: #fff; letter-spacing: -.02em; }
 .pv-brandtxt em {
@@ -285,11 +281,9 @@ const mockEqv = [
 }
 
 /* ─── Mode COLLAPSED (88px) : icônes seules ; brand = icône Achat + chevron sur la MÊME ligne ─── */
-.pv-sidebar.collapsed .pv-brandcard { justify-content: center; gap: 6px; margin: 12px 8px 8px; padding: 9px 6px; }
+.pv-sidebar.collapsed .pv-brandcard { justify-content: center; gap: 0; margin: 12px 8px 8px; padding: 9px 6px; }
 .pv-sidebar.collapsed .pv-brandtxt { display: none; }
-.pv-sidebar.collapsed .pv-mark { width: 30px; height: 30px; border-radius: 8px; }
-.pv-sidebar.collapsed .pv-mark i { font-size: .9rem; }
-.pv-sidebar.collapsed .pv-collapse { margin-left: 0; width: 22px; height: 22px; font-size: .58rem; }
+.pv-sidebar.collapsed .pv-collapse { margin-left: 0; width: 30px; height: 30px; }
 .pv-sidebar.collapsed .pv-section { display: none; }
 .pv-sidebar.collapsed .pv-menu { padding: 6px 8px; }
 .pv-sidebar.collapsed .pv-link { justify-content: center; gap: 0; padding: 0; }
@@ -391,8 +385,6 @@ const mockEqv = [
   .pv-collapse { display: none; }
   .pv-sidebar.collapsed { width: 240px; }
   .pv-sidebar.collapsed .pv-brandcard { justify-content: flex-start; gap: 10px; margin: 12px 10px 8px; padding: 11px 12px; }
-  .pv-sidebar.collapsed .pv-mark { width: 36px; height: 36px; border-radius: 10px; }
-  .pv-sidebar.collapsed .pv-mark i { font-size: 1.05rem; }
   .pv-sidebar.collapsed .pv-brandtxt { display: flex; }
   .pv-sidebar.collapsed .pv-section { display: block; }
   .pv-sidebar.collapsed .pv-menu { padding: 2px 10px 8px; }

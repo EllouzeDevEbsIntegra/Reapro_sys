@@ -25,7 +25,7 @@
                                 filterPlaceholder="Rechercher par code ou nom..."
                                 class="client-select"
                                 showClear
-                                panelClass="b2b-client-panel"
+                                panelClass="c2-dropdown-panel"
                             >
                                 <template #option="{ option }">
                                     <div class="option-row">
@@ -211,7 +211,7 @@
                                 filter
                                 autoFilterFocus
                                 filterPlaceholder="Rechercher un groupe..."
-                                panelClass="b2b-client-panel"
+                                panelClass="c2-dropdown-panel"
                                 :disabled="!selectedClient"
                             >
   <template #option="{ option }">
@@ -240,7 +240,7 @@
         filter
         autoFilterFocus
         filterPlaceholder="Rechercher un sous-groupe..."
-        panelClass="b2b-client-panel"
+        panelClass="c2-dropdown-panel"
     >
       <template #option="{ option }">
         <div class="option-row">
@@ -267,7 +267,7 @@
                                 autoFilterFocus
                                 filterPlaceholder="Rechercher un fabricant..."
                                 :loading="isLoadingManufacturers"
-                                panelClass="b2b-client-panel"
+                                panelClass="c2-dropdown-panel"
                                 :disabled="!selectedClient"
                             >
                                 <template #option="{ option }">
@@ -591,6 +591,12 @@
                     </template>
                 </div>
             </div>
+
+            <!-- Footer de page (charte C2, structure standard) — discret, sans action -->
+            <footer class="b2b-footer">
+                <span class="b2b-footer-label">B2B</span>
+                <span class="b2b-footer-sub">Commande / Panier</span>
+            </footer>
         </main>
 
         <!-- ═══════════════════════════════════════════════════════════════
@@ -600,394 +606,89 @@
             v-model:visible="showClientDialog"
             modal
             :showHeader="false"
-            :style="{ width: '850px', maxWidth: '95vw', padding: '0', borderRadius: '20px', overflow: 'hidden' }"
-            :contentStyle="{ padding: '0', borderRadius: '20px' }"
+            :style="{ width: '720px', maxWidth: '94vw', padding: '0', borderRadius: '14px', overflow: 'hidden' }"
+            :contentStyle="{ padding: '0', borderRadius: '14px' }"
             dismissableMask
-            class="client-detail-dialog"
+            class="c2-client-dialog"
         >
-            <div class="dialog-inner" v-if="selectedCustomerObj">
+            <div class="c2-client" v-if="selectedCustomerObj">
 
-                <!-- En-tête gradient -->
-                <div class="dialog-hero">
-                    <button class="dialog-close" @click="showClientDialog = false">
-                        <i class="pi pi-times"></i>
-                    </button>
-
-                    <div v-if="customerFinancials?.contreRemboursement" class="contre-remboursement-flag" title="Client en Contre Remboursement">
-                        <i class="pi pi-wallet"></i>
-                        <span>Contre Remboursement</span>
+                <!-- Header Deep Ocean -->
+                <div class="c2-client-head">
+                    <div class="c2-client-headleft">
+                        <b class="c2-client-name"><span class="c2-client-code">{{ selectedCustomerObj.extId || '—' }}</span> · {{ selectedCustomerObj.companyName || 'Client' }}</b>
                     </div>
-
-                    <div class="hero-avatar">
-                        <span class="avatar-initials">
-                            {{ selectedCustomerObj.companyName?.charAt(0)?.toUpperCase() }}
+                    <div class="c2-client-headright">
+                        <span v-if="customerFinancials?.contreRemboursement" class="c2-client-flag" title="Client en Contre Remboursement">
+                            <i class="pi pi-wallet"></i> Contre Remboursement
                         </span>
-                    </div>
-
-                    <div class="hero-info">
-                        <h2 class="hero-name">{{ selectedCustomerObj.companyName }}</h2>
-                        <div class="hero-badge">
-                            <i class="pi pi-tag"></i>
-                            {{ selectedCustomerObj.extId }}
-                        </div>
+                        <button class="c2-client-close" @click="showClientDialog = false"><i class="pi pi-times"></i></button>
                     </div>
                 </div>
 
-                <!-- Infos détaillées -->
-                <div class="dialog-body">
-                    <div class="info-grid">
+                <!-- Corps : grille de champs -->
+                <div class="c2-client-body">
+                    <div class="c2-client-grid">
 
-                        <div class="info-card">
-                            <div class="info-icon-wrap blue">
-                                <i class="pi pi-id-card"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Code Client</span>
-                                <span class="info-value mono">{{ selectedCustomerObj.extId }}</span>
-                            </div>
+                        <div class="c2-client-field">
+                            <span class="c2-client-flabel"><i class="pi pi-id-card"></i> Code Client</span>
+                            <span class="c2-client-fvalue mono">{{ selectedCustomerObj.extId || '—' }}</span>
                         </div>
 
-                        <div class="info-card">
-                            <div class="info-icon-wrap green">
-                                <i class="pi pi-building"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Raison Sociale</span>
-                                <span class="info-value">{{ selectedCustomerObj.companyName }}</span>
-                            </div>
+                        <div class="c2-client-field">
+                            <span class="c2-client-flabel"><i class="pi pi-building"></i> Raison Sociale</span>
+                            <span class="c2-client-fvalue">{{ selectedCustomerObj.companyName || '—' }}</span>
                         </div>
 
-                        <div class="info-card">
-                            <div class="info-icon-wrap orange">
-                                <i class="pi pi-phone"></i>
-                            </div>
-                            <div class="info-content" style="flex: 1; min-width: 0;">
-                                <span class="info-label">Téléphone</span>
-                                <div class="phone-tags-list">
-                                    <template v-if="getPhoneNumbersList(selectedCustomerObj.phone).length > 0">
-                                        <span v-for="phone in getPhoneNumbersList(selectedCustomerObj.phone)" :key="phone" class="phone-tag">
-                                            {{ phone }}
-                                        </span>
-                                    </template>
-                                    <span v-else class="info-value">—</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="info-card">
-                            <div class="info-icon-wrap red">
-                                <i class="pi pi-envelope"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Email</span>
-                                <span class="info-value">
-                                    {{ selectedCustomerObj.email || '—' }}
+                        <div class="c2-client-field">
+                            <span class="c2-client-flabel"><i class="pi pi-phone"></i> Téléphone</span>
+                            <span class="c2-client-fvalue">
+                                <span v-if="getPhoneNumbersList(selectedCustomerObj.phone).length > 0" class="c2-client-phones">
+                                    <span v-for="phone in getPhoneNumbersList(selectedCustomerObj.phone)" :key="phone" class="c2-client-chip">{{ phone }}</span>
                                 </span>
-                            </div>
+                                <template v-else>—</template>
+                            </span>
                         </div>
 
-                        <div class="info-card">
-                            <div class="info-icon-wrap cyan">
-                                <i class="pi pi-file-edit"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Matricule Fiscal</span>
-                                <span class="info-value">
-                                    {{ selectedCustomerObj.taxRegistrationNumber || '—' }}
-                                </span>
-                            </div>
+                        <div class="c2-client-field">
+                            <span class="c2-client-flabel"><i class="pi pi-envelope"></i> Email</span>
+                            <span class="c2-client-fvalue">{{ selectedCustomerObj.email || '—' }}</span>
                         </div>
 
-                        <div class="info-card">
-                            <div class="info-icon-wrap teal">
-                                <i class="pi pi-map"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Ville</span>
-                                <span class="info-value">
-                                    {{ selectedCustomerObj.city || '—' }}
-                                </span>
-                            </div>
+                        <div class="c2-client-field">
+                            <span class="c2-client-flabel"><i class="pi pi-file-edit"></i> Matricule Fiscal</span>
+                            <span class="c2-client-fvalue">{{ selectedCustomerObj.taxRegistrationNumber || '—' }}</span>
                         </div>
 
+                        <div class="c2-client-field">
+                            <span class="c2-client-flabel"><i class="pi pi-map"></i> Ville</span>
+                            <span class="c2-client-fvalue">{{ selectedCustomerObj.city || '—' }}</span>
+                        </div>
 
-                        <div class="info-card full">
-                            <div class="info-icon-wrap purple">
-                                <i class="pi pi-map-marker"></i>
-                            </div>
-                            <div class="info-content">
-                                <span class="info-label">Adresse</span>
-                                <span class="info-value">
-                                    {{ selectedCustomerObj.address || '—' }}
-                                </span>
-                            </div>
+                        <div class="c2-client-field full">
+                            <span class="c2-client-flabel"><i class="pi pi-map-marker"></i> Adresse</span>
+                            <span class="c2-client-fvalue">{{ selectedCustomerObj.address || '—' }}</span>
                         </div>
 
                     </div>
                 </div>
 
                 <!-- Pied de dialog -->
-                <div class="dialog-footer">
-                    <button class="close-dialog-btn" @click="showClientDialog = false">
-                        Fermer
-                    </button>
+                <div class="c2-client-foot">
+                    <button class="c2-client-btn" @click="showClientDialog = false">Fermer</button>
                 </div>
             </div>
         </Dialog>
 
-        <!-- Article Info Dialog -->
-        <div v-if="showInfoDialog" class="info-dialog-overlay" @click.self="showInfoDialog = false">
-            <div class="info-dialog-container">
-                <!-- Header -->
-                <div class="info-dialog-header">
-                    <div class="info-dialog-header-title">
-                        Informations Article • {{ formatReference(selectedInfoItem?.no || selectedInfoItem?.articleNumber) }}
-                        <i v-if="isProductItem(selectedInfoItem)" class="pi pi-bookmark-fill product-flag" title="Référence Master"></i>
-                        • {{
-                            selectedInfoItem?.descriptionStructured || selectedInfoItem?.manufacturerName || selectedInfoItem?.fabricant
-                        }}
-                    </div>
-                    <div class="info-dialog-header-right">
-                        <img src="/images/articles/tecalliance_partner.png" alt="TecAlliance" class="tecalliance-logo">
-                        <button class="close-info-btn" @click="showInfoDialog = false">
-                            <i class="pi pi-times"></i>
-                        </button>
-                    </div>
-                </div>
+        <!-- Dialog Info Article TecDoc — composant PARTAGÉ (réf. visuelle = B2B) -->
+        <TecDocArticleInfoDialog
+            v-model:visible="showInfoDialog"
+            :item="selectedInfoItem"
+            :loading="selectedInfoItem?.isLoading"
+            :is-master="selectedInfoItem ? isProductItem(selectedInfoItem) : false"
+            @load-vehicle-models="fetchVehiclesForBrand"
+        />
 
-                <!-- Main Content -->
-                <div class="info-dialog-body">
-                    <!-- Loading State -->
-                    <div v-if="selectedInfoItem?.isLoading" class="loading-state">
-                        <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: #3b82f6;"></i>
-                        <p>Chargement des informations...</p>
-                    </div>
-
-                    <template v-else>
-                        <div class="info-top-section">
-                            <!-- Image Gallery -->
-                            <div class="info-gallery">
-                                <div class="thumbnail-list"
-                                    v-if="!isViewing360 && selectedInfoItem?.thumbnails?.length > 0">
-                                    <button class="thumb-nav-btn up" @click="prevImage"
-                                        v-if="selectedInfoItem.thumbnails.length > 1"><i
-                                            class="pi pi-chevron-up"></i></button>
-                                    <div class="thumbnail-scroll-container">
-                                        <div v-for="(thumb, index) in selectedInfoItem?.thumbnails" :key="index"
-                                            class="thumb-item" :class="{ active: index === currentImageIndex }"
-                                            @click="currentImageIndex = index">
-                                            <img :src="thumb" alt="thumbnail">
-                                        </div>
-                                    </div>
-                                    <button class="thumb-nav-btn down" @click="nextImage"
-                                        v-if="selectedInfoItem.thumbnails.length > 1"><i
-                                            class="pi pi-chevron-down"></i></button>
-                                </div>
-                                <div class="main-image-container">
-                                    <!-- 360 Toggle Button -->
-                                    <button v-if="selectedInfoItem?.images360?.length > 0" class="viewer-360-toggle-btn"
-                                        @click="isViewing360 = !isViewing360"
-                                        :title="isViewing360 ? 'Retour aux photos' : 'Vue 360°'">
-                                        <i class="pi" :class="isViewing360 ? 'pi-images' : 'pi-sync'"
-                                            style="font-size: 1.2rem;"></i>
-                                    </button>
-
-                                    <!-- Standard Image View -->
-                                    <template v-if="!isViewing360">
-                                        <img v-if="selectedInfoItem?.thumbnails?.[currentImageIndex]"
-                                            :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
-                                            class="main-article-image">
-                                        <div v-else class="no-image-placeholder">
-                                            <i class="pi pi-image" style="font-size: 3rem; color: #94a3b8;"></i>
-                                            <p>Aucune image disponible</p>
-                                        </div>
-                                    </template>
-
-                                    <!-- 360 View -->
-                                    <div v-else class="viewer-360-container" @mousemove="handle360MouseMove"
-                                        @touchmove.prevent="handle360TouchMove">
-                                        <img :src="selectedInfoItem?.images360?.[current360Frame]" alt="360 View"
-                                            class="image-360" draggable="false">
-                                        <div class="viewer-360-overlay">
-                                            <i class="pi pi-sync spin-icon"></i>
-                                            <span>Faites glisser pour tourner</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Technical Specs -->
-                            <div class="info-specs-container">
-                                <div class="brand-header">
-                                    <img v-if="selectedInfoItem?.brandLogo" :src="selectedInfoItem?.brandLogo"
-                                        alt="Brand" class="brand-logo">
-                                    <div class="brand-info">
-                                        <div class="brand-ref">
-                                            N° de référence: {{ formatReference(selectedInfoItem?.no) }}
-                                             <i v-if="isProductItem(selectedInfoItem)" class="pi pi-bookmark-fill product-flag" title="Référence Master"></i>
-                                        </div>
-                                        <div class="brand-desc">{{ selectedInfoItem?.genericDescription ||
-                                            selectedInfoItem?.descriptionStructured }}</div>
-                                        <div class="brand-name" v-if="selectedInfoItem?.brand">{{
-                                            selectedInfoItem?.brand }}</div>
-                                    </div>
-                                </div>
-                                <div class="specs-table" v-if="selectedInfoItem?.specs?.length > 0">
-                                    <div v-for="(spec, index) in selectedInfoItem?.specs" :key="index" class="spec-row">
-                                        <div class="spec-label">{{ spec.label }}</div>
-                                        <div class="spec-value">{{ spec.value }}</div>
-                                    </div>
-                                </div>
-                                <div v-else class="no-data-message">
-                                    Aucune spécification technique disponible.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Stacked Sections -->
-                        <div class="info-sections-container">
-                            <!-- OEM Numbers Section -->
-                            <div class="info-section" v-if="selectedInfoItem?.oemNumbers?.length > 0">
-                                <div class="info-section-header cursor-pointer"
-                                    @click="isOemSectionExpanded = !isOemSectionExpanded">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <i class="pi pi-list"></i>
-                                        <span>Numéros OEM</span>
-                                    </div>
-                                    <i class="pi"
-                                        :class="isOemSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-                                </div>
-                                <div class="info-section-content" v-if="isOemSectionExpanded">
-                                    <div class="vehicles-list-container">
-                                        <div v-for="(group, index) in groupedOemNumbers" :key="index"
-                                            class="brand-group">
-                                            <div class="brand-toggle-row" @click="toggleOemBrand(group.brand)">
-                                                <i class="pi"
-                                                    :class="expandedOemBrands.has(group.brand) ? 'pi-minus' : 'pi-plus'"></i>
-                                                <span class="brand-name">{{ group.brand }}</span>
-                                            </div>
-                                            <div v-if="expandedOemBrands.has(group.brand)" class="oe-numbers-list"
-                                                style="padding: 10px 10px 10px 30px;">
-                                                <div v-for="(oem, oIndex) in group.numbers" :key="oIndex"
-                                                    class="oe-number-item">
-                                                    {{ oem.articleNumber }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- PDFs Section -->
-                            <div class="info-section" v-if="selectedInfoItem?.pdfs?.length > 0">
-                                <div class="info-section-header cursor-pointer"
-                                    @click="isPdfSectionExpanded = !isPdfSectionExpanded">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <i class="pi pi-file-pdf"></i>
-                                        <span>Documents PDF</span>
-                                    </div>
-                                    <i class="pi"
-                                        :class="isPdfSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-                                </div>
-                                <div class="info-section-content" v-if="isPdfSectionExpanded">
-                                    <div class="pdfs-list">
-                                        <a v-for="(pdf, index) in selectedInfoItem?.pdfs" :key="index" :href="pdf.url"
-                                            target="_blank" rel="noopener noreferrer" class="pdf-item">
-                                            <i class="pi pi-file-pdf"></i>
-                                            <span>{{ pdf.fileName }}</span>
-                                            <i class="pi pi-external-link"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Composants du Kit Section -->
-                            <div class="info-section" v-if="selectedInfoItem?.articleParts?.length > 0">
-                                <div class="info-section-header cursor-pointer"
-                                    @click="isKitPartsSectionExpanded = !isKitPartsSectionExpanded">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <i class="pi pi-briefcase"></i>
-                                        <span>Composants du Kit</span>
-                                    </div>
-                                    <i class="pi"
-                                        :class="isKitPartsSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-                                </div>
-                                <div class="info-section-content" v-if="isKitPartsSectionExpanded">
-                                    <div class="table-responsive" style="overflow-x: auto; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                        <table class="w-full text-left border-collapse" style="font-size: 0.9rem; min-width: 500px;">
-                                            <thead>
-                                                <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
-                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Référence</th>
-                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Désignation</th>
-                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Fabricant</th>
-                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;" class="text-center">Quantité</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr v-for="(part, pIndex) in selectedInfoItem.articleParts" :key="pIndex"
-                                                    style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;"
-                                                    class="hover:bg-slate-50">
-                                                    <td style="padding: 12px 16px; font-weight: 600; color: #0f172a;">{{ part.articleNo || part.articleNumber || '—' }}</td>
-                                                    <td style="padding: 12px 16px; color: #334155;">{{ part.articleName || '—' }}</td>
-                                                    <td style="padding: 12px 16px; color: #475569;">{{ part.brandName || '—' }}</td>
-                                                    <td style="padding: 12px 16px; color: #0f172a; font-weight: 500;" class="text-center">{{ part.quantity || 1 }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Vehicles Section -->
-                            <div class="info-section" v-if="selectedInfoItem?.vehicles?.length > 0">
-                                <div class="info-section-header cursor-pointer"
-                                    @click="isVehiclesSectionExpanded = !isVehiclesSectionExpanded">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <i class="pi pi-car"></i>
-                                        <span>Véhicules concernés</span>
-                                    </div>
-                                    <i class="pi"
-                                        :class="isVehiclesSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-                                </div>
-                                <div class="info-section-content" v-if="isVehiclesSectionExpanded">
-                                    <div class="vehicles-list-container">
-                                        <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
-                                            <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
-                                                class="brand-group">
-                                                <div class="brand-toggle-row" @click="toggleBrand(brandGroup)">
-                                                    <i class="pi"
-                                                        :class="expandedBrands.has(brandGroup.brand) ? 'pi-minus' : 'pi-plus'"></i>
-                                                    <span class="brand-name">{{ brandGroup.brand }}</span>
-                                                </div>
-                                                <div v-if="expandedBrands.has(brandGroup.brand)" class="models-list">
-                                                    <div v-if="brandGroup.isLoading" class="loading-models"
-                                                        style="padding: 10px; color: #64748b; font-style: italic;">
-                                                        <i class="pi pi-spin pi-spinner" style="margin-right: 8px;"></i>
-                                                        Chargement des modèles...
-                                                    </div>
-                                                    <div v-else-if="brandGroup.models.length === 0" class="no-models"
-                                                        style="padding: 10px; color: #94a3b8; font-style: italic;">
-                                                        Aucun modèle trouvé.
-                                                    </div>
-                                                    <div v-else v-for="(model, mIndex) in brandGroup.models"
-                                                        :key="mIndex" class="model-item">
-                                                        <i class="pi pi-angle-right model-plus-icon"></i>
-                                                        <span class="model-text">{{ model }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div v-else class="no-data-message">
-                                            Aucune donnée de véhicule disponible pour cet article.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </div>
-        </div>
 
     </div>
 </template>
@@ -1002,6 +703,7 @@ import { useCompareQuoteStore } from '../stores/compareQuote'
 import { useAuthStore } from '../stores/auth'
 import { useSalesOrderStore } from '../stores/salesOrderStore'
 import SalesOrderSidebar from '../components/SalesOrderSidebar.vue'
+import TecDocArticleInfoDialog from '../components/tecdoc/TecDocArticleInfoDialog.vue'
 
 const compareStore = useCompareQuoteStore()
 const authStore = useAuthStore()
@@ -1375,6 +1077,7 @@ const openTecdocDialog = async (item) => {
             selectedInfoItem.value = {
                 ...item,
                 articleId: article.genericArticles?.[0]?.legacyArticleId,
+                tecdocArticleNumber: article.articleNumber || '',
                 isLoading: false,
                 brand: article.mfrName || '',
                 brandLogo: article.supplierLogoUrl || '/images/articles/febi_logo.png',
@@ -1486,6 +1189,14 @@ const prevImage = () => {
     currentImageIndex.value = (currentImageIndex.value - 1 +
         selectedInfoItem.value.thumbnails.length) % selectedInfoItem.value.thumbnails.length
 }
+
+// Sync : la vignette active reste visible dans le scroll horizontal quand on change de photo
+const thumbsRef = ref(null)
+watch(currentImageIndex, (i) => {
+    const cont = thumbsRef.value
+    const el = cont && cont.children ? cont.children[i] : null
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+})
 
 const handle360MouseMove = (event) => {
     if (!selectedInfoItem.value?.images360?.length) return
@@ -1798,23 +1509,40 @@ onMounted(async () => {
 <!-- ── SCOPED : trigger + layout ──────────────────────────────────── -->
 <style scoped>
 .page-layout { min-height: 100vh; background-color: #f8fafc; }
-.main-content { width: 100%; padding: 0.5rem 2rem; }
+/* Flex column : header (auto, grandit avec les filtres) + corps (flex:1) + footer (auto)
+   → le corps remplit TOUJOURS l'espace restant, filtres ouverts ou fermés (sans calc figé). */
+.main-content { width: 100%; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; padding: var(--c2-page-pad) var(--c2-page-pad); }
 
 /* Header */
 .header-bar {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    margin-bottom: 1rem;
+    position: sticky;
+    top: var(--c2-head-sticky-top);
+    z-index: var(--c2-head-z);
+    flex-shrink: 0;
+    background: var(--c2-head-bg);
+    border: 1px solid var(--c2-head-border);
+    border-radius: var(--c2-head-radius);
+    box-shadow: var(--c2-head-shadow);
+    height: var(--c2-head-h);
+    box-sizing: border-box;
+    margin-bottom: var(--c2-head-gap);
     overflow: hidden;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Filtres ouverts : le header grandit pour révéler .advanced-filters-panel (fix régression) */
+.header-bar.expanded {
+    height: auto;
+    overflow: hidden;   /* clippe les coins du panneau filtres aux angles arrondis du header */
+}
+.header-bar.expanded .header-main-row {
+    height: var(--c2-head-h);
 }
 .header-main-row {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     gap: 1.5rem; /* same gap as body-layout */
-    padding: 1rem 1.5rem;
-    min-height: 90px;
+    padding: 0 1.5rem;
+    height: 100%;
     box-sizing: border-box;
 }
 .header-left {
@@ -1834,7 +1562,7 @@ onMounted(async () => {
     padding-left: 1rem;
 }
 .header-bar h1 {
-    font-size: 1.25rem; font-weight: 700; color: #1e293b; margin: 0; white-space: nowrap;
+    font-size: 1.25rem; font-weight: 800; color: var(--c2-head-title); margin: 0; white-space: nowrap;
 }
 .spacer { flex-grow: 1; }
 
@@ -2200,7 +1928,7 @@ onMounted(async () => {
 .option-code {
     font-size: 0.72rem; font-weight: 700; color: #3b82f6; background: #eff6ff;
     border-radius: 4px; padding: 0.1rem 0.45rem; white-space: nowrap; flex-shrink: 0;
-    letter-spacing: 0.04em; font-family: 'Courier New', monospace;
+    letter-spacing: 0.04em; font-family: var(--c2-font-mono);
 }
 .option-sep { color: #d1d5db; font-size: 0.8rem; flex-shrink: 0; }
 .option-name {
@@ -2250,8 +1978,38 @@ onMounted(async () => {
 }
 
 /* Body */
-.body-layout { display: flex; gap: 1.5rem; height: calc(100vh - 130px); overflow: hidden; }
-.left-panel { flex: 2; transition: flex 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; overflow-x: hidden; }
+/* Gap gauche/droite compact (= padding page) + hauteur tokenisée → le corps remplit
+   l'espace ENTRE header et footer (plus de "nombre magique", plus de vide bas, pas de chevauchement). */
+.main-content { --b2b-footer-h: 48px; }   /* = hauteur footer page/sidebar (utilisée par .b2b-footer) */
+/* Corps = espace restant entre header (variable selon filtres) et footer ; scroll INTERNE des panneaux. */
+.body-layout { flex: 1; min-height: 0; display: flex; gap: var(--c2-page-pad); overflow: hidden; }
+
+/* Footer de page B2B (charte C2, structure standard) — navy, 48px, discret (libellé structurel) */
+.b2b-footer {
+    flex-shrink: 0;
+    height: var(--b2b-footer-h);
+    margin-top: var(--c2-head-gap);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0 1.5rem;
+    background: var(--c2-head-bg);
+    border: 1px solid var(--c2-head-border);
+    border-radius: var(--c2-head-radius);
+    box-shadow: var(--c2-head-shadow);
+    position: sticky;
+    bottom: var(--c2-page-pad);
+    z-index: var(--c2-head-z);
+}
+.b2b-footer-label { color: #e2e8f0; font-size: .82rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+.b2b-footer-sub { color: #94a3b8; font-size: .76rem; font-weight: 600; white-space: nowrap; }
+/* Panneau gauche : ne scrolle PAS globalement (desktop) — chaque table scrolle en interne (cf. .table-wrapper).
+   Les 3 sections partagent la hauteur du panneau via flex. */
+.left-panel { flex: 2; transition: flex 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; gap: 1.5rem; min-height: 0; overflow: hidden; }
+/* Fallback viewport très court : scroll global de secours */
+@media (max-height: 620px) { .left-panel { overflow-y: auto; } }
 .left-panel--expanded { flex: 1; }
 .right-panel { position: relative; flex: 1; transition: flex 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; overflow: hidden; min-width: 320px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
 .right-panel--expanded { flex: 1; }
@@ -2347,7 +2105,7 @@ onMounted(async () => {
     background: #eff6ff; border: 1px solid #bfdbfe;
     color: #2563eb; border-radius: 999px;
     padding: 0.2rem 0.75rem; font-size: 0.75rem; font-weight: 700;
-    letter-spacing: 0.05em; font-family: 'Courier New', monospace;
+    letter-spacing: 0.05em; font-family: var(--c2-font-mono);
     width: fit-content;
 }
 
@@ -2385,7 +2143,7 @@ onMounted(async () => {
     font-size: 0.875rem; font-weight: 600; color: #1e293b;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.info-value.mono { font-family: 'Courier New', monospace; color: #2563eb; font-size: 0.85rem; }
+.info-value.mono { font-family: var(--c2-font-mono); color: #2563eb; font-size: 0.85rem; }
 
 /* Footer */
 .dialog-footer {
@@ -2401,6 +2159,72 @@ onMounted(async () => {
     cursor: pointer; transition: background 0.2s, color 0.2s;
 }
 .close-dialog-btn:hover { background: #e2e8f0; color: #1e293b; }
+
+/* ════════════ Dialog Info article — style Confirmation Achat C2 (scoped) ════════════ */
+/* ════════════════════════════════════════════════════════════════
+   DIALOG INFO CLIENT — chrome C2/Reapro (Deep Ocean header)
+   Préfixe dédié .c2-client- (n'impacte pas l'ancien CSS .dialog- / .info-
+   partagé par d'autres composants). Wrapper PrimeVue Dialog conservé.
+   ════════════════════════════════════════════════════════════════ */
+.c2-client-dialog :deep(.p-dialog-content) { padding: 0; border-radius: 14px; }
+.c2-client {
+    --ink: #0f172a; --line: #e8edf3;
+    display: flex; flex-direction: column; background: #fff; border-radius: 14px; overflow: hidden;
+}
+.c2-client-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 16px; background: var(--c2-head-bg); border-bottom: 1px solid var(--c2-head-border); color: #fff;
+}
+.c2-client-headleft { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.c2-client-name { font-family: var(--c2-font-sans); font-size: 1rem; font-weight: 800; line-height: 1.3; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Code dans le titre = même police/poids/couleur que le reste du header (pas de look mono/technique). */
+.c2-client-code { color: inherit; }
+.c2-client-headright { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.c2-client-flag {
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    font-size: 0.72rem; font-weight: 700; padding: 4px 9px; border-radius: 7px;
+    background: rgba(245, 158, 11, .16); color: #fde68a; border: 1px solid rgba(245, 158, 11, .38);
+}
+.c2-client-close {
+    border: 1px solid var(--c2-head-border); background: #0e3f6e; color: #cbd5e1;
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; transition: background .15s, color .15s;
+}
+.c2-client-close:hover { background: #155088; color: #fff; }
+
+.c2-client-body { padding: 16px 18px; }
+.c2-client-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.c2-client-field {
+    display: flex; flex-direction: column; gap: 4px; min-width: 0;
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+}
+.c2-client-field.full { grid-column: 1 / -1; }
+.c2-client-flabel {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--c2-muted-blue);
+}
+.c2-client-flabel i { color: var(--c2-primary); font-size: 0.78rem; }
+.c2-client-fvalue { font-size: 0.9rem; color: var(--ink); font-weight: 600; word-break: break-word; }
+/* Code client = identifiant métier court → Inter + tabular-nums (pas de mono agressif). */
+.c2-client-fvalue.mono { font-family: var(--c2-font-sans); font-variant-numeric: tabular-nums; }
+.c2-client-phones { display: flex; flex-wrap: wrap; gap: 5px; }
+.c2-client-chip {
+    font-size: 0.8rem; font-weight: 600; color: var(--c2-primary);
+    background: #eff6ff; border: 1px solid #dbeafe; border-radius: 6px; padding: 2px 8px;
+}
+
+.c2-client-foot {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 12px 18px; border-top: 1px solid var(--line); background: #fafbfc;
+}
+.c2-client-btn {
+    height: 36px; padding: 0 18px; border-radius: 8px; border: 1px solid #d6deea;
+    background: #fff; color: #334155; font-weight: 700; font-size: 0.85rem; cursor: pointer;
+    transition: background .15s, border-color .15s, box-shadow .15s;
+}
+.c2-client-btn:hover { background: #f1f5f9; border-color: #c2cedd; }
+.c2-client-btn:focus-visible { outline: none; border-color: var(--c2-focus); box-shadow: 0 0 0 3px rgba(130, 201, 229, .35); }
+
 </style>
 
 <!-- ── GLOBAL : Panel overlay Select ─────────────────────────────── -->
@@ -2445,13 +2269,23 @@ onMounted(async () => {
     display: flex;
     flex-direction: column;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    flex-shrink: 0;
+    flex: 0 1 auto;   /* compact si peu de lignes, peut rétrécir → scroll interne du wrapper */
+    min-height: 0;
 }
+/* Répartition STABLE (≈ 50/25/25) avec min ET max par section → aucune n'est jamais
+   ni écrasée (min-height) ni trop grande (max-height) ; chacune scrolle en interne au-delà.
+   FRS (1re) = part double ; EQV/KIT (2e/3e) = part simple. flex-basis 0 → part indépendante du contenu. */
+/* Les 3 sections à HAUTEUR ÉGALE dans tous les cas (≈ 1/3 chacune), indépendamment du contenu :
+   même poids flex + flex-basis 0 + même min/max → chacune scrolle en interne au-delà. */
+.left-panel > .table-container:first-child,
+.left-panel > .table-container:nth-child(2),
+.left-panel > .table-container:nth-child(3) { flex: 1 1 0; min-height: 175px; max-height: 40%; }
 
 .table-header-row {
     background-color: #f8fafc;
     padding: 12px 15px;
     border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;   /* le titre reste visible quand le tableau scrolle */
 }
 
 .table-title {
@@ -2465,9 +2299,13 @@ onMounted(async () => {
 .table-wrapper {
     overflow-x: auto;
     overflow-y: auto;
-    flex-grow: 1;
-    max-height: 400px;
+    flex: 1 1 auto;
+    min-height: 0;   /* hauteur pilotée par le partage flex de .table-container → scroll interne */
 }
+/* Scrollbar discrète (charte C2) */
+.table-wrapper::-webkit-scrollbar { width: 7px; height: 7px; }
+.table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+.table-wrapper::-webkit-scrollbar-track { background: transparent; }
 
 .modern-table {
     width: 100%;
@@ -2535,7 +2373,7 @@ onMounted(async () => {
     color: #0f172a;
     line-height: 1.2;
     margin-bottom: 2px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--c2-font-sans);
     letter-spacing: -0.025em;
     white-space: nowrap;
     overflow: hidden;
@@ -3237,20 +3075,20 @@ onMounted(async () => {
     border-top: none;
     background: #f8fafc;
     padding: 0 1.5rem;
-    max-height: 0;
+    /* Hauteur RÉELLE animée via grid-rows 0fr→1fr : fluide et exact (pas d'overshoot de max-height) */
+    display: grid;
+    grid-template-rows: 0fr;
     opacity: 0;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.25s ease-in-out,
-                padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: grid-template-rows 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                padding 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.16s ease;
 }
+.advanced-filters-panel > * { overflow: hidden; min-height: 0; }
 .advanced-filters-panel.expanded {
     border-top: 1px solid #f1f5f9;
     padding: 1.25rem 1.5rem;
-    max-height: 250px;
+    grid-template-rows: 1fr;
     opacity: 1;
 }
 
@@ -3289,27 +3127,34 @@ onMounted(async () => {
     flex-shrink: 0;
 }
 
+/* Bouton d'action principal — harmonisé charte C2 (bleu --c2-select-accent) */
 .filter-btn-search {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     height: 40px;
     padding: 0 1.25rem;
-    background: #3b82f6;
-    color: white;
-    border: none;
+    background: var(--c2-primary);
+    color: #fff;
+    border: 1px solid transparent;
     border-radius: 8px;
     font-size: 0.875rem;
     font-weight: 600;
+    letter-spacing: .01em;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
 }
+.filter-btn-search .pi { font-size: .85rem; }
 
 .filter-btn-search:hover:not(:disabled) {
-    background: #2563eb;
+    background: var(--c2-primary-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 4px 12px rgba(24, 89, 179, 0.30);
 }
+
+.filter-btn-search:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 6px rgba(24, 89, 179, 0.24); }
+
+.filter-btn-search:focus-visible { outline: 2px solid var(--c2-focus); outline-offset: 2px; }
 
 .filter-btn-search:disabled {
     background: #cbd5e1;

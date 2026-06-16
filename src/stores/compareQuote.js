@@ -203,6 +203,23 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
             }
         },
 
+        // Lignes Import (clic quantité « I » colonne Appro, détail C2) :
+        // item-ledger en magasin d'import, RemainingQuantity > 0, pour itemNo + sourceNo (FRS).
+        async fetchImportLedgerLines(itemNo, sourceNo, page = 0, size = 50, sort = '') {
+            this.error = null
+            try {
+                const params = { itemNo, sourceNo, page, size }
+                if (sort) {
+                    params.sort = sort
+                }
+                const response = await axios.get('/api/bc/import-ledger-entries', { params })
+                return response.data
+            } catch (err) {
+                console.error('Fetch import ledger lines error:', err)
+                throw err
+            }
+        },
+
         async fetchEquivalenceItems(referenceMaster, no, page = 0, size = 10, compareQuoteNo = null, filters = {}) {
             this.error = null
             try {

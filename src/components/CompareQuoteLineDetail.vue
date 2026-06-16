@@ -2,96 +2,91 @@
     <div class="line-detail-container">
         <!-- Section 1: Full-width Header -->
         <div class="top-header">
-            <!-- 3% -->
+            <!-- Zone GAUCHE (largeur fixe = zone « Confirmation Commandes Achat » de C2) :
+                 retour + réf/désignation + indicateur de ligne → STOCKS démarre au même x qu'en C2. -->
+            <div class="cmp-header-left">
             <Button icon="pi pi-arrow-left" text rounded @click="$emit('back')" class="back-btn" />
 
             <!-- 10% -->
             <div class="item-info">
                 <div class="info-left">
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="ref-row">
                         <h1 class="item-no">
                             {{ formatReference(line.itemNo) }}
                         </h1>
                         <i v-if="isLoadingMasterData" class="pi pi-spin pi-spinner"
-                            style="color: #3b82f6; font-size: 1.2rem;" title="Chargement en cours..."></i>
-                        <i v-else class="pi pi-check-circle" style="color: #22c55e; font-size: 1.2rem;"
+                            style="color: #3b82f6; font-size: 1.1rem;" title="Chargement en cours..."></i>
+                        <i v-else class="pi pi-check-circle" style="color: #22c55e; font-size: 1.1rem;"
                             title="Chargement terminé"></i>
+                        <!-- N° de ligne : badge fin sur la ligne de la réf (libère la 2e ligne pour la désignation) -->
+                        <span class="line-badge" :title="`Ligne ${currentIndex + 1} / ${totalElements}`">
+                            <i class="pi pi-bars"></i>{{ currentIndex + 1 }} / {{ totalElements }}
+                        </span>
                     </div>
                     <div class="description-row">
                         <span class="item-desc">{{ line.structuredDescription || line.description || 'Description'
                             }}</span>
                     </div>
                 </div>
-                <div class="info-right">
-                    <div class="status-dot-container">
-                        <div class="status-badge-rect" :class="statusDotClass" @click="openVerificationDialog"
-                            :title="`TecDoc: ${verificationStatus?.countNotCreated || 0} à créer`">
-                            <img src="/images/articles/tecalliance_partner.png" alt="TecAlliance"
-                                class="status-badge-icon">
-                        </div>
-                        <span v-if="verificationStatus && verificationStatus.countNotCreated > 0"
-                            class="status-dot-badge">{{ verificationStatus.countNotCreated }}</span>
+            </div>
+
+            </div><!-- /cmp-header-left -->
+
+            <!-- STOCKS — reproduction EXACTE du composant STOCKS de C2 (mêmes classes c2-stk* + même CSS) -->
+            <div class="c2-stockband">
+                <span class="c2-stocklabel">STOCKS</span>
+                <div v-for="stock in intercompanyStocks" :key="stock.companyId" class="c2-stkcol">
+                    <div class="c2-stkpart">
+                        <span class="c2-stkmini">STE</span>
+                        <span class="c2-stkval company">{{ stock.company }}</span>
                     </div>
-                </div>
-            </div>
-
-            <!-- 7% -->
-            <div class="header-middle">
-                <div class="page-indicator-badge">
-                    Ligne {{ currentIndex + 1 }} / {{ totalElements }}
-                </div>
-            </div>
-
-            <!-- 7% -->
-            <div class="header-middle">
-                <div class="count-badge" :class="{ 'clickable': !isLoadingOemCount }" :style="!isLoadingOemCount ? 'cursor: pointer; transition: all 0.2s;' : ''" @click="openOemCountDialog" :title="isLoadingOemCount ? 'Calcul du count en cours...' : 'Voir les détails du count'">
-                    <span v-if="isLoadingOemCount" class="pi pi-spin pi-spinner" style="font-size: 1.1rem; margin-right: 6px;"></span>
-                    Count : {{ isLoadingOemCount ? '...' : (oemCount !== null ? oemCount : (line.countItemManual || 0)) }}
-                </div>
-            </div>
-
-            <!-- 54% -->
-            <div class="header-stocks">
-                <div class="stock-column label-column">
-                    <div class="stocks-label">STOCKS</div>
-                </div>
-                <div v-for="stock in intercompanyStocks" :key="stock.companyId" class="stock-column dynamic-column">
-                    <div class="stock-part ste">
-                        <span class="stock-label-mini">STE</span>
-                        <span class="stock-value-main company">{{ stock.company }}</span>
-                    </div>
-                    <div class="stock-part stock clickable"
+                    <div class="c2-stkpart click" :title="'Voir l\'historique — ' + stock.company"
                         @click="openHistory(stock.company, stock.companyId, stock.stock)">
-                        <span class="stock-label-mini">Stock</span>
-                        <span class="stock-value-main" :class="stock.stock > 0 ? 'green' : 'red'">{{ stock.stock
-                        }}</span>
+                        <span class="c2-stkmini">Stock</span>
+                        <span class="c2-stkval" :class="Number(stock.stock) > 0 ? 'pos' : 'neg'">{{ stock.stock }}</span>
                     </div>
-                    <div class="stock-part purchase">
-                        <span class="stock-label-mini">Dernier Achat</span>
-                        <span class="stock-value-main date">{{ formatDate(stock.lastPurchaseDate) }}</span>
+                    <div class="c2-stkpart">
+                        <span class="c2-stkmini">Dern. Achat</span>
+                        <span class="c2-stkval date">{{ formatDate(stock.lastPurchaseDate) }}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 15% -->
-            <div class="order-total" style="display: flex; align-items: center; gap: 10px;">
-                <div class="amount-wrapper" style="display: flex; flex-direction: column; align-items: flex-start;">
-                    <span v-if="selectedDocumentNo" class="doc-no"
-                        style="font-size: 0.8rem; color: #64748b; font-weight: 600;">{{
-                            selectedDocumentNo }}</span>
-                    <span class="amount" style="font-size: 1.1rem; font-weight: 700;">{{ totalAmount ?
-                        formatNumber(totalAmount, 2) : '-' }}</span>
+            <!-- Zone droite — composants/espacement/largeurs identiques à C2 (.c2-header-right) :
+                 Total · OEM · Panier · bouton Vérification TecDoc (à la place du bouton Confirmer de C2). -->
+            <div class="cmp-header-right">
+                <!-- Total demande de prix — style C2 (.c2-total) : n° demande de prix au-dessus, montant + TND -->
+                <div class="order-total">
+                    <span class="doc-no">{{ selectedDocumentNo || '—' }}</span>
+                    <b class="amount">{{ formatMoney(totalAmount) }} <em>TND</em></b>
                 </div>
-                <i class="pi pi-calculator" style="font-size: 1.5rem;"></i>
-            </div>
 
-            <!-- 5% -->
-            <button class="cart-btn" @click="openCartSidebar">
-                <div class="cart-icon-wrapper">
-                    <i class="pi pi-shopping-cart"></i>
-                    <span v-if="store.cartCount > 0" class="cart-badge">{{ store.cartCount }}</span>
+                <!-- Count OEM — style chip vert C2 (.c2-oem). Handler inchangé. -->
+                <button class="oem-chip" :class="{ z: !oemCount, clickable: !isLoadingOemCount }"
+                    @click="openOemCountDialog"
+                    :title="isLoadingOemCount ? 'Calcul du count en cours...' : 'Voir les détails du count'">
+                    <i class="pi" :class="isLoadingOemCount ? 'pi-spin pi-spinner' : 'pi-sitemap'"></i>
+                    <span>OEM {{ isLoadingOemCount ? '…' : (oemCount !== null ? oemCount : (line.countItemManual || 0)) }}</span>
+                </button>
+
+                <!-- Panier — style chip C2 (.c2-cart) -->
+                <button class="cart-btn" @click="openCartSidebar">
+                    <div class="cart-icon-wrapper">
+                        <i class="pi pi-shopping-cart"></i>
+                        <span class="cart-badge">{{ store.cartCount }}</span>
+                    </div>
+                </button>
+
+                <!-- Vérification TecDoc (TecAlliance) — à la place/dimension du bouton Confirmer C2, couleur orangée conservée -->
+                <div class="status-dot-container">
+                    <div class="status-badge-rect" :class="statusDotClass" @click="openVerificationDialog"
+                        :title="`TecDoc: ${verificationStatus?.countNotCreated || 0} à créer`">
+                        <i class="pi pi-check-circle"></i><span class="status-badge-text">TecDoc</span>
+                    </div>
+                    <span v-if="verificationStatus && verificationStatus.countNotCreated > 0"
+                        class="status-dot-badge">{{ verificationStatus.countNotCreated }}</span>
                 </div>
-            </button>
+            </div>
         </div>
 
 
@@ -109,7 +104,7 @@
             <!-- Section 2: Tables (70% width) -->
             <div class="left-column">
                 <!-- Frs Table -->
-                <div class="table-container">
+                <div class="table-container sec-frs">
                     <div class="table-header-row">
                         <span class="table-title">Fournisseurs</span>
                     </div>
@@ -162,23 +157,18 @@
                                         <div class="cell-reference" :class="getStyleClass(detail.styleInvNoImport)">{{
                                             detail.inventoryWithoutImport }}</div>
                                     </td>
-                                    <td>
-                                        <div class="flex flex-col gap-1">
-                                            <span class="stock-tag tag-import"
-                                                :class="getImportStyleClass(detail.importInventory)">
-                                                <span>Imp :</span>
-                                                <span>{{ detail.importInventory }}</span>
-                                            </span>
-                                            <span class="stock-tag tag-cmd"
-                                                :class="[getQteCmdStyleClass(detail.qtyOnPurchOrder), { 'cursor-pointer hover:opacity-80': detail.qtyOnPurchOrder > 0 }]"
-                                                @click="openPurchaseLinesDialog(detail.no, detail.qtyOnPurchOrder)">
-                                                <span>Cmd :</span>
-                                                <span>{{ detail.qtyOnPurchOrder }}</span>
-                                            </span>
-                                        </div>
+                                    <td class="c2-appro">
+                                        <span class="imp" :class="{ z: !detail.importInventory, clickable: detail.importInventory > 0 }"
+                                            :title="detail.importInventory > 0 ? 'Voir les lignes d\'import' : ''"
+                                            @click.stop="openImportLines(detail.no, detail.buyFromVendorNo, detail.importInventory)">I {{ detail.importInventory ?? 0 }}</span>
+                                        <span class="cmd" :class="{ z: !detail.qtyOnPurchOrder, clickable: detail.qtyOnPurchOrder > 0 }"
+                                            :title="detail.qtyOnPurchOrder > 0 ? 'Voir les lignes de commande achat' : ''"
+                                            @click.stop="openPurchaseLinesDialog(detail.no, detail.qtyOnPurchOrder)">C {{ detail.qtyOnPurchOrder ?? 0 }}</span>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">
+                                        <div class="cell-reference" :class="{ 'derp-link': !!detail.no }"
+                                            title="Voir l'historique Der P"
+                                            @click.stop="openDerp(detail.no, detail.descriptionStructured)">
                                             {{
                                                 formatNumber(getLastInvoicedData(detail.buyFromVendorNo,
                                                     detail.no)?.lastInvoicedDirectCost,
@@ -344,9 +334,12 @@
                 </div>
 
                 <!-- Equivalence Table -->
-                <div class="table-container">
+                <div class="table-container sec-eqv">
                     <div class="table-header-row">
                         <span class="table-title">Equivalence</span>
+                        <span class="c2-count">{{ eqvCount }}</span>
+                        <span class="c2-sum cmd" title="Total Commande (lignes chargées)">CMD {{ fmtSum(eqvTotalCmd) }}</span>
+                        <span class="c2-sum imp" title="Total Import (lignes chargées)">IMP {{ fmtSum(eqvTotalImp) }}</span>
                     </div>
                     <div class="table-wrapper" @scroll="onEquivalenceScroll" ref="equivalenceTableWrapper">
                         <table class="modern-table">
@@ -398,23 +391,18 @@
                                         <div class="cell-reference" :class="getStyleClass(item.styleQty)">{{
                                             item.qtyStock }}</div>
                                     </td>
-                                    <td>
-                                        <div class="flex flex-col gap-1">
-                                            <span class="stock-tag tag-import"
-                                                :class="getImportStyleClass(item.qtyImport)">
-                                                <span>Imp :</span>
-                                                <span>{{ item.qtyImport }}</span>
-                                            </span>
-                                            <span class="stock-tag tag-cmd"
-                                                :class="[getQteCmdStyleClass(item.qtyOnPurchOrder), { 'cursor-pointer hover:opacity-80': item.qtyOnPurchOrder > 0 }]"
-                                                @click="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder)">
-                                                <span>Cmd :</span>
-                                                <span>{{ item.qtyOnPurchOrder }}</span>
-                                            </span>
-                                        </div>
+                                    <td class="c2-appro">
+                                        <span class="imp" :class="{ z: !item.qtyImport, clickable: item.qtyImport > 0 }"
+                                            :title="item.qtyImport > 0 ? 'Voir les lignes d\'import' : ''"
+                                            @click.stop="openImportLines(item.no, item.vendorNo, item.qtyImport)">I {{ item.qtyImport ?? 0 }}</span>
+                                        <span class="cmd" :class="{ z: !item.qtyOnPurchOrder, clickable: item.qtyOnPurchOrder > 0 }"
+                                            :title="item.qtyOnPurchOrder > 0 ? 'Voir les lignes de commande achat' : ''"
+                                            @click.stop="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder)">C {{ item.qtyOnPurchOrder ?? 0 }}</span>
                                     </td>
                                     <td>
-                                        <div class="cell-reference" :class="getStyleClass(item.styleDate)">
+                                        <div class="cell-reference" :class="[getStyleClass(item.styleDate), { 'derp-link': !!item.no }]"
+                                            title="Voir l'historique Der P"
+                                            @click.stop="openDerp(item.no, item.descriptionStructured)">
                                             {{ formatNumber(item.lastInvoicedDirectCost, 2) }}
                                             <span v-if="item.quantity" class="qty-badge">
                                                 {{ Math.round(item.quantity) }}
@@ -520,9 +508,12 @@
                 </div>
 
                 <!-- Kit Table -->
-                <div class="table-container">
+                <div class="table-container sec-kit">
                     <div class="table-header-row">
                         <span class="table-title">Kit</span>
+                        <span class="c2-count">{{ kitCount }}</span>
+                        <span class="c2-sum cmd" title="Total Commande (lignes chargées)">CMD {{ fmtSum(kitTotalCmd) }}</span>
+                        <span class="c2-sum imp" title="Total Import (lignes chargées)">IMP {{ fmtSum(kitTotalImp) }}</span>
                     </div>
                     <div class="table-wrapper">
                         <table class="modern-table">
@@ -572,23 +563,18 @@
                                     <td>
                                         <div class="cell-reference">{{ item.qtyStock || 0 }}</div>
                                     </td>
-                                    <td>
-                                        <div class="flex flex-col gap-1">
-                                            <span class="stock-tag tag-import"
-                                                :class="getImportStyleClass(item.qtyImport || 0)">
-                                                <span>Imp :</span>
-                                                <span>{{ item.qtyImport || 0 }}</span>
-                                            </span>
-                                            <span class="stock-tag tag-cmd"
-                                                :class="[getQteCmdStyleClass(item.qtyOnPurchOrder || 0), { 'cursor-pointer hover:opacity-80': (item.qtyOnPurchOrder || 0) > 0 }]"
-                                                @click="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder || 0)">
-                                                <span>Cmd :</span>
-                                                <span>{{ item.qtyOnPurchOrder || 0 }}</span>
-                                            </span>
-                                        </div>
+                                    <td class="c2-appro">
+                                        <span class="imp" :class="{ z: !(item.qtyImport || 0), clickable: (item.qtyImport || 0) > 0 }"
+                                            :title="(item.qtyImport || 0) > 0 ? 'Voir les lignes d\'import' : ''"
+                                            @click.stop="openImportLines(item.no, item.vendorNo, item.qtyImport || 0)">I {{ item.qtyImport || 0 }}</span>
+                                        <span class="cmd" :class="{ z: !(item.qtyOnPurchOrder || 0), clickable: (item.qtyOnPurchOrder || 0) > 0 }"
+                                            :title="(item.qtyOnPurchOrder || 0) > 0 ? 'Voir les lignes de commande achat' : ''"
+                                            @click.stop="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder || 0)">C {{ item.qtyOnPurchOrder || 0 }}</span>
                                     </td>
                                     <td>
-                                        <div class="cell-reference">
+                                        <div class="cell-reference" :class="{ 'derp-link': !!item.no }"
+                                            title="Voir l'historique Der P"
+                                            @click.stop="openDerp(item.no, item.descriptionStructured)">
                                             {{ formatNumber(item.lastInvoicedDirectCost, 2) }}
                                             <span v-if="item.quantity" class="qty-badge">
                                                 {{ Math.round(item.quantity) }}
@@ -688,273 +674,222 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="table-footer">
-                        <div class="pagination-info" v-if="kitItems.length > 0">
-                            {{ kitPagination.page * kitPagination.size + 1 }}-{{
-                                Math.min((kitPagination.page + 1) *
-                                    kitPagination.size, kitPagination.totalElements) }} sur {{
-                                kitPagination.totalElements }}
-                        </div>
-                        <div class="pagination-controls">
-                            <button class="p-btn" :disabled="kitPagination.page === 0"
-                                @click="fetchKitItems(selectedDetail.no, kitPagination.page - 1)">
-                                <i class="pi pi-angle-left"></i>
-                            </button>
-                            <span class="p-current">{{ kitPagination.page + 1 }}</span>
-                            <button class="p-btn" :disabled="kitPagination.page >= kitPagination.totalPages - 1"
-                                @click="fetchKitItems(selectedDetail.no, kitPagination.page + 1)">
-                                <i class="pi pi-angle-right"></i>
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            <!-- Section 3: Sidebar (30% or 50% width) -->
-            <div class="right-column" :class="{ 'expanded': isSidebarExpanded }">
-                <!-- History View -->
-                <template v-if="activeRightPanel === 'history'">
-                    <div class="sidebar-header">
-                        <div class="header-actions">
-                            <Button :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text
-                                rounded @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
-                            <button class="history-btn">Historique</button>
-                            <div class="item-title-inline" v-if="selectedHistoryItem">
-                                {{ formatReference(selectedHistoryItem.no || selectedHistoryItem.itemNo) }}
-                                • {{
-                                    selectedHistoryItem.descriptionStructured ||
-                                    selectedHistoryItem.structuredDescription ||
-                                    selectedHistoryItem.description || 'Temoins de freins' }}
-                            </div>
-                            <div class="item-title-inline" v-else>
-                                {{ formatReference(line.itemNo) }}
-                                • {{ line.structuredDescription || line.description ||
-                                    'Temoins de freins'
-                                }}
-                            </div>
-                            <div class="year-selector">
-                                <button class="year-arrow" @click="changeYear(-1)">
-                                    <i class="pi pi-chevron-left"></i>
-                                </button>
-                                <span class="year-display">{{ selectedYear }}</span>
-                                <button class="year-arrow" @click="changeYear(1)">
-                                    <i class="pi pi-chevron-right"></i>
-                                </button>
+            <!-- Section 3 : Sidebar Historique / Panier — IDENTIQUE C2 (3 états : collapsed / normal / expanded) -->
+            <aside class="right-column c2-side"
+                :class="{ collapsed: histState === 'collapsed', expanded: histState === 'expanded' }">
+                <template v-if="histState !== 'collapsed'">
+                    <!-- ═══ PANIER ═══ -->
+                    <template v-if="activeRightPanel === 'cart'">
+                        <div class="c2-side-head">
+                            <button class="c2-collapse grow" @click="widenHist" :disabled="histState === 'expanded'"
+                                title="Agrandir le panier"><i class="pi pi-angle-double-left"></i></button>
+                            <span class="c2-side-title"><i class="pi pi-shopping-cart"></i> Panier</span>
+                            <div class="c2-side-headright">
+                                <span class="c2-carttabs">
+                                    <button :class="{ on: activeCartTab === 'current' }"
+                                        @click="switchCartTab('current')">Ce comparateur</button>
+                                    <button :class="{ on: activeCartTab === 'all' }"
+                                        @click="switchCartTab('all')">Tous</button>
+                                </span>
+                                <button class="c2-collapse" @click="narrowHist"
+                                    :title="histState === 'expanded' ? 'Revenir normal' : 'Réduire le panier'"><i
+                                        class="pi pi-angle-double-right"></i></button>
+                                <button class="c2-collapse" @click="activeRightPanel = 'history'"
+                                    title="Retour à l'historique"><i class="pi pi-times"></i></button>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="stats-bar">
-                        <div class="stats-column">Stock : {{ historyKpis.stock }}</div>
-                        <div class="stats-column">Achat : {{ historyKpis.achat }}</div>
-                        <div class="stats-column">Vente : {{ Math.abs(historyKpis.vente) }}</div>
-                        <div class="stats-column">Rupt : {{ historyKpis.rupt }}</div>
-                    </div>
-
-
-
-                    <div class="table-container history-container">
-                        <div class="table-wrapper" ref="historyTableWrapper" @scroll="onHistoryScroll">
-                            <table class="modern-table history-table">
+                        <div class="c2-cart-filters">
+                            <input class="c2-cf-input" v-model="cartFilters.vendorNo" placeholder="Frs"
+                                @input="debouncedFilter" />
+                            <input class="c2-cf-input c2-cf-grow" v-model="cartFilters.itemNo" placeholder="Référence"
+                                @input="debouncedFilter" />
+                            <input v-if="activeCartTab === 'all'" class="c2-cf-input" v-model="cartFilters.compareQuoteNo"
+                                placeholder="Comparateur" @input="debouncedFilter" />
+                            <select class="c2-cf-input c2-cf-status" v-model="cartFilters.status"
+                                @change="applyFilters()">
+                                <option :value="null">Statut</option>
+                                <option value="New">New</option>
+                                <option value="Verified">Verified</option>
+                                <option value="All">Tous</option>
+                            </select>
+                            <button class="c2-cf-clear" @click="clearCartFilters" title="Effacer les filtres"><i
+                                    class="pi pi-times"></i></button>
+                        </div>
+                        <div class="c2-hist">
+                            <table class="c2-table c2-histtable">
                                 <thead>
                                     <tr>
-                                        <th :style="{ width: isSidebarExpanded ? '8%' : '15%' }">Date</th>
-                                        <th :style="{ width: isSidebarExpanded ? '5%' : '8%' }">Type</th>
+                                        <th class="left" :style="{ width: isSidebarExpanded ? '9%' : '15%' }">Frs</th>
                                         <template v-if="isSidebarExpanded">
-                                            <th style="width: 10%">Type Doc</th>
-                                            <th style="width: 10%">N° Document</th>
+                                            <th class="left" style="width:12%">Réf</th>
+                                            <th class="left" style="width:21%">Désignation</th>
                                         </template>
-                                        <th :style="{ width: isSidebarExpanded ? '10%' : '15%' }">Client / Frs
-                                        </th>
-                                        <th :style="{ width: isSidebarExpanded ? '35%' : '42%' }">Nom</th>
-                                        <th :style="{ width: isSidebarExpanded ? '6%' : '8%' }" class="text-right">Qte
-                                        </th>
+                                        <th v-else class="left" style="width:35%">Réf / Désignation</th>
+                                        <th class="num" :style="{ width: isSidebarExpanded ? '6%' : '11%' }">Qté</th>
+                                        <th class="num" :style="{ width: isSidebarExpanded ? '10%' : '14%' }">Coût</th>
+                                        <th :style="{ width: isSidebarExpanded ? '11%' : '13%' }">Statut</th>
                                         <template v-if="isSidebarExpanded">
-                                            <th style="width: 6%">Magasin</th>
+                                            <th class="left" style="width:11%">Comparateur</th>
+                                            <th class="left" style="width:11%">Commentaire</th>
                                         </template>
-                                        <th :style="{ width: isSidebarExpanded ? '10%' : '12%' }" class="text-right">PU
-                                        </th>
+                                        <th class="c2-actcol" :style="{ width: isSidebarExpanded ? '9%' : '12%' }">
+                                            Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-if="isLoadingHistory && historyEntries.length === 0">
-                                        <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">
-                                            Chargement...</td>
-                                    </tr>
-                                    <tr v-else-if="historyEntries.length === 0">
-                                        <td :colspan="isSidebarExpanded ? 8 : 5" class="text-center p-4">Aucune
-                                            donnée
-                                            disponible</td>
-                                    </tr>
-                                    <tr v-else v-for="(entry, index) in historyEntries" :key="index"
-                                        :class="{ 'rupture-row': entry.entryType === 'Rupture' }">
-                                        <td>{{ formatDate(entry.postingDate) }}</td>
-                                        <td>
-                                            <div class="type-indicator-circle"
-                                                :class="getEntryTypeClass(entry.entryType)">
-                                                {{ getEntryTypeLetter(entry.entryType) }}
-                                            </div>
+                                    <tr v-for="c in store.cartItems" :key="c.lineNo">
+                                        <td class="left"><span class="c2-frs-code">{{ c.buyFromVendorNo || '—' }}</span>
                                         </td>
                                         <template v-if="isSidebarExpanded">
-                                            <td>{{ entry.documentType }}</td>
-                                            <td>{{ entry.documentNo }}</td>
+                                            <td class="left"><b class="c2-frs-code">{{ c.itemNo }}</b></td>
+                                            <td class="left c2-ref" :title="c.description"><span>{{ c.description
+                                                    }}</span></td>
                                         </template>
-                                        <td>{{ entry.sourceNo }}</td>
-                                        <td>{{ entry.sourceName }}</td>
-                                        <td class="text-right">{{ entry.quantity }}</td>
+                                        <td v-else class="left c2-ref" :title="c.description"><b>{{ c.itemNo }}</b><span>{{
+                                                c.description }}</span></td>
+                                        <td class="num mono">{{ c.quantity }}</td>
+                                        <td class="num mono">{{ formatNumber(c.directUnitCost, 2) }}</td>
+                                        <td><span class="c2-cart-status" :class="'st-' + (c.status || '').toLowerCase()">{{
+                                                c.status }}</span></td>
                                         <template v-if="isSidebarExpanded">
-                                            <td>{{ entry.locationCode }}</td>
+                                            <td class="left mono muted" :title="c.compareQuoteNo">{{ c.compareQuoteNo ||
+                                                '—' }}</td>
+                                            <td class="left muted" :title="c.comment">{{ c.comment || '—' }}</td>
                                         </template>
-                                        <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
+                                        <td class="c2-acts">
+                                            <template v-if="cartBusyLineNo === c.lineNo"><i
+                                                    class="pi pi-spin pi-spinner"></i></template>
+                                            <template v-else>
+                                                <i v-if="c.status !== 'Verified'" class="pi pi-check ok" title="Vérifier"
+                                                    @click.stop="updateCartStatus(c.lineNo, 'Verified')"></i>
+                                                <i class="pi pi-trash" title="Retirer du panier"
+                                                    @click.stop="updateCartStatus(c.lineNo, 'Cancelled')"></i>
+                                            </template>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="store.isLoading && !store.cartItems.length">
+                                        <td :colspan="isSidebarExpanded ? 9 : 6" class="c2-empty"><i
+                                                class="pi pi-spin pi-spinner"></i> Chargement du panier…</td>
+                                    </tr>
+                                    <tr v-else-if="!store.cartItems.length">
+                                        <td :colspan="isSidebarExpanded ? 9 : 6" class="c2-empty"><i
+                                                class="pi pi-inbox"></i> Votre panier est vide</td>
                                     </tr>
                                 </tbody>
                             </table>
-                            <div v-if="isLoadingHistory && historyEntries.length > 0" class="loading-more">
-                                <i class="pi pi-spin pi-spinner"></i> Chargement...
+                        </div>
+                        <div class="c2-cart-footer" v-if="store.cartPagination.totalPages > 1">
+                            <button class="c2-pager-btn" :disabled="store.cartPagination.page === 0"
+                                @click="applyFilters(store.cartPagination.page - 1)"><i
+                                    class="pi pi-chevron-left"></i></button>
+                            <span>{{ store.cartPagination.page + 1 }} / {{ store.cartPagination.totalPages }}</span>
+                            <button class="c2-pager-btn"
+                                :disabled="store.cartPagination.page >= store.cartPagination.totalPages - 1"
+                                @click="applyFilters(store.cartPagination.page + 1)"><i
+                                    class="pi pi-chevron-right"></i></button>
+                        </div>
+                    </template>
+                    <!-- ═══ HISTORIQUE ═══ -->
+                    <template v-else>
+                        <div class="c2-side-head">
+                            <button class="c2-collapse grow" @click="widenHist" :disabled="histState === 'expanded'"
+                                title="Agrandir l'historique"><i class="pi pi-angle-double-left"></i></button>
+                            <span class="c2-side-title"><i class="pi pi-history"></i> Historique</span>
+                            <div class="c2-side-headright">
+                                <span class="c2-year"><i class="pi pi-chevron-left" @click="changeYear(-1)"></i>{{
+                                        selectedYear }}<i class="pi pi-chevron-right" @click="changeYear(1)"></i></span>
+                                <button class="c2-collapse" @click="narrowHist"
+                                    :title="histState === 'expanded' ? 'Revenir normal' : 'Réduire l\'historique'"><i
+                                        class="pi pi-angle-double-right"></i></button>
                             </div>
                         </div>
-                    </div>
+                        <div class="c2-side-ref">
+                            <b>{{ formatReference(selectedHistoryItem?.no || selectedHistoryItem?.itemNo) ||
+                                formatReference(line.itemNo) || '—' }}</b>
+                            <span>{{ selectedHistoryItem?.descriptionStructured ||
+                                selectedHistoryItem?.structuredDescription || selectedHistoryItem?.description ||
+                                line.structuredDescription || line.description || '' }}</span>
+                        </div>
+                        <div class="c2-side-kpis">
+                            <span class="kpi"><i>Stock</i><b>{{ historyKpis.stock }}</b></span>
+                            <span class="kpi"><i>Achat</i><b class="pos">{{ historyKpis.achat }}</b></span>
+                            <span class="kpi"><i>Vente</i><b class="pos">{{ Math.abs(historyKpis.vente) }}</b></span>
+                            <span class="kpi"><i>Rupt</i><b class="neg">{{ historyKpis.rupt }}</b></span>
+                        </div>
+                        <div class="c2-hist" ref="historyTableWrapper" @scroll="onHistoryScroll">
+                            <table class="c2-table c2-histtable">
+                                <thead>
+                                    <tr>
+                                        <th :style="{ width: isSidebarExpanded ? '12%' : '20%' }">Date</th>
+                                        <th :style="{ width: isSidebarExpanded ? '5%' : '8%' }">T</th>
+                                        <template v-if="isSidebarExpanded">
+                                            <th class="left" style="width:11%">Type Doc</th>
+                                            <th class="left" style="width:13%">N° Doc</th>
+                                        </template>
+                                        <th class="left" :style="{ width: isSidebarExpanded ? '11%' : '18%' }">Client /
+                                            Frs</th>
+                                        <th class="left" :style="{ width: isSidebarExpanded ? '19%' : '29%' }">Nom</th>
+                                        <th class="num" :style="{ width: isSidebarExpanded ? '7%' : '11%' }">Qté</th>
+                                        <th v-if="isSidebarExpanded" class="left" style="width:9%">Magasin</th>
+                                        <th class="num" :style="{ width: isSidebarExpanded ? '13%' : '14%' }">PU</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(entry, index) in historyEntries" :key="index">
+                                        <td class="mono">{{ formatDate(entry.postingDate) }}</td>
+                                        <td><span class="c2-typ" :class="getEntryTypeClass(entry.entryType)"
+                                                :title="entry.entryType">{{ getEntryTypeLetter(entry.entryType)
+                                                }}</span></td>
+                                        <template v-if="isSidebarExpanded">
+                                            <td class="left muted" :title="entry.documentType">{{ entry.documentType ||
+                                                '—' }}</td>
+                                            <td class="left mono muted" :title="entry.documentNo">{{ entry.documentNo ||
+                                                '—' }}</td>
+                                        </template>
+                                        <td class="left mono" :title="entry.sourceNo">{{ entry.sourceNo || '—' }}</td>
+                                        <td class="left" :title="entry.sourceName">{{ entry.sourceName || '—' }}</td>
+                                        <td class="num mono" :class="{ neg: Number(entry.quantity) < 0 }">{{
+                                            entry.quantity }}</td>
+                                        <td v-if="isSidebarExpanded" class="left muted" :title="entry.locationCode">{{
+                                            entry.locationCode || '—' }}</td>
+                                        <td class="num mono">{{ formatNumber(calculatePU(entry), 2) }}</td>
+                                    </tr>
+                                    <tr v-if="isLoadingHistory && !historyEntries.length">
+                                        <td :colspan="isSidebarExpanded ? 9 : 6" class="c2-empty"><i
+                                                class="pi pi-spin pi-spinner"></i> Chargement de l'historique…</td>
+                                    </tr>
+                                    <tr v-else-if="!historyEntries.length">
+                                        <td :colspan="isSidebarExpanded ? 9 : 6" class="c2-empty"><i
+                                                class="pi pi-inbox"></i> Aucun mouvement</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
                 </template>
-
-                <!-- Cart View -->
-                <template v-else-if="activeRightPanel === 'cart'">
-                    <div class="sidebar-header">
-                        <div class="header-actions">
-                            <Button :icon="isSidebarExpanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left'" text
-                                rounded @click="isSidebarExpanded = !isSidebarExpanded" class="toggle-sidebar-btn" />
-                            <span class="table-title" style="font-size: 1.1rem; margin-left: 8px;">Panier d'Achat</span>
-
-                            <div style="flex-grow: 1;"></div>
-
-                            <div class="cart-tabs">
-                                <button class="cart-tab-btn" :class="{ 'active': activeCartTab === 'current' }"
-                                    @click="switchCartTab('current')">
-                                    {{ line.compareQuoteNo }}
-                                </button>
-                                <button class="cart-tab-btn" :class="{ 'active': activeCartTab === 'all' }"
-                                    @click="switchCartTab('all')">
-                                    Tous
-                                </button>
-                            </div>
-
-                            <Button icon="pi pi-times" text rounded severity="secondary"
-                                @click="activeRightPanel = 'history'" tooltip="Fermer" />
-                        </div>
-                    </div>
-                    <div class="cart-filters p-3 flex gap-2 align-items-center"
-                        style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-
-                        <InputText v-model="cartFilters.vendorNo" placeholder="Frs" class="p-inputtext-sm"
-                            style="width: 85px; font-size: 0.85rem;" @input="debouncedFilter" />
-
-                        <InputText v-model="cartFilters.itemNo" placeholder="Référence" class="p-inputtext-sm"
-                            style="flex: 1; font-size: 0.85rem;" @input="debouncedFilter" />
-
-                        <InputText v-model="cartFilters.compareQuoteNo" placeholder="Comp" class="p-inputtext-sm"
-                            style="width: 150px; font-size: 0.85rem;" @input="debouncedFilter" />
-
-                        <Select v-model="cartFilters.status" :options="['New', 'Verified', 'All']" placeholder="Statut"
-                            class="p-inputtext-sm custom-status-dropdown" panelClass="custom-status-dropdown-panel"
-                            style="width: 160px; font-size: 0.85rem;" @change="applyFilters">
-                            <template #value="slotProps">
-                                <span v-if="slotProps.value"
-                                    :class="'status-text-' + (slotProps.value ? slotProps.value.toLowerCase() : '')">{{
-                                        slotProps.value === 'All' ? 'Tous' : slotProps.value }}</span>
-                                <span v-else class="text-gray-400 flex align-items-center"
-                                    style="height: 100%; display: flex; align-items: center;">{{ slotProps.placeholder
-                                    }}</span>
-                            </template>
-                        </Select>
-                    </div>
-
-                    <div class="table-container history-container" style="margin-top: 0; flex-grow: 1;">
-                        <div class="table-wrapper cart-table-wrapper">
-                            <DataTable :value="store.cartItems" responsiveLayout="scroll" class="p-datatable-sm"
-                                :loading="store.isLoading">
-                                <Column field="buyFromVendorNo" header="FRS" sortable
-                                    :style="{ width: isSidebarExpanded ? '9%' : '15%' }">
-                                    <template #body="slotProps">
-                                        <div class="cell-reference">{{ slotProps.data.buyFromVendorNo }}</div>
-                                    </template>
-                                </Column>
-                                <Column header="Article / Description" sortable field="itemNo">
-                                    <template #body="slotProps">
-                                        <div class="cell-reference">{{ slotProps.data.itemNo }}</div>
-                                        <div class="cell-description">{{ slotProps.data.description }}</div>
-                                    </template>
-                                </Column>
-                                <Column field="refMaster" header="Ref Master" sortable v-if="isSidebarExpanded">
-                                </Column>
-                                <Column field="quantity" header="Qté" sortable></Column>
-                                <Column field="directUnitCost" header="Coût" sortable>
-                                    <template #body="slotProps">
-                                        {{ formatNumber(slotProps.data.directUnitCost, 2) }}
-                                    </template>
-                                </Column>
-                                <Column field="compareQuoteNo" header="COMP / Date" sortable v-if="isSidebarExpanded">
-                                    <template #body="slotProps">
-                                        <div class="cell-reference">{{ slotProps.data.compareQuoteNo }}</div>
-                                        <div class="cell-description">{{ formatDate(slotProps.data.addedDate) }}</div>
-                                    </template>
-                                </Column>
-                                <Column field="comment" header="Commentaire" sortable v-if="isSidebarExpanded">
-                                    <template #body="slotProps">
-                                        <div class="cell-description" :title="slotProps.data.comment">{{
-                                            slotProps.data.comment }}</div>
-                                    </template>
-                                </Column>
-                                <Column field="status" header="Statut" sortable>
-                                    <template #body="slotProps">
-                                        <span :class="'status-badge status-' + slotProps.data.status.toLowerCase()">{{
-                                            slotProps.data.status }}</span>
-                                    </template>
-                                </Column>
-                                <Column header="Actions" v-if="isSidebarExpanded">
-                                    <template #body="slotProps">
-                                        <div class="flex gap-2 justify-center">
-                                            <button class="action-btn verify-btn" title="Vérifier"
-                                                @click="updateCartStatus(slotProps.data.lineNo, 'Verified')"
-                                                :disabled="slotProps.data.status === 'Verified'">
-                                                <i class="pi pi-check-circle"></i>
-                                            </button>
-                                            <button class="action-btn cancel-btn" title="Annuler"
-                                                @click="updateCartStatus(slotProps.data.lineNo, 'Cancelled')"
-                                                :disabled="slotProps.data.status === 'Cancelled'">
-                                                <i class="pi pi-times-circle"></i>
-                                            </button>
-                                        </div>
-                                    </template>
-                                </Column>
-                                <template #empty>
-                                    <div class="text-center p-4">
-                                        <p class="text-slate-500">Votre panier est vide.</p>
-                                    </div>
-                                </template>
-                            </DataTable>
-                        </div>
-                        <div class="table-footer" v-if="store.cartItems.length > 0">
-                            <div class="pagination-info">
-                                {{ store.cartPagination.page * store.cartPagination.size + 1 }}-{{
-                                    Math.min((store.cartPagination.page + 1) *
-                                        store.cartPagination.size, store.cartPagination.totalElements) }} sur {{
-                                    store.cartPagination.totalElements }}
-                            </div>
-                            <div class="pagination-controls">
-                                <button class="p-btn" :disabled="store.cartPagination.page === 0"
-                                    @click="applyFilters(store.cartPagination.page - 1)">
-                                    <i class="pi pi-angle-left"></i>
-                                </button>
-                                <span class="p-current">{{ store.cartPagination.page + 1 }}</span>
-                                <button class="p-btn" :disabled="store.cartPagination.page >= store.cartPagination.totalPages - 1"
-                                    @click="applyFilters(store.cartPagination.page + 1)">
-                                    <i class="pi pi-angle-right"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
+                <!-- Rail collapsed — reflète le mode courant (Panier compteur / Historique) -->
+                <div v-else class="c2-rail" @click="widenHist"
+                    :title="activeRightPanel === 'cart' ? 'Afficher le panier' : 'Afficher l\'historique'">
+                    <button class="c2-collapse" @click.stop="widenHist"><i class="pi pi-angle-double-left"></i></button>
+                    <i class="c2-rail-icon"
+                        :class="activeRightPanel === 'cart' ? 'pi pi-shopping-cart' : 'pi pi-history'"></i>
+                    <span class="c2-rail-label">{{ activeRightPanel === 'cart' ? 'PANIER' : 'HISTORIQUE' }}</span>
+                    <span v-if="activeRightPanel === 'cart'" class="c2-rail-count">{{ store.cartCount }}</span>
+                </div>
+            </aside>
         </div>
+
+        <!-- ════════ FOOTER PAGE — shell standard 48px (identique aux autres pages C2) ════════ -->
+        <footer class="cmp-footer">
+            <span class="cmp-footer-label">Détail Comparateur</span>
+            <span class="cmp-footer-meta"><b>{{ line.compareQuoteNo || '—' }}</b><em
+                    v-if="line.itemNo || line.structuredDescription || line.description">{{ formatReference(line.itemNo)
+                    }}<template v-if="line.structuredDescription || line.description"> • {{ line.structuredDescription ||
+                    line.description }}</template></em></span>
+        </footer>
 
         <!-- Comment Overlay -->
         <Popover ref="commentOverlay" class="comment-overlay" :showCloseIcon="false" :dismissable="true">
@@ -976,415 +911,57 @@
             </div>
         </Popover>
 
-        <!-- Article Info Dialog -->
-        <div v-if="showInfoDialog" class="info-dialog-overlay" @click.self="showInfoDialog = false">
-            <div class="info-dialog-container">
-                <!-- Header -->
-                <div class="info-dialog-header">
-                    <div class="info-dialog-header-title">
-                        Informations Article . {{ selectedInfoItem?.no || selectedInfoItem?.articleNumber }} . {{
-                            selectedInfoItem?.descriptionStructured || selectedInfoItem?.manufacturerName
-                        }}
-                    </div>
-                    <div class="info-dialog-header-right">
-                        <img src="/images/articles/tecalliance_partner.png" alt="TecAlliance" class="tecalliance-logo">
-                        <button class="close-info-btn" @click="showInfoDialog = false">
-                            <i class="pi pi-times"></i>
-                        </button>
-                    </div>
-                </div>
+        <!-- Article Info Dialog — composant PARTAGÉ (réf. visuelle = B2B / Confirmation Achat C2) -->
+        <TecDocArticleInfoDialog
+            v-model:visible="showInfoDialog"
+            :item="selectedInfoItem"
+            :loading="selectedInfoItem?.isLoading"
+            :is-master="selectedInfoItem ? isProductItem(selectedInfoItem) : false"
+            @load-vehicle-models="fetchVehiclesForBrand"
+        />
 
-                <!-- Main Content -->
-                <div class="info-dialog-body">
-                    <!-- Loading State -->
-                    <div v-if="selectedInfoItem?.isLoading" class="loading-state">
-                        <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: #3b82f6;"></i>
-                        <p>Chargement des informations...</p>
-                    </div>
+        <!-- Stock History Dialog — composant PARTAGÉ (réf. visuelle = Confirmation Achat C2) -->
+        <ArticleStockHistoryDialog
+            v-model:visible="showHistoryDialog"
+            :company="selectedCompany"
+            :reference="selectedHistoryItem?.no || selectedHistoryItem?.itemNo || ''"
+            :description="selectedHistoryItem?.descriptionStructured || selectedHistoryItem?.structuredDescription || selectedHistoryItem?.description || ''"
+            :year="dialogSelectedYear"
+            :kpis="dialogHistoryKpis"
+            :entries="dialogHistoryEntries"
+            :loading="isLoadingDialogHistory"
+            @change-year="changeDialogYear"
+            @scroll="onDialogHistoryScroll"
+        />
 
-                    <template v-else>
-                        <div class="info-top-section">
-                            <!-- Image Gallery -->
-                            <div class="info-gallery">
-                                <div class="thumbnail-list"
-                                    v-if="!isViewing360 && selectedInfoItem?.thumbnails?.length > 0">
-                                    <button class="thumb-nav-btn up" @click="prevImage"
-                                        v-if="selectedInfoItem.thumbnails.length > 1"><i
-                                            class="pi pi-chevron-up"></i></button>
-                                    <div class="thumbnail-scroll-container">
-                                        <div v-for="(thumb, index) in selectedInfoItem?.thumbnails" :key="index"
-                                            class="thumb-item" :class="{ active: index === currentImageIndex }"
-                                            @click="currentImageIndex = index">
-                                            <img :src="thumb" alt="thumbnail">
-                                        </div>
-                                    </div>
-                                    <button class="thumb-nav-btn down" @click="nextImage"
-                                        v-if="selectedInfoItem.thumbnails.length > 1"><i
-                                            class="pi pi-chevron-down"></i></button>
-                                </div>
-                                <div class="main-image-container">
-                                    <!-- 360 Toggle Button -->
-                                    <button v-if="selectedInfoItem?.images360?.length > 0" class="viewer-360-toggle-btn"
-                                        @click="isViewing360 = !isViewing360"
-                                        :title="isViewing360 ? 'Retour aux photos' : 'Vue 360°'">
-                                        <i class="pi" :class="isViewing360 ? 'pi-images' : 'pi-sync'"
-                                            style="font-size: 1.2rem;"></i>
-                                    </button>
+        <!-- Purchase Price History Dialog — composant PARTAGÉ (réf. visuelle = Confirmation Achat C2) -->
+        <ArticlePurchasePriceHistoryDialog
+            v-model:visible="showPurchasePriceDialog"
+            :item-no="selectedPurchasePriceItem?.itemNo || ''"
+            :description="selectedPurchasePriceItem?.description || ''"
+            :prices="purchasePrices"
+            :loading="isLoadingPurchasePrices"
+            :vendor-filter="purchasePriceVendorFilter"
+            :filter-locked="isPurchasePriceFilterDisabled"
+            @update:vendor-filter="purchasePriceVendorFilter = $event"
+        />
 
-                                    <!-- Standard Image View -->
-                                    <template v-if="!isViewing360">
-                                        <img v-if="selectedInfoItem?.thumbnails?.[currentImageIndex]"
-                                            :src="selectedInfoItem?.thumbnails[currentImageIndex]" alt="Article Image"
-                                            class="main-article-image">
-                                        <div v-else class="no-image-placeholder">
-                                            <i class="pi pi-image" style="font-size: 3rem; color: #94a3b8;"></i>
-                                            <p>Aucune image disponible</p>
-                                        </div>
-                                    </template>
-
-                                    <!-- 360 View -->
-                                    <div v-else class="viewer-360-container" @mousemove="handle360MouseMove"
-                                        @touchmove.prevent="handle360TouchMove">
-                                        <img :src="selectedInfoItem?.images360?.[current360Frame]" alt="360 View"
-                                            class="image-360" draggable="false">
-                                        <div class="viewer-360-overlay">
-                                            <i class="pi pi-sync spin-icon"></i>
-                                            <span>Faites glisser pour tourner</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Technical Specs -->
-                            <div class="info-specs-container">
-                                <div class="brand-header">
-                                    <img v-if="selectedInfoItem?.brandLogo" :src="selectedInfoItem?.brandLogo"
-                                        alt="Brand" class="brand-logo">
-                                    <div class="brand-info">
-                                        <div class="brand-ref">N° de référence: {{ selectedInfoItem?.no }}
-                                        </div>
-                                        <div class="brand-desc">{{ selectedInfoItem?.genericDescription ||
-                                            selectedInfoItem?.descriptionStructured }}</div>
-                                        <div class="brand-name" v-if="selectedInfoItem?.brand">{{
-                                            selectedInfoItem?.brand }}</div>
-                                    </div>
-                                </div>
-                                <div class="specs-table" v-if="selectedInfoItem?.specs?.length > 0">
-                                    <div v-for="(spec, index) in selectedInfoItem?.specs" :key="index" class="spec-row">
-                                        <div class="spec-label">{{ spec.label }}</div>
-                                        <div class="spec-value">{{ spec.value }}</div>
-                                    </div>
-                                </div>
-                                <div v-else class="no-data-message">
-                                    Aucune spécification technique disponible.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Stacked Sections -->
-                        <div class="info-sections-container">
-                            <!-- OEM Numbers Section -->
-                            <div class="info-section" v-if="selectedInfoItem?.oemNumbers?.length > 0">
-                                <div class="info-section-header cursor-pointer"
-                                    @click="isOemSectionExpanded = !isOemSectionExpanded">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <i class="pi pi-list"></i>
-                                        <span>Numéros OEM</span>
-                                    </div>
-                                    <i class="pi"
-                                        :class="isOemSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-                                </div>
-                                <div class="info-section-content" v-if="isOemSectionExpanded">
-                                    <div class="vehicles-list-container">
-                                        <div v-for="(group, index) in groupedOemNumbers" :key="index"
-                                            class="brand-group">
-                                            <div class="brand-toggle-row" @click="toggleOemBrand(group.brand)">
-                                                <i class="pi"
-                                                    :class="expandedOemBrands.has(group.brand) ? 'pi-minus' : 'pi-plus'"></i>
-                                                <span class="brand-name">{{ group.brand }}</span>
-                                            </div>
-                                            <div v-if="expandedOemBrands.has(group.brand)" class="oe-numbers-list"
-                                                style="padding: 10px 10px 10px 30px;">
-                                                <div v-for="(oem, oIndex) in group.numbers" :key="oIndex"
-                                                    class="oe-number-item">
-                                                    {{ oem.articleNumber }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- PDFs Section -->
-                            <div class="info-section" v-if="selectedInfoItem?.pdfs?.length > 0">
-                                <div class="info-section-header cursor-pointer"
-                                    @click="isPdfSectionExpanded = !isPdfSectionExpanded">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <i class="pi pi-file-pdf"></i>
-                                        <span>Documents PDF</span>
-                                    </div>
-                                    <i class="pi"
-                                        :class="isPdfSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-                                </div>
-                                <div class="info-section-content" v-if="isPdfSectionExpanded">
-                                    <div class="pdfs-list">
-                                        <a v-for="(pdf, index) in selectedInfoItem?.pdfs" :key="index" :href="pdf.url"
-                                            target="_blank" rel="noopener noreferrer" class="pdf-item">
-                                            <i class="pi pi-file-pdf"></i>
-                                            <span>{{ pdf.fileName }}</span>
-                                            <i class="pi pi-external-link"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-
-
-                            <!-- Composants du Kit Section -->
-                            <div class="info-section" v-if="selectedInfoItem?.articleParts?.length > 0">
-                                <div class="info-section-header cursor-pointer"
-                                    @click="isKitPartsSectionExpanded = !isKitPartsSectionExpanded">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <i class="pi pi-briefcase"></i>
-                                        <span>Composants du Kit</span>
-                                    </div>
-                                    <i class="pi"
-                                        :class="isKitPartsSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-                                </div>
-                                <div class="info-section-content" v-if="isKitPartsSectionExpanded">
-                                    <div class="table-responsive" style="overflow-x: auto; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                        <table class="w-full text-left border-collapse" style="font-size: 0.9rem; min-width: 500px;">
-                                            <thead>
-                                                <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
-                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Référence</th>
-                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Désignation</th>
-                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;">Fabricant</th>
-                                                    <th style="padding: 12px 16px; font-weight: 600; color: #475569;" class="text-center">Quantité</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr v-for="(part, pIndex) in selectedInfoItem.articleParts" :key="pIndex"
-                                                    style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;"
-                                                    class="hover:bg-slate-50">
-                                                    <td style="padding: 12px 16px; font-weight: 600; color: #0f172a;">{{ part.articleNo || part.articleNumber || '—' }}</td>
-                                                    <td style="padding: 12px 16px; color: #334155;">{{ part.articleName || '—' }}</td>
-                                                    <td style="padding: 12px 16px; color: #475569;">{{ part.brandName || '—' }}</td>
-                                                    <td style="padding: 12px 16px; color: #0f172a; font-weight: 500;" class="text-center">{{ part.quantity || 1 }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Vehicles Section -->
-                            <div class="info-section" v-if="selectedInfoItem?.vehicles?.length > 0">
-                                <div class="info-section-header cursor-pointer"
-                                    @click="isVehiclesSectionExpanded = !isVehiclesSectionExpanded">
-                                    <div class="flex items-center gap-2 flex-1">
-                                        <i class="pi pi-car"></i>
-                                        <span>Véhicules concernés</span>
-                                    </div>
-                                    <i class="pi"
-                                        :class="isVehiclesSectionExpanded ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-                                </div>
-                                <div class="info-section-content" v-if="isVehiclesSectionExpanded">
-                                    <div class="vehicles-list-container">
-                                        <div v-if="selectedInfoItem?.vehicles && selectedInfoItem.vehicles.length > 0">
-                                            <div v-for="(brandGroup, bIndex) in selectedInfoItem.vehicles" :key="bIndex"
-                                                class="brand-group">
-                                                <div class="brand-toggle-row" @click="toggleBrand(brandGroup)">
-                                                    <i class="pi"
-                                                        :class="expandedBrands.has(brandGroup.brand) ? 'pi-minus' : 'pi-plus'"></i>
-                                                    <span class="brand-name">{{ brandGroup.brand }}</span>
-                                                </div>
-                                                <div v-if="expandedBrands.has(brandGroup.brand)" class="models-list">
-                                                    <div v-if="brandGroup.isLoading" class="loading-models"
-                                                        style="padding: 10px; color: #64748b; font-style: italic;">
-                                                        <i class="pi pi-spin pi-spinner" style="margin-right: 8px;"></i>
-                                                        Chargement des modèles...
-                                                    </div>
-                                                    <div v-else-if="brandGroup.models.length === 0" class="no-models"
-                                                        style="padding: 10px; color: #94a3b8; font-style: italic;">
-                                                        Aucun modèle trouvé.
-                                                    </div>
-                                                    <div v-else v-for="(model, mIndex) in brandGroup.models"
-                                                        :key="mIndex" class="model-item">
-                                                        <i class="pi pi-angle-right model-plus-icon"></i>
-                                                        <span class="model-text">{{ model }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div v-else class="no-data-message">
-                                            Aucune donnée de véhicule disponible pour cet article.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stock History Dialog -->
-        <Dialog v-model:visible="showHistoryDialog" modal :style="{ width: '50vw' }" class="history-dialog"
+        <!-- TecDoc Verification Dialog — dialog LOCAL (pas d'équivalent partagé) harmonisé charte C2 -->
+        <Dialog v-model:visible="showVerificationDialog" modal :style="{ width: 'min(1100px, 96vw)' }" class="history-dialog c2-verif-dialog"
             :showHeader="false" dismissableMask>
-            <div class="dialog-content-wrapper">
-                <div class="sidebar-header dialog-header">
+            <div class="dialog-content-wrapper c2-verif">
+                <div class="sidebar-header dialog-header c2-verif-head">
                     <div class="header-actions">
-                        <button class="history-btn">Historique</button>
-                        <div class="item-title-inline" v-if="selectedHistoryItem">
-                            {{ formatReference(selectedHistoryItem.no || selectedHistoryItem.itemNo) }}
-                            • {{
-                                selectedHistoryItem.descriptionStructured ||
-                                selectedHistoryItem.structuredDescription ||
-                                selectedHistoryItem.description || 'Temoins de freins' }}
-                            <span v-if="selectedCompany" class="company-badge"> ({{ selectedCompany
-                            }})</span>
-                        </div>
-                        <div class="year-selector">
-                            <button class="year-arrow" @click="changeDialogYear(-1)">
-                                <i class="pi pi-chevron-left"></i>
-                            </button>
-                            <span class="year-display">{{ dialogSelectedYear }}</span>
-                            <button class="year-arrow" @click="changeDialogYear(1)">
-                                <i class="pi pi-chevron-right"></i>
-                            </button>
-                        </div>
-                        <Button icon="pi pi-times" text rounded @click="showHistoryDialog = false"
-                            class="close-dialog-btn" />
-                    </div>
-                </div>
-
-                <div class="stats-bar dialog-stats-bar">
-                    <div class="stats-column">Stock : {{ dialogHistoryKpis.stock }}</div>
-                    <div class="stats-column">Achat : {{ dialogHistoryKpis.achat }}</div>
-                    <div class="stats-column">Vente : {{ Math.abs(dialogHistoryKpis.vente) }}</div>
-                    <div class="stats-column">Rupt : {{ dialogHistoryKpis.rupt }}</div>
-                </div>
-
-
-
-                <div class="table-container dialog-history-container">
-                    <div class="table-wrapper" ref="dialogHistoryTableWrapper" @scroll="onDialogHistoryScroll">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 10%">Date</th>
-                                    <th style="width: 5%">Type</th>
-                                    <th style="width: 10%">Type Doc</th>
-                                    <th style="width: 12%">N° Document</th>
-                                    <th style="width: 15%">Client / Frs</th>
-                                    <th style="width: 18%">Nom</th>
-                                    <th style="width: 8%" class="text-right">Qte</th>
-                                    <th style="width: 10%">Magasin</th>
-                                    <th style="width: 12%" class="text-right">PU</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-if="isLoadingDialogHistory && dialogHistoryEntries.length === 0">
-                                    <td colspan="9" class="text-center p-4">Chargement...</td>
-                                </tr>
-                                <tr v-else-if="dialogHistoryEntries.length === 0">
-                                    <td colspan="9" class="text-center p-4">Aucune donnée disponible</td>
-                                </tr>
-                                <tr v-else v-for="(entry, index) in dialogHistoryEntries" :key="index">
-                                    <td>{{ formatDate(entry.postingDate) }}</td>
-                                    <td>
-                                        <div class="type-indicator-circle" :class="getEntryTypeClass(entry.entryType)">
-                                            {{ getEntryTypeLetter(entry.entryType) }}
-                                        </div>
-                                    </td>
-                                    <td>{{ entry.documentType }}</td>
-                                    <td>{{ entry.documentNo }}</td>
-                                    <td>{{ entry.sourceNo }}</td>
-                                    <td>{{ entry.sourceName }}</td>
-                                    <td class="text-right">{{ entry.quantity }}</td>
-                                    <td>{{ entry.locationCode }}</td>
-                                    <td class="text-right">{{ formatNumber(calculatePU(entry), 2) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div v-if="isLoadingDialogHistory && dialogHistoryEntries.length > 0" class="loading-more">
-                            <i class="pi pi-spin pi-spinner"></i> Chargement...
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </Dialog>
-
-        <Dialog v-model:visible="showPurchasePriceDialog" modal :style="{ width: '50vw' }" class="history-dialog"
-            :showHeader="false" dismissableMask>
-            <div class="dialog-content-wrapper">
-                <div class="sidebar-header dialog-header">
-                    <div class="header-actions">
-                        <button class="history-btn">Historique Prix Achat</button>
-                        <div class="item-title-inline" v-if="selectedPurchasePriceItem">
-                            {{ selectedPurchasePriceItem.itemNo }} • {{
-                                selectedPurchasePriceItem.description }}
-                        </div>
-                        <div class="header-filter-container" v-if="availableVendors.length > 1">
-                            <select v-model="purchasePriceVendorFilter" class="vendor-filter-select"
-                                :disabled="isPurchasePriceFilterDisabled">
-                                <option value="">Tous les fournisseurs</option>
-                                <option v-for="vendor in availableVendors" :key="vendor" :value="vendor">
-                                    {{ vendor }}
-                                </option>
-                            </select>
-                        </div>
-                        <Button icon="pi pi-times" text rounded @click="showPurchasePriceDialog = false"
-                            class="close-dialog-btn" style="margin-left: 0;" />
-                    </div>
-                </div>
-
-                <div class="table-container dialog-history-container" style="margin-top: 20px;">
-                    <div class="table-wrapper">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 15%">Frs</th>
-                                    <th style="width: 15%">Date Début</th>
-                                    <th style="width: 15%">Date Fin</th>
-                                    <th style="width: 15%">Devise</th>
-                                    <th style="width: 20%" class="text-right">Coût Unitaire Direct</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-if="isLoadingPurchasePrices">
-                                    <td colspan="5" class="text-center p-4">Chargement...</td>
-                                </tr>
-                                <tr v-else-if="purchasePrices.length === 0">
-                                    <td colspan="5" class="text-center p-4">Aucun historique de prix
-                                        disponible</td>
-                                </tr>
-                                <tr v-else v-for="(price, index) in filteredPurchasePrices" :key="index">
-                                    <td>{{ price.vendorNo }}</td>
-                                    <td>{{ formatDate(price.startingDate) }}</td>
-                                    <td>{{ formatDate(price.endingDate) }}</td>
-                                    <td>{{ price.currencyCode }}</td>
-                                    <td class="text-right">{{ formatNumber(price.directUnitCost, 2) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </Dialog>
-
-        <!-- TecDoc Verification Dialog -->
-        <Dialog v-model:visible="showVerificationDialog" modal :style="{ width: '70vw' }" class="history-dialog"
-            :showHeader="false" dismissableMask>
-            <div class="dialog-content-wrapper">
-                <div class="sidebar-header dialog-header">
-                    <div class="header-actions">
-                        <button class="history-btn">Vérification TecDoc</button>
-                        <div class="item-title-inline" v-if="line">
+                        <button class="history-btn c2-verif-title">Vérification TecDoc</button>
+                        <div class="item-title-inline c2-verif-sub" v-if="line">
                             {{ masterItemNo }} • {{ line.structuredDescription || line.description }}
                         </div>
+                        <!-- Filtre fabricant : PrimeVue Select (liste déroulante charte C2 commune) -->
+                        <Select v-model="verificationManufacturerFilter" :options="manufacturerOptions"
+                            optionLabel="label" optionValue="value" placeholder="Tous les fabricants"
+                            class="c2-verif-filter" panelClass="c2-dropdown-panel" title="Filtrer par fabricant" />
                         <Button icon="pi pi-times" text rounded @click="showVerificationDialog = false"
-                            class="close-dialog-btn" />
+                            class="close-dialog-btn c2-verif-close" />
                     </div>
                 </div>
 
@@ -1393,36 +970,6 @@
                     <div class="stats-column">Éligibles : {{ verificationStatus?.countEligible || 0 }}</div>
                     <div class="stats-column">Créés : {{ verificationStatus?.countCreated || 0 }}</div>
                     <div class="stats-column">Non Créés : {{ verificationStatus?.countNotCreated || 0 }}
-                    </div>
-                </div>
-
-                <div class="verification-filter" style="padding: 10px 20px;">
-                    <label style="font-weight: 600; margin-right: 10px;">Fabricant:</label>
-                    <select v-model="verificationManufacturerFilter" class="manufacturer-filter"
-                        style="padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem;">
-                        <option value="">Tous les fabricants</option>
-                        <option v-for="mfr in availableManufacturers" :key="mfr" :value="mfr">
-                            {{ mfr }}
-                        </option>
-                    </select>
-                </div>
-
-                <div class="table-footer centered-footer top-pagination">
-                    <div class="pagination-info" v-if="filteredVerificationItems.length > 0">
-                        {{ verificationPagination.page * verificationPagination.size + 1 }}-{{
-                            Math.min((verificationPagination.page + 1) * verificationPagination.size,
-                                filteredVerificationItems.length) }} sur {{ filteredVerificationItems.length }}
-                    </div>
-                    <div class="pagination-controls centered">
-                        <button class="p-btn" :disabled="verificationPagination.page === 0"
-                            @click="changeVerificationPage(verificationPagination.page - 1)">
-                            <i class="pi pi-angle-left"></i>
-                        </button>
-                        <span class="p-current">{{ verificationPagination.page + 1 }}</span>
-                        <button class="p-btn" :disabled="verificationPagination.page >= verificationTotalPages - 1"
-                            @click="changeVerificationPage(verificationPagination.page + 1)">
-                            <i class="pi pi-angle-right"></i>
-                        </button>
                     </div>
                 </div>
 
@@ -1475,6 +1022,26 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Pagination C2 (footer bas, style charte) -->
+                <div class="c2-verif-footer" v-if="filteredVerificationItems.length > 0">
+                    <span class="c2-verif-pageinfo">
+                        {{ verificationPagination.page * verificationPagination.size + 1 }}–{{
+                            Math.min((verificationPagination.page + 1) * verificationPagination.size,
+                                filteredVerificationItems.length) }} sur {{ filteredVerificationItems.length }}
+                    </span>
+                    <div class="c2-verif-pager-group">
+                        <button class="c2-verif-pager" :disabled="verificationPagination.page === 0"
+                            @click="changeVerificationPage(verificationPagination.page - 1)">
+                            <i class="pi pi-chevron-left"></i>
+                        </button>
+                        <span class="c2-verif-pagenum">{{ verificationPagination.page + 1 }} / {{ verificationTotalPages }}</span>
+                        <button class="c2-verif-pager" :disabled="verificationPagination.page >= verificationTotalPages - 1"
+                            @click="changeVerificationPage(verificationPagination.page + 1)">
+                            <i class="pi pi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </Dialog>
 
@@ -1484,126 +1051,60 @@
             :candidate="selectedArticleMasterCandidate"
             @success="onArticleMasterCreated"
         />
-        <!-- Purchase Lines Dialog -->
-        <Dialog v-model:visible="showPurchaseLinesDialog" modal :style="{ width: '65vw' }" class="history-dialog"
-            :showHeader="false" dismissableMask>
-            <div class="dialog-content-wrapper">
-                <div class="sidebar-header dialog-header">
-                    <div class="header-actions">
-                        <button class="history-btn">Lignes de Commande Achat</button>
-                        <div class="item-title-inline" v-if="selectedPurchaseLineNo">
-                            Réf: {{ selectedPurchaseLineNo }}
-                        </div>
-                        <Button icon="pi pi-times" text rounded @click="showPurchaseLinesDialog = false"
-                            class="close-dialog-btn" />
-                    </div>
-                </div>
+        <!-- Purchase Lines Dialog — composant PARTAGÉ (réf. visuelle = Confirmation Achat C2) -->
+        <ArticlePurchaseLinesDialog
+            v-model:visible="showPurchaseLinesDialog"
+            :no="selectedPurchaseLineNo"
+            :total-elements="purchaseLinesPagination.totalElements"
+            :entries="purchaseLines"
+            :loading="isLoadingPurchaseLines"
+            :page="purchaseLinesPagination.page"
+            :total-pages="purchaseLinesPagination.totalPages"
+            :sort-field="purchaseLinesSort.field"
+            :sort-direction="purchaseLinesSort.direction"
+            @go-page="loadPurchaseLines(selectedPurchaseLineNo, $event)"
+            @sort-change="onSortPurchaseLines"
+        />
 
-                <div class="table-container dialog-history-container" style="margin-top: 20px;">
-                    <div class="table-wrapper">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th v-for="col in purchaseLinesColumns" :key="col.field"
-                                        :class="[{ 'text-right': col.isNumber, 'text-center': col.isDate }, 'cursor-pointer select-none hover:bg-slate-200']"
-                                        @click="onSortPurchaseLines(col.field)">
-                                        <div class="flex items-center gap-1" :class="{ 'justify-end': col.isNumber, 'justify-center': col.isDate }">
-                                            <span>{{ col.header }}</span>
-                                            <i v-if="purchaseLinesSort.field === col.field"
-                                                :class="purchaseLinesSort.direction === 'asc' ? 'pi pi-sort-amount-up-alt text-primary' : 'pi pi-sort-amount-down text-primary'"></i>
-                                            <i v-else class="pi pi-sort text-slate-400 opacity-50"></i>
-                                        </div>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-if="isLoadingPurchaseLines">
-                                    <td :colspan="purchaseLinesColumns.length" class="text-center p-4">Chargement...</td>
-                                </tr>
-                                <tr v-else-if="purchaseLines.length === 0">
-                                    <td :colspan="purchaseLinesColumns.length" class="text-center p-4">Aucune ligne de commande disponible</td>
-                                </tr>
-                                <tr v-else v-for="(line, index) in purchaseLines" :key="index">
-                                    <td v-for="col in purchaseLinesColumns" :key="col.field"
-                                        :class="{ 'font-bold': col.isBold, 'text-right': col.isNumber, 'text-center': col.isDate }"
-                                        :style="col.isBold ? 'font-weight: 700 !important;' : ''">
-                                        <template v-if="col.isDate">
-                                            {{ formatPurchaseLineDate(getPurchaseLineValue(line, col)) }}
-                                        </template>
-                                        <template v-else>
-                                            {{ getPurchaseLineValue(line, col) }}
-                                        </template>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="table-footer" v-if="purchaseLines.length > 0">
-                        <div class="pagination-info">
-                            {{ purchaseLinesPagination.page * purchaseLinesPagination.size + 1 }}-{{
-                                Math.min((purchaseLinesPagination.page + 1) *
-                                    purchaseLinesPagination.size, purchaseLinesPagination.totalElements) }} sur {{
-                                purchaseLinesPagination.totalElements }}
-                        </div>
-                        <div class="pagination-controls">
-                            <button class="p-btn" :disabled="purchaseLinesPagination.page === 0"
-                                @click="loadPurchaseLines(selectedPurchaseLineNo, purchaseLinesPagination.page - 1)">
-                                <i class="pi pi-angle-left"></i>
-                            </button>
-                            <span class="p-current">{{ purchaseLinesPagination.page + 1 }}</span>
-                            <button class="p-btn" :disabled="purchaseLinesPagination.page >= purchaseLinesPagination.totalPages - 1"
-                                @click="loadPurchaseLines(selectedPurchaseLineNo, purchaseLinesPagination.page + 1)">
-                                <i class="pi pi-angle-right"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </Dialog>
+        <!-- Import Ledger Lines Dialog — composant PARTAGÉ (clic quantité « Imp » colonne Appro) -->
+        <ArticleImportLedgerLinesDialog
+            :visible="importLines.open"
+            :item-no="importLines.itemNo"
+            :source-no="importLines.sourceNo"
+            :total-elements="importLines.totalElements"
+            :entries="importLines.entries"
+            :loading="importLines.loading"
+            :page="importLines.page"
+            :total-pages="importLines.totalPages"
+            :sort-field="importLines.sortField"
+            :sort-direction="importLines.sortDirection"
+            @update:visible="closeImportLines"
+            @go-page="goImportPage"
+            @sort-change="onImportSort"
+        />
 
-        <!-- OEM Count Details Dialog -->
-        <Dialog v-model:visible="showOemCountDialog" modal :style="{ width: '45vw' }" class="history-dialog"
-            :showHeader="false" dismissableMask>
-            <div class="dialog-content-wrapper">
-                <div class="sidebar-header dialog-header">
-                    <div class="header-actions">
-                        <button class="history-btn">Détails des équivalences OEM</button>
-                        <div class="item-title-inline" v-if="masterItemNo">
-                            Réf Master: {{ masterItemNo }}
-                        </div>
-                        <Button icon="pi pi-times" text rounded @click="showOemCountDialog = false"
-                            class="close-dialog-btn" />
-                    </div>
-                </div>
+        <!-- Dialog Der P / Dernier Achat (clic prix colonne Dernier Achat) — composant PARTAGÉ (réf. C2) -->
+        <ArticleDerPHistoryDialog
+            :visible="derp.open"
+            :item-no="derp.itemNo"
+            :desc="derp.desc"
+            :total-elements="derp.totalElements"
+            :entries="derp.entries"
+            :loading="derp.loading"
+            :page="derp.page"
+            :total-pages="derp.totalPages"
+            @update:visible="closeDerp"
+            @go-page="goDerpPage"
+        />
 
-                <div class="table-container dialog-history-container" style="margin-top: 20px;">
-                    <div class="table-wrapper">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th class="text-left" style="padding: 12px 16px;">Référence Équivalente</th>
-                                    <th class="text-right" style="width: 30%; padding: 12px 16px;">Count</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-if="oemCountDetails.length === 0">
-                                    <td colspan="2" class="text-center p-4">Aucun détail disponible</td>
-                                </tr>
-                                <tr v-else v-for="(detailItem, index) in sortedOemCountDetails" :key="index" class="hover:bg-slate-50">
-                                    <td class="font-bold" style="font-weight: 700 !important; padding: 12px 16px;">{{ detailItem.reference }}</td>
-                                    <td class="text-right font-bold text-primary" style="font-weight: 700 !important; padding: 12px 16px;">{{ detailItem.count }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="table-footer" v-if="oemCountDetails.length > 0" style="padding: 12px 16px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 8px 8px;">
-                        <div class="pagination-info" style="width: 100%; text-align: right; font-weight: 700; font-size: 1.1rem; color: #1e293b;">
-                            Total : {{ oemCount !== null ? oemCount : 0 }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </Dialog>
+        <!-- OEM Count Details Dialog — composant PARTAGÉ (réf. visuelle = C2) -->
+        <ArticleOemCountDialog
+            :visible="showOemCountDialog"
+            :master="masterItemNo"
+            :total="oemCount ?? 0"
+            :details="oemCountDetails"
+            @update:visible="showOemCountDialog = $event"
+        />
 
         <!-- Comment Overlay -->
         <Popover ref="commentOverlay" class="comment-overlay" appendTo="body"
@@ -1635,6 +1136,13 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useCompareQuoteStore } from '../stores/compareQuote'
 import { useAuthStore } from '../stores/auth'
 import CreateArticleMasterDialog from '@/components/CreateArticleMasterDialog.vue'
+import TecDocArticleInfoDialog from './tecdoc/TecDocArticleInfoDialog.vue'
+import ArticleStockHistoryDialog from './article/ArticleStockHistoryDialog.vue'
+import ArticlePurchasePriceHistoryDialog from './article/ArticlePurchasePriceHistoryDialog.vue'
+import ArticlePurchaseLinesDialog from './article/ArticlePurchaseLinesDialog.vue'
+import ArticleImportLedgerLinesDialog from './article/ArticleImportLedgerLinesDialog.vue'
+import ArticleDerPHistoryDialog from './article/ArticleDerPHistoryDialog.vue'
+import ArticleOemCountDialog from './article/ArticleOemCountDialog.vue'
 
 
 const props = defineProps({
@@ -1669,7 +1177,14 @@ const isProductItem = (item) => {
 }
 const toast = useToast()
 const confirm = useConfirm()
-const isSidebarExpanded = ref(false)
+/* Right panel — 3 états identiques à C2 : collapsed (rail 54px) / normal / expanded.
+   isSidebarExpanded reste exposé (= 'expanded') car la zone GAUCHE l'utilise pour
+   masquer/afficher ses colonnes ; il devient une dérivation de histState. */
+const histState = ref('normal')           // 'collapsed' | 'normal' | 'expanded'
+const isSidebarExpanded = computed(() => histState.value === 'expanded')
+const widenHist = () => { histState.value = histState.value === 'collapsed' ? 'normal' : 'expanded' }
+const narrowHist = () => { histState.value = histState.value === 'expanded' ? 'normal' : 'collapsed' }
+const cartBusyLineNo = ref(null)
 const showHistoryDialog = ref(false)
 const selectedCompany = ref('')
 const selectedCompanyId = ref(null)
@@ -1694,6 +1209,19 @@ const kitPagination = ref({
     totalElements: 0,
     totalPages: 0
 })
+
+/* KPIs d'en-tête EQV / KIT — reproduits de C2 (count + total CMD + total IMP).
+   Le backend du comparateur ne renvoie pas de totaux serveur ; on agrège donc
+   localement les lignes chargées (qtyOnPurchOrder / qtyImport). fmtSum : entier brut,
+   sinon 2 décimales — identique à C2. */
+const fmtSum = (v) => { const n = Number(v) || 0; return Number.isInteger(n) ? n : n.toFixed(2) }
+const sumBy = (arr, key) => (arr || []).reduce((s, i) => s + (Number(i?.[key]) || 0), 0)
+const eqvCount = computed(() => equivalencePagination.value?.totalElements || equivalenceItems.value.length)
+const eqvTotalCmd = computed(() => sumBy(equivalenceItems.value, 'qtyOnPurchOrder'))
+const eqvTotalImp = computed(() => sumBy(equivalenceItems.value, 'qtyImport'))
+const kitCount = computed(() => kitPagination.value?.totalElements || kitItems.value.length)
+const kitTotalCmd = computed(() => sumBy(kitItems.value, 'qtyOnPurchOrder'))
+const kitTotalImp = computed(() => sumBy(kitItems.value, 'qtyImport'))
 
 
 
@@ -2111,6 +1639,94 @@ const openPurchaseLinesDialog = async (no, qtyCmd) => {
     await loadPurchaseLines(no, 0)
 }
 
+// Lignes Import (clic quantité « Imp » colonne Appro) — dialog partagé ArticleImportLedgerLinesDialog.
+// Endpoint déjà créé : GET /api/bc/import-ledger-entries?itemNo=&sourceNo=&page=&size= (store.fetchImportLedgerLines).
+const importLines = ref({ open: false, loading: false, itemNo: '', sourceNo: '', entries: [], page: 0, size: 50, totalElements: 0, totalPages: 0, sortField: '', sortDirection: '' })
+const closeImportLines = () => { importLines.value.open = false }
+const loadImportLines = async (itemNo, sourceNo, page = 0) => {
+    if (!itemNo || !sourceNo) return
+    importLines.value.loading = true
+    try {
+        const sort = importLines.value.sortField ? `${importLines.value.sortField},${importLines.value.sortDirection}` : ''
+        const data = await store.fetchImportLedgerLines(itemNo, sourceNo, page, importLines.value.size, sort)
+        if (data && data.content) {
+            importLines.value.entries = data.content
+            importLines.value.page = data.page ?? page
+            importLines.value.totalElements = data.totalElements ?? data.content.length
+            importLines.value.totalPages = data.totalPages ?? 1
+        } else {
+            const items = Array.isArray(data) ? data : (data ? [data] : [])
+            importLines.value.entries = items
+            importLines.value.page = 0
+            importLines.value.totalElements = items.length
+            importLines.value.totalPages = items.length ? 1 : 0
+        }
+    } catch (error) {
+        console.error('Error fetching import ledger lines:', error)
+        importLines.value.entries = []
+    } finally {
+        importLines.value.loading = false
+    }
+}
+const openImportLines = (itemNo, sourceNo, qty) => {
+    if (!qty || qty <= 0 || !itemNo || !sourceNo) return   // cliquable uniquement si quantité import > 0
+    importLines.value = { open: true, loading: false, itemNo, sourceNo, entries: [], page: 0, size: 50, totalElements: 0, totalPages: 0, sortField: '', sortDirection: '' }
+    loadImportLines(itemNo, sourceNo, 0)
+}
+const goImportPage = (page) => {
+    if (page < 0 || page > (importLines.value.totalPages - 1)) return
+    loadImportLines(importLines.value.itemNo, importLines.value.sourceNo, page)
+}
+// Tri Import (cycle asc → desc → aucun), recharge page 0
+const onImportSort = (field) => {
+    const s = importLines.value
+    if (s.sortField === field) {
+        if (s.sortDirection === 'asc') s.sortDirection = 'desc'
+        else { s.sortField = ''; s.sortDirection = '' }
+    } else {
+        s.sortField = field; s.sortDirection = 'asc'
+    }
+    loadImportLines(s.itemNo, s.sourceNo, 0)
+}
+
+// Dialog Der P / Dernier Achat (clic prix colonne Dernier Achat, FRS/EQV/KIT) — calqué sur C2.
+// Source : store.fetchLastInvoicedItemCosts(itemNo, page, size) → GET /api/sqlserver/last-invoiced-item-costs/{itemNo}.
+const derp = ref({ open: false, loading: false, itemNo: '', desc: '', entries: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })
+const closeDerp = () => { derp.value.open = false }
+const loadDerp = async (itemNo, page = 0) => {
+    if (!itemNo) return
+    derp.value.loading = true
+    try {
+        const data = await store.fetchLastInvoicedItemCosts(itemNo, page, derp.value.size)
+        if (data && data.content) {
+            derp.value.entries = data.content
+            derp.value.page = data.page?.number ?? data.number ?? page
+            derp.value.totalElements = data.page?.totalElements ?? data.totalElements ?? data.content.length
+            derp.value.totalPages = data.page?.totalPages ?? data.totalPages ?? 1
+        } else {
+            const items = Array.isArray(data) ? data : (data ? [data] : [])
+            derp.value.entries = items
+            derp.value.page = 0
+            derp.value.totalElements = items.length
+            derp.value.totalPages = items.length ? 1 : 0
+        }
+    } catch (error) {
+        console.error('[Comparateur Der P] Erreur historique Der P:', error)
+        derp.value.entries = []
+    } finally {
+        derp.value.loading = false
+    }
+}
+const openDerp = (itemNo, desc) => {
+    if (!itemNo) return
+    derp.value = { open: true, loading: false, itemNo, desc: desc || '', entries: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }
+    loadDerp(itemNo, 0)
+}
+const goDerpPage = (page) => {
+    if (page < 0 || page > (derp.value.totalPages - 1)) return
+    loadDerp(derp.value.itemNo, page)
+}
+
 // Purchase Price Dialog State
 const showPurchasePriceDialog = ref(false)
 const purchasePrices = ref([])
@@ -2311,6 +1927,12 @@ const availableManufacturers = computed(() => {
     return manufacturers.sort()
 })
 
+// Options pour le PrimeVue Select du filtre Fabricant (« Tous » + fabricants distincts)
+const manufacturerOptions = computed(() => [
+    { label: 'Tous les fabricants', value: '' },
+    ...availableManufacturers.value.map(m => ({ label: m, value: m }))
+])
+
 const filteredVerificationItems = computed(() => {
     if (!verificationStatus.value?.items) return []
     if (!verificationManufacturerFilter.value) return verificationStatus.value.items
@@ -2473,6 +2095,15 @@ const handleKeyDown = (event) => {
 const formatNumber = (value, decimals) => {
     if (value === null || value === undefined) return ''
     return Number(value).toFixed(decimals)
+}
+
+// Montant avec séparateur de milliers (espace) — identique au formatMoney de C2
+const formatMoney = (v) => {
+    if (v == null || v === '') return '—'
+    const n = Number(v)
+    if (isNaN(n)) return '—'
+    const [intPart, dec] = n.toFixed(2).split('.')
+    return intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '.' + dec
 }
 
 const formatDate = (dateString) => {
@@ -3081,23 +2712,13 @@ const calculatePU = (entry) => {
     return 0
 }
 
-const getEntryTypeLetter = (entryType) => {
-    if (!entryType) return ''
-    if (entryType === 'Sale') return 'S'
-    if (entryType === 'Purchase') return 'P'
-    if (entryType === 'Transfer') return 'T'
-    if (entryType === 'Rupture') return 'R'
-    return entryType.charAt(0).toUpperCase()
-}
+/* Symboles colonne T — IDENTIQUES à C2 (histTypeLetter/histTypeClass) :
+   Achat=A (bleu) · Vente=V (vert) · Rupture=R (rouge) · Transfert=T (orange). */
+const getEntryTypeLetter = (entryType) =>
+    ({ Purchase: 'A', Sale: 'V', Rupture: 'R', Transfer: 'T' }[entryType] || (entryType ? entryType[0] : ''))
 
-const getEntryTypeClass = (entryType) => {
-    if (!entryType) return ''
-    if (entryType === 'Sale') return 'type-s'
-    if (entryType === 'Purchase') return 'type-p'
-    if (entryType === 'Transfer') return 'type-t'
-    if (entryType === 'Rupture') return 'type-r'
-    return 'type-t'
-}
+const getEntryTypeClass = (entryType) =>
+    ({ Purchase: 'Achat', Sale: 'Vente', Rupture: 'Rupture', Transfer: 'Transfert' }[entryType] || 'Transfert')
 
 const getMasterErpClass = (referenceMaster) => {
     if (!referenceMaster) return ''
@@ -3429,6 +3050,16 @@ const switchCartTab = (tab) => {
     applyFilters();
 };
 
+const clearCartFilters = () => {
+    cartFilters.value = {
+        compareQuoteNo: activeCartTab.value === 'current' && props.line ? props.line.compareQuoteNo : '',
+        status: null,
+        itemNo: '',
+        vendorNo: ''
+    };
+    applyFilters();
+};
+
 const openCartSidebar = () => {
     if (activeRightPanel.value === 'cart') {
         activeRightPanel.value = 'history';
@@ -3515,6 +3146,16 @@ const focusNextField = (currentField, detailId) => {
     background-color: rgba(37, 99, 235, 0.05);
 }
 
+/* Prix « Dernier Achat » cliquable → dialog Der P partagé (discret, aligné C2). N'affecte pas la largeur de colonne. */
+.derp-link {
+    cursor: pointer;
+}
+.derp-link:hover {
+    color: #1859b3;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 .line-detail-container {
     padding: 15px;
     background-color: #f1f5f9;
@@ -3522,7 +3163,7 @@ const focusNextField = (currentField, detailId) => {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--c2-font-sans);
     overflow: hidden;
 }
 
@@ -4075,7 +3716,7 @@ const focusNextField = (currentField, detailId) => {
     /* Slate 900 */
     line-height: 1.2;
     margin-bottom: 4px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--c2-font-sans);
     letter-spacing: -0.025em;
     white-space: nowrap;
     overflow: hidden;
@@ -4256,7 +3897,8 @@ const focusNextField = (currentField, detailId) => {
 }
 
 .left-column {
-    width: 73%;
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -4265,28 +3907,26 @@ const focusNextField = (currentField, detailId) => {
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Le right panel adopte le modèle largeur FIXE de C2 (.c2-side) : la zone gauche
+   (flex:1) absorbe le reste. Les 3 largeurs = tokens C2 exacts. */
 .right-column {
-    width: 27%;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 15px;
+    width: min(564px, 41vw);
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
     background: white;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
     height: 100%;
     overflow: hidden;
 }
 
-.right-column.expanded {
-    width: 50%;
+.right-column.collapsed {
+    width: 54px;
 }
 
-.right-column.expanded~.left-column,
-.main-layout:has(.right-column.expanded) .left-column {
-    width: 50%;
+.right-column.expanded {
+    width: clamp(700px, 52%, 840px);
 }
 
 /* Modern Table Styles */
@@ -6114,4 +5754,558 @@ const focusNextField = (currentField, detailId) => {
     vertical-align: middle;
     display: inline-block;
 }
+</style>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     Harmonisation charte C2 du dialog LOCAL « Vérification TecDoc » (rendu uniquement).
+     Tout est scopé sous .c2-verif* → AUCUN impact sur les autres dialogs locaux
+     (OEM Count, etc.) qui partagent .history-dialog / .modern-table / .status-badge.
+     Bloc déclaré en dernier => prime.
+════════════════════════════════════════════════════════════════════════ -->
+<style scoped>
+/* ── Corps (l'arrondi unique + overflow sont gérés en bloc GLOBAL ci-dessous,
+   car le .p-dialog téléporté est hors de portée du scoped) ── */
+.c2-verif-dialog :deep(.p-dialog-content) {
+    padding: 0 !important;
+    background: #fff;
+    display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+}
+.c2-verif { flex: 1; min-height: 0; padding: 0 !important; gap: 0; display: flex; flex-direction: column; }
+
+/* ── Header Deep Ocean — bande pleine largeur, texte blanc ── */
+.c2-verif-head {
+    flex-shrink: 0;
+    background: var(--c2-head-bg);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 13px 18px;
+}
+.c2-verif-head .header-actions { gap: 12px; align-items: center; }
+.c2-verif-title {
+    width: auto;
+    background: transparent;
+    color: #fff;
+    padding: 0;
+    font-weight: 800;
+    font-size: 1.02rem;
+    letter-spacing: .01em;
+    cursor: default;
+    flex-shrink: 0;
+}
+.c2-verif-title:hover { background: transparent; }
+/* Sous-titre (réf master • désignation) = chip clair translucide sur navy */
+.c2-verif-sub {
+    background: rgba(255, 255, 255, .1);
+    color: #eaf2fb;
+    border-left: 3px solid var(--c2-head-accent, #82c9e5);
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 7px 12px;
+}
+/* Filtre fabricant — déclencheur PrimeVue Select navy translucide sur le header (charte C2).
+   La liste ouverte est stylée globalement via panelClass="c2-dropdown-panel" (c2-charter.css). */
+.c2-verif-filter.p-select {
+    height: 32px;
+    min-width: 150px;
+    max-width: 230px;
+    flex-shrink: 0;
+    align-items: center;
+    background: rgba(255, 255, 255, .1) !important;
+    border: 1px solid rgba(255, 255, 255, .22) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
+.c2-verif-filter.p-select:hover { background: rgba(255, 255, 255, .16) !important; border-color: rgba(255, 255, 255, .32) !important; }
+.c2-verif-filter.p-select.p-focus { border-color: var(--c2-head-accent, #82c9e5) !important; box-shadow: 0 0 0 3px rgba(130, 201, 229, .22) !important; }
+.c2-verif-filter :deep(.p-select-label) { color: #fff; font-size: .8rem; font-weight: 600; padding: 0 4px 0 10px; display: flex; align-items: center; }
+.c2-verif-filter :deep(.p-select-label.p-placeholder) { color: #e2e8f0; }
+.c2-verif-filter :deep(.p-select-dropdown) { width: 26px; color: #cbd5e1; }
+.c2-verif-filter :deep(.p-select-dropdown svg),
+.c2-verif-filter :deep(.p-select-dropdown .p-icon) { width: 13px; height: 13px; color: #cbd5e1; }
+/* Bouton fermer lisible sur navy */
+.c2-verif-close { color: #cbd5e1 !important; flex-shrink: 0; }
+.c2-verif-close:hover { color: #fff !important; background: rgba(255, 255, 255, .14) !important; }
+
+/* ── Bandeau de stats : surface C2 neutre, KPI cobalt (inséré) ── */
+.c2-verif .dialog-stats-bar {
+    margin: 14px 18px 0;
+    background: #f8fbff;
+    border-color: #dbeafe;
+    flex-shrink: 0;
+}
+.c2-verif .dialog-stats-bar .stats-column {
+    color: var(--c2-primary, #1859b3);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Corps table : inséré, scroll interne ── */
+.c2-verif .dialog-history-container { margin: 14px 18px; flex: 1; min-height: 0; }
+
+/* ── Footer pagination C2 — bande pleine largeur en bas ── */
+.c2-verif-footer {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 18px;
+    border-top: 1px solid var(--line, #e8edf3);
+    background: #fcfdff;
+    font-variant-numeric: tabular-nums;
+}
+.c2-verif-pageinfo { font-size: 0.78rem; font-weight: 700; color: var(--muted, #64748b); }
+.c2-verif-pager-group { display: inline-flex; align-items: center; gap: 8px; }
+.c2-verif-pagenum {
+    font-size: 0.8rem; font-weight: 800; color: var(--ink, #0f172a);
+    min-width: 64px; text-align: center; font-variant-numeric: tabular-nums;
+    background: #fff; border: 1px solid var(--line, #e8edf3); border-radius: 999px; padding: 4px 12px;
+}
+.c2-verif-pager {
+    width: 30px; height: 30px;
+    border: 1px solid var(--line, #e8edf3);
+    background: #fff;
+    color: #475569;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background .15s ease, color .15s ease, border-color .15s ease, transform .1s ease;
+}
+.c2-verif-pager:hover:not(:disabled) { background: #eff6ff; color: var(--c2-primary, #1859b3); border-color: #bfdbfe; }
+.c2-verif-pager:active:not(:disabled) { transform: translateY(1px); }
+.c2-verif-pager:disabled { opacity: .4; cursor: default; }
+</style>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     Bloc GLOBAL (non scopé) — UNIQUEMENT pour le .p-dialog téléporté du dialog
+     Vérification TecDoc (classe unique `c2-verif-dialog`). Le scoped n'atteint pas
+     l'élément racine PrimeVue téléporté → on force ici l'arrondi UNIQUE + le clip.
+     Classe unique => aucun impact sur les autres dialogs.
+════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* Un seul arrondi : sur le .p-dialog (porte la classe), clippé pour rogner header/footer */
+.c2-verif-dialog.p-dialog,
+.c2-verif-dialog .p-dialog {
+    max-height: 88vh;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+}
+/* Le contenu interne ne pose AUCUN arrondi concurrent */
+.c2-verif-dialog .p-dialog-content {
+    border-radius: 0 !important;
+}
+</style>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     Header du détail comparateur — harmonisation charte C2 (Deep Ocean).
+     CSS-ONLY (aucune modif de markup/handlers/conditions) : toutes les infos
+     et toutes les actions sont conservées ; seules les couleurs/surfaces passent
+     en navy + texte clair. Le badge statut TecDoc garde ses couleurs de STATUT
+     (indicateur fonctionnel : gris=loading / vert=ok / orange=à créer).
+     Bloc scopé déclaré en dernier => prime sur les règles header d'origine.
+════════════════════════════════════════════════════════════════════════ -->
+<style scoped>
+/* Alignement charte : la page parente (.main-content) fournit déjà var(--c2-page-pad).
+   On retire le padding 15px en trop du conteneur → header aligné avec les autres pages
+   (le gap header/corps passe au gap compact charte). La hauteur étant en border-box,
+   le corps récupère l'espace : aucun vide en bas.
+   HAUTEUR = modèle C2 (.c2-root) : viewport - padding vertical de .main-content (2×pad).
+   L'ancien calc(100vh - 90px) laissait ~74px de vide → le footer ne tombait pas en bas.
+   Avec ce calc, le footer s'aligne avec le footer de la navbar comme les autres pages. */
+.line-detail-container { padding: 0; gap: var(--c2-page-pad); height: calc(100vh - 2 * var(--c2-page-pad)); }
+
+.top-header {
+    /* Largeur FIXE de la zone gauche = zone « Confirmation Commandes Achat » de C2
+       (mesuré au pixel : back 36 + gap 14 + titlewrap 272 = 322 ; -1 base = 321).
+       → la bande STOCKS démarre exactement au même x qu'en C2. */
+    --cmp-left-w: 321px;
+    background: var(--c2-head-bg);
+    border: 1px solid var(--c2-head-border);
+    border-radius: var(--c2-head-radius, 12px);
+    box-shadow: var(--c2-head-shadow, 0 4px 14px rgba(15, 23, 42, .25));
+    height: var(--c2-head-h, 76px);
+    flex-shrink: 0;      /* = header C2 : hauteur FIXE 76px (ne rétrécit pas sous le flex column) */
+    box-sizing: border-box;
+    padding: 0 0 0 16px; /* = padding C2 (left 16, right 0 → zone droite jusqu'au bord) */
+    gap: 14px;           /* = gap du header C2 entre zones */
+    overflow: visible;   /* laisse dépasser les pastilles (cart-badge / status-dot-badge en top:-8px) */
+}
+/* Zone gauche à largeur fixe → la bande STOCKS démarre au même x que C2 */
+.top-header .cmp-header-left {
+    width: var(--cmp-left-w);
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px;
+    height: 100%; box-sizing: border-box;
+}
+.top-header .cmp-header-left .back-btn { width: 36px !important; flex-shrink: 0; padding: 0 !important; }
+.top-header .cmp-header-left .item-info { width: auto; flex: 1 1 auto; min-width: 0; margin: 0; }
+.top-header .cmp-header-left .header-middle { width: auto; flex-shrink: 0; margin: 0; padding: 0; }
+.top-header .cmp-header-left .page-indicator-badge { width: auto; min-width: 64px; margin: 0; }
+/* Hauteur stable : on annule le margin vertical des blocs internes (54px centrés dans 76px) */
+.top-header .item-info,
+.top-header .page-indicator-badge,
+.top-header .count-badge { margin-top: 0; margin-bottom: 0; }
+
+/* Retour */
+.top-header .back-btn { color: #cbd5e1 !important; }
+.top-header .back-btn:hover { color: #fff !important; }
+
+/* Référence + désignation — CADRE SUPPRIMÉ (plus de bordure/fond) ;
+   la réf reprend la MÊME police/taille que le titre « Confirmation Commandes Achat » de C2
+   (Inter, 1.02rem, 800, letter-spacing -0.01em). L'icône check reste sur la même ligne. */
+.top-header .info-left { border: none; background: transparent; border-radius: 0; padding: 0; }
+/* Ligne 1 = réf + check + badge n° de ligne (fin). Ligne 2 (désignation) prend toute la largeur. */
+.top-header .ref-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.top-header .ref-row .item-no { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.top-header .item-no { color: #fff; font-size: 1.02rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.45; }
+.top-header .item-desc { color: #cbd5e1; }
+/* Badge n° de ligne — pilule fine sur navy */
+.top-header .line-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    flex-shrink: 0; margin-left: auto;   /* poussé à l'extrême droite de la zone (avant STOCKS) */
+    font-size: 0.84rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: #e2e8f0; background: rgba(255, 255, 255, .1);
+    border: 1px solid rgba(255, 255, 255, .18); border-radius: 999px;
+    padding: 4px 11px; line-height: 1; white-space: nowrap;
+}
+.top-header .line-badge i { font-size: 0.74rem; opacity: .85; }
+
+/* Indicateur de ligne */
+.top-header .page-indicator-badge { background: rgba(255, 255, 255, .1); color: #fff; border-color: rgba(255, 255, 255, .18); box-shadow: none; }
+
+/* Compteur OEM (cliquable) */
+.top-header .count-badge { background: rgba(255, 255, 255, .1); color: #fff; border-color: rgba(130, 201, 229, .5); box-shadow: none; }
+.top-header .count-badge.clickable:hover { background: rgba(255, 255, 255, .18); border-color: var(--c2-head-accent, #82c9e5); box-shadow: none; }
+
+/* Bande STOCKS — reproduction EXACTE du composant STOCKS de C2 (mêmes dimensions/police/design) */
+.top-header .c2-stockband {
+    flex: 1; display: flex; align-items: center; gap: 0;
+    background: rgba(255, 255, 255, 0.06); border: 1px solid var(--c2-head-border); border-radius: 10px;
+    padding: 0 12px; min-width: 0; height: 56px; max-height: 100%; overflow: hidden; box-sizing: border-box;
+}
+.top-header .c2-stocklabel { font-size: 14px; font-weight: 800; letter-spacing: .12em; color: var(--c2-head-accent); flex-shrink: 0; padding-right: 12px; }
+.top-header .c2-stkcol { flex: 1; display: flex; align-items: center; height: 100%; min-width: 0; position: relative; }
+.top-header .c2-stkcol:not(:last-child)::after { content: ""; position: absolute; right: 0; top: 18%; height: 64%; width: 1px; background: rgba(255, 255, 255, .18); }
+.top-header .c2-stkpart { display: flex; flex-direction: column; justify-content: center; padding: 0 9px; min-width: 0; position: relative; }
+.top-header .c2-stkpart:nth-child(1) { flex: 1.3; }
+.top-header .c2-stkpart:nth-child(2) { flex: 1; }
+.top-header .c2-stkpart:nth-child(3) { flex: 1.4; }
+.top-header .c2-stkpart:not(:last-child)::after { content: ""; position: absolute; right: 0; top: 28%; height: 44%; width: 1px; background: rgba(255, 255, 255, .1); }
+.top-header .c2-stkpart.click { cursor: pointer; border-radius: 6px; transition: background .15s; }
+.top-header .c2-stkpart.click:hover { background: rgba(255, 255, 255, .08); }
+.top-header .c2-stkmini { font-size: 11px; color: #9fb3c8; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; line-height: 1; margin-bottom: 3px; white-space: nowrap; }
+.top-header .c2-stkval { font-size: 16px; font-weight: 800; color: #fff; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-header .c2-stkval.company { color: var(--c2-head-accent); font-size: 14px; }
+.top-header .c2-stkval.pos { color: #34d399; }
+.top-header .c2-stkval.neg { color: #f87171; }
+.top-header .c2-stkval.date { font-size: 13px; color: #cbd5e1; font-weight: 700; }
+.top-header .stock-column:not(:last-child)::after { background-color: rgba(255, 255, 255, .18); opacity: 1; }
+.top-header .stocks-label { color: var(--c2-head-accent, #82c9e5); }
+.top-header .stock-label-mini { color: #9fb3c8; }
+.top-header .stock-value-main { color: #fff; }
+.top-header .stock-value-main.company { color: var(--c2-head-accent, #82c9e5); }
+.top-header .stock-value-main.green { color: #34d399; }
+.top-header .stock-value-main.red { color: #f87171; }
+.top-header .stock-part:not(:last-child)::after { background-color: rgba(255, 255, 255, .12); }
+.top-header .stock-part.stock.clickable:hover { background-color: rgba(255, 255, 255, .08); }
+
+/* Total demande de prix — reproduit le style C2 (.c2-total) : texte simple, n° DP gris au-dessus,
+   montant bleu + TND. Pas de chip/bordure/icône calculatrice. */
+/* Total — valeurs EXACTES de C2 (.c2-total) */
+.top-header .order-total {
+    width: auto; height: auto;
+    background: transparent; border: none; box-shadow: none; backdrop-filter: none;
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 0; padding: 0; margin: 0;
+}
+.top-header .order-total .doc-no { font-size: 0.66rem; color: #94a3b8; font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.45; white-space: nowrap; }
+.top-header .order-total .amount { font-size: 1.12rem; color: #93c5fd; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.45; white-space: nowrap; }
+.top-header .order-total .amount em { font-size: 0.66rem; font-style: normal; color: #94a3b8; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Count OEM — chip vert C2 (.c2-oem), déplacé à droite (emplacement C2) */
+.top-header .oem-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: transparent; border: 1px solid #16a34a; color: #4ade80;
+    border-radius: 9px; padding: 7px 11px;
+    font-family: var(--c2-font-sans);   /* sinon les <button> tombent sur Arial (UA) au lieu d'Inter */
+    font-weight: 700; font-size: 0.82rem; font-variant-numeric: tabular-nums;
+    cursor: pointer; flex-shrink: 0; height: auto;
+}
+.top-header .oem-chip.clickable:hover { background: rgba(22, 163, 74, .16); border-color: #22c55e; }
+.top-header .oem-chip.z { color: #94a3b8; border-color: var(--c2-head-border); }
+.top-header .oem-chip i { font-size: 0.9rem; }
+
+/* Panier — reproduit le style C2 (.c2-cart) : chip navy + icône ambre + compteur INLINE ambre */
+.top-header .cart-btn {
+    width: auto; height: auto;
+    background: #2b3a4f;
+    border: 1px solid var(--c2-head-border);
+    border-radius: 9px;
+    padding: 7px 11px;
+    flex-shrink: 0;
+    color: #fdba74; font-weight: 700;   /* = c2-cart */
+    font-family: var(--c2-font-sans);   /* sinon le compteur tombe sur Arial (UA) au lieu d'Inter */
+}
+.top-header .cart-btn:hover { background: #34465e; border-color: var(--c2-head-border); }
+.top-header .cart-btn i { color: #fdba74; font-size: 1rem; }   /* = c2-cart icône 16px */
+.top-header .cart-icon-wrapper { flex-direction: row; align-items: center; gap: 5px; }
+/* La pastille flottante rouge devient un compteur ambre inline (= c2-cart : 13.33px / 700) */
+.top-header .cart-badge {
+    position: static; top: auto; right: auto;
+    background: transparent; color: #fdba74;
+    border: none; box-shadow: none;
+    min-width: 0; height: auto; padding: 0; margin: 0;
+    font-size: 0.833rem; font-weight: 700;
+}
+
+/* Zone droite — composants/espacement/largeurs identiques à C2 (.c2-header-right) :
+   Total · OEM · Panier · bouton Vérification TecDoc (remplace le Confirmer C2). */
+.top-header .cmp-header-right {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    flex-shrink: 0;
+    /* PAS de height:100% : comme C2, la zone (et donc la BARRE border-left) prend la hauteur
+       de son contenu (~41px) et se centre dans le header → barre identique à C2. */
+    width: min(564px, 41vw);   /* = largeur de la zone droite C2 → STOCKS (flex:1) = même largeur que C2 */
+    padding: 0 16px;
+    border-left: 1px solid var(--c2-head-border);   /* = barre verticale C2 après STOCKS */
+}
+.top-header .cmp-header-right .status-dot-container { position: relative; flex-shrink: 0; display: flex; align-items: center; }
+
+/* Bouton Vérification TecDoc : MÊME dimension que le bouton Confirmer C2 (.c2-confirm :
+   padding 9px 16px, radius 9px, ombre) ; couleur de STATUT TecDoc conservée (orange/vert/gris). */
+/* Bouton Vérification TecDoc = visuellement identique au bouton Confirmer C2 (.c2-confirm) :
+   même taille (122px), radius 9, padding 9×16, ombre verte. Vert #16a34a par défaut (tout créé),
+   ORANGE conservé quand il reste des réfs TecDoc à créer (état .warning). */
+.top-header .status-badge-rect {
+    width: 122px; height: 34px; box-sizing: border-box;   /* = taille EXACTE du bouton Confirmer C2 (34px) */
+    padding: 9px 16px; border-radius: 9px; border: none;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;   /* = c2-confirm (icône + texte) */
+    color: #fff; font-weight: 700; font-size: 0.833rem;   /* = police du texte Confirmer */
+    box-shadow: 0 4px 12px rgba(22, 163, 74, .3);   /* = ombre verte Confirmer */
+    transition: background .2s ease, box-shadow .2s ease;
+}
+.top-header .status-badge-rect i { font-size: 16px; }   /* = icône Confirmer (pi 16px) */
+.top-header .status-badge-text { font-weight: 700; }
+.top-header .status-badge-rect:hover { transform: none; }   /* annule le translateY de base → comme Confirmer */
+/* Tout créé → VERT identique au Confirmer */
+.top-header .status-badge-rect.success { background: #16a34a; }
+.top-header .status-badge-rect.success:hover { background: #15803d; box-shadow: 0 6px 16px rgba(22, 163, 74, .4); }
+/* Réfs à créer → ORANGE conservé (+ ombre orange cohérente) */
+.top-header .status-badge-rect.warning { background: #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, .35); }
+.top-header .status-badge-rect.warning:hover { background: #d97706; box-shadow: 0 6px 16px rgba(245, 158, 11, .45); }
+/* Chargement → gris neutre */
+.top-header .status-badge-rect.loading { background: #94a3b8; box-shadow: none; }
+.top-header .status-badge-icon { width: auto; height: 20px; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   RIGHT PANEL Historique / Panier — RÉPLIQUE EXACTE de la sidebar C2 (.c2-side).
+   Markup + 3 états (collapsed/normal/expanded) + design copiés tels quels de
+   ConfirmationAchatDetailC2.vue. Tokens locaux redéfinis ici (le composant
+   comparateur ne les possède pas). Bloc en dernier => prime sur l'ancien CSS.
+   ════════════════════════════════════════════════════════════════════════ */
+.right-column.c2-side {
+    --p: #2563eb; --p-soft: #eff6ff;
+    --ink: #0f172a; --muted: #64748b;
+    --line: #e8edf3; --line-soft: #f1f5f9;
+    --ok: #16a34a; --bad: #dc2626; --warn: #ea580c;
+    border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden; box-sizing: border-box;
+    font-family: var(--c2-font-sans);
+}
+/* Comme C2 (.c2-root button/input, ligne 2082) : <button>/<input>/<select> n'héritent
+   PAS de font-family → on l'impose, sinon les onglets panier retombent en Arial (UA). */
+.right-column.c2-side button,
+.right-column.c2-side input,
+.right-column.c2-side select { font-family: var(--c2-font-sans); }
+/* L'historique/panier remplit la hauteur restante et défile en interne */
+.right-column.c2-side .c2-hist { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* ── En-tête sidebar (Deep Ocean) ── */
+.right-column.c2-side .c2-side-head { display: flex; align-items: center; justify-content: space-between; background: var(--c2-head-bg); color: #fff; padding: 10px 14px; flex-shrink: 0; }
+.right-column.c2-side .c2-side-title { font-weight: 800; font-size: 0.78rem; letter-spacing: .04em; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.right-column.c2-side .c2-side-title i { color: var(--c2-head-accent); }
+.right-column.c2-side .c2-side-headright { display: flex; align-items: center; gap: 8px; }
+.right-column.c2-side .c2-year { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.8rem; background: rgba(255,255,255,.08); border-radius: 7px; padding: 3px 9px; color: #fff; }
+.right-column.c2-side .c2-year i { cursor: pointer; color: #cbd5e1; }
+.right-column.c2-side .c2-year i:hover { color: #fff; }
+
+/* ── Boutons collapse/expand ── */
+.right-column.c2-side .c2-collapse { border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.14); color: #e2e8f0; width: 28px; height: 26px; border-radius: 7px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
+.right-column.c2-side .c2-collapse:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
+.right-column.c2-side .c2-collapse i { font-size: 0.85rem; }
+.right-column.c2-side .c2-collapse:disabled { opacity: .35; cursor: default; }
+.right-column.c2-side .c2-collapse:disabled:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); color: #e2e8f0; }
+
+/* ── Réf ligne sélectionnée + KPIs ── */
+.right-column.c2-side .c2-side-ref { padding: 10px 14px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.right-column.c2-side .c2-side-ref b { font-weight: 800; color: var(--ink); font-size: 0.92rem; }
+.right-column.c2-side .c2-side-ref span { display: block; font-size: 0.78rem; color: var(--muted); }
+.right-column.c2-side .c2-side-kpis { display: flex; border-bottom: 1px solid var(--line); background: #fcfdff; flex-shrink: 0; }
+.right-column.c2-side .c2-side-kpis .kpi { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 9px 0; border-right: 1px solid var(--line-soft); }
+.right-column.c2-side .c2-side-kpis .kpi:last-child { border-right: none; }
+.right-column.c2-side .c2-side-kpis .kpi i { font-style: normal; font-size: 0.68rem; text-transform: uppercase; color: var(--muted); letter-spacing: .03em; }
+.right-column.c2-side .c2-side-kpis .kpi b { font-size: 1.1rem; color: var(--ink); }
+.right-column.c2-side .c2-side-kpis .kpi b.pos { color: var(--ok); }
+.right-column.c2-side .c2-side-kpis .kpi b.neg { color: var(--bad); }
+
+/* ── Table dense (historique + panier) ── */
+.right-column.c2-side .c2-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.right-column.c2-side .c2-table th, .right-column.c2-side .c2-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.right-column.c2-side .c2-table th {
+    background: #f8fafc; color: #475569;
+    font-size: 12.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+    text-align: right; padding: 10px 8px;
+    border-bottom: 1.5px solid var(--line); border-right: 1px solid var(--line-soft);
+    position: sticky; top: 0; z-index: 2;
+}
+.right-column.c2-side .c2-table th.left { text-align: left; }
+.right-column.c2-side .c2-table th:last-child, .right-column.c2-side .c2-table td:last-child { border-right: none; }
+.right-column.c2-side .c2-table td {
+    padding: 8px 8px; text-align: right; vertical-align: middle;
+    border-bottom: 1px solid var(--line-soft); border-right: 1px solid var(--line-soft);
+    color: #334155; font-size: 14px;
+}
+.right-column.c2-side .c2-table td.left { text-align: left; }
+.right-column.c2-side .c2-table td.num { font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+.right-column.c2-side .c2-table td.mono { font-weight: 650; color: var(--ink); }
+.right-column.c2-side .c2-table td.mono.muted, .right-column.c2-side .c2-table td.muted { color: var(--muted); font-weight: 500; }
+.right-column.c2-side .c2-table td.neg { color: var(--bad); }
+.right-column.c2-side .c2-table tbody tr:nth-child(even) { background: #fcfdfe; }
+.right-column.c2-side .c2-table tbody tr:hover { background: #f5f9ff; }
+/* Comme C2 (.c2-root .mono, charte §14) : les nombres restent en SANS (Inter),
+   on ne garde que l'alignement tabulaire — PAS de police monospace. */
+.right-column.c2-side .mono { font-family: inherit; font-variant-numeric: tabular-nums; }
+.right-column.c2-side .muted { color: #94a3b8; }
+.right-column.c2-side .c2-ref b { display: block; font-weight: 800; color: var(--ink); font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.right-column.c2-side .c2-ref span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.right-column.c2-side .c2-frs-code { font-family: inherit; font-size: 13.5px; font-weight: 700; color: var(--ink); line-height: 1.25; text-align: left; font-variant-numeric: tabular-nums; }
+
+/* ── Indicateur Type (T) ── */
+.right-column.c2-side .c2-typ { display: inline-block; width: 19px; height: 19px; line-height: 19px; text-align: center; border-radius: 5px; font-weight: 800; font-size: 0.64rem; }
+.right-column.c2-side .c2-typ.Achat { background: #dbeafe; color: #1e40af; }
+.right-column.c2-side .c2-typ.Vente { background: #dcfce7; color: #166534; }
+.right-column.c2-side .c2-typ.Rupture { background: #fee2e2; color: #b91c1c; }
+.right-column.c2-side .c2-typ.Transfert { background: #ffedd5; color: #c2410c; }
+
+/* ── Actions panier ── */
+.right-column.c2-side .c2-actcol { text-align: center !important; }
+.right-column.c2-side .c2-acts { text-align: center; white-space: nowrap; line-height: 1; }
+.right-column.c2-side .c2-acts i { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; margin: 0 2px; vertical-align: middle; border-radius: 6px; color: #94a3b8; cursor: pointer; font-size: 0.95rem; background: transparent; transition: background .15s, color .15s; }
+.right-column.c2-side .c2-acts i:hover { background: #f5f9ff; }
+.right-column.c2-side .c2-acts i.ok { color: #86efac; }
+.right-column.c2-side .c2-acts i.ok:hover { color: var(--ok); }
+.right-column.c2-side .c2-acts i.pi-trash:hover { color: var(--bad); }
+
+.right-column.c2-side .c2-empty { text-align: center !important; padding: 22px !important; color: #94a3b8; font-style: italic; }
+.right-column.c2-side .c2-empty i { font-size: 1.1rem; margin-right: 6px; }
+
+/* ── Onglets panier + statut + filtres + footer pagination ── */
+.right-column.c2-side .c2-carttabs { display: inline-flex; background: rgba(255,255,255,.08); border-radius: 7px; padding: 2px; gap: 2px; }
+.right-column.c2-side .c2-carttabs button { border: none; background: transparent; color: #cbd5e1; font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 5px; cursor: pointer; }
+.right-column.c2-side .c2-carttabs button.on { background: #2563eb; color: #fff; }
+.right-column.c2-side .c2-cart-status { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; }
+.right-column.c2-side .c2-cart-status.st-new { background: #eff6ff; color: #1d4ed8; }
+.right-column.c2-side .c2-cart-status.st-verified { background: #dcfce7; color: #15803d; }
+.right-column.c2-side .c2-cart-status.st-cancelled { background: #fee2e2; color: #b91c1c; }
+.right-column.c2-side .c2-cart-filters { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: #f8fafc; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.right-column.c2-side .c2-cf-input { min-width: 0; width: 64px; height: 28px; border: 1px solid #d8dee7; border-radius: 7px; padding: 0 8px; font-size: 0.78rem; color: var(--ink); background: #fff; box-sizing: border-box; font-family: var(--c2-font-sans); }
+.right-column.c2-side .c2-cf-input:focus { outline: none; border-color: var(--p); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+.right-column.c2-side .c2-cf-grow { flex: 1; }
+.right-column.c2-side .c2-cf-status { width: 96px; flex-shrink: 0; cursor: pointer; }
+.right-column.c2-side .c2-cf-clear { flex-shrink: 0; width: 28px; height: 28px; border: 1px solid #d8dee7; background: #fff; color: #94a3b8; border-radius: 7px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.right-column.c2-side .c2-cf-clear:hover { background: var(--p-soft); color: var(--bad); border-color: #fecaca; }
+.right-column.c2-side .c2-cart-footer { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px; border-top: 1px solid var(--line); font-size: 0.78rem; font-weight: 700; color: var(--muted); flex-shrink: 0; background: #fcfdff; }
+.right-column.c2-side .c2-pager-btn { width: 26px; height: 24px; border: 1px solid var(--line); background: #fff; color: #475569; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.right-column.c2-side .c2-pager-btn:hover:not(:disabled) { background: var(--p-soft); color: var(--p); border-color: #bfdbfe; }
+.right-column.c2-side .c2-pager-btn:disabled { opacity: .4; cursor: default; }
+
+/* ── Rail collapsed ── */
+.right-column.c2-side.collapsed { padding: 0; }
+.right-column.c2-side .c2-rail { flex: 1; height: 100%; min-height: 360px; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 12px 0; cursor: pointer; background: var(--c2-head-bg); color: #cbd5e1; }
+.right-column.c2-side .c2-rail .c2-collapse { background: rgba(255,255,255,0.12); }
+.right-column.c2-side .c2-rail-icon { font-size: 1.1rem; color: var(--c2-head-accent); margin-top: 4px; }
+.right-column.c2-side .c2-rail-label { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 0.18em; font-size: 0.66rem; font-weight: 800; color: #94a3b8; }
+.right-column.c2-side .c2-rail:hover .c2-rail-label { color: #e2e8f0; }
+.right-column.c2-side .c2-rail-count { margin-top: 6px; background: #ea580c; color: #fff; font-size: 0.64rem; font-weight: 800; border-radius: 9px; padding: 1px 6px; }
+
+/* ════════ FOOTER PAGE — réplique du .c2-footer (shell standard 48px, Deep Ocean).
+   Pas de margin-top : .line-detail-container possède déjà gap var(--c2-page-pad). ════════ */
+.cmp-footer {
+    flex-shrink: 0;
+    height: 48px; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 0 16px;
+    background: var(--c2-head-bg);
+    border: 1px solid var(--c2-head-border);
+    border-radius: var(--c2-head-radius, 12px);
+    box-shadow: var(--c2-head-shadow, 0 4px 14px rgba(15, 23, 42, .25));
+    color: #fff;
+}
+.cmp-footer-label { font-weight: 800; font-size: 0.8rem; letter-spacing: .04em; color: #fff; white-space: nowrap; }
+.cmp-footer-meta { min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden; }
+.cmp-footer-meta b { font-weight: 800; font-size: 0.82rem; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cmp-footer-meta em { font-style: normal; font-size: 0.78rem; color: #fff; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ZONE GAUCHE — HARMONISATION des 3 tables (FRS / EQV / KIT) avec C2.
+   • Mêmes colonnes / mêmes données qu'avant (markup inchangé).
+   • Hauteurs ÉGALES + scroll interne par table (shell identique à C2 :
+     .c2-left { overflow:hidden } + .c2-grid { flex:1 1 0 } + .c2-tablewrap scroll).
+   • Look carte C2 : bordure fine, rayon 12, en-tête barre d'accent + titre dense,
+     table dense premium (th #f8fafc uppercase 12px, td 13.5px, zebra, hover #f5f9ff).
+   ════════════════════════════════════════════════════════════════════════ */
+/* — Shell : les 3 tables se partagent la hauteur, chacune défile en interne — */
+.left-column { overflow: hidden; }
+.left-column .table-container { flex: 1 1 0; min-height: 0; }
+.left-column .table-header-row { flex-shrink: 0; }
+.left-column .table-wrapper { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+
+/* — Carte C2 — */
+.left-column .table-container { border: 1px solid #e8edf3; border-radius: 12px; box-shadow: 0 1px 3px rgba(16, 24, 40, .05); }
+
+/* — En-tête de section C2 : barre d'accent + titre dense — */
+.left-column .table-header-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fcfdff; border-bottom: 1px solid #e8edf3; }
+.left-column .table-header-row::before { content: ""; width: 4px; height: 16px; border-radius: 3px; background: #1859B3; flex-shrink: 0; }
+.left-column .sec-eqv .table-header-row::before { background: #0ea5e9; }
+.left-column .sec-kit .table-header-row::before { background: #8b5cf6; }
+.left-column .table-title { font-weight: 800; font-size: 0.74rem; letter-spacing: .08em; color: #0f172a; text-transform: uppercase; }
+/* KPIs d'en-tête EQV/KIT (count + CMD + IMP) — identiques à C2 (.c2-count / .c2-sum) */
+.left-column .table-header-row .c2-count { background: #eff6ff; color: #2563eb; font-weight: 800; font-size: 0.66rem; padding: 1px 8px; border-radius: 9999px; font-variant-numeric: tabular-nums; }
+.left-column .table-header-row .c2-sum { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 9999px; font-size: 0.62rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.left-column .table-header-row .c2-sum.cmd { color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; }
+.left-column .table-header-row .c2-sum.imp { color: #1d4ed8; background: #eff6ff; border: 1px solid #dbeafe; }
+
+/* — Table dense premium C2 — */
+.left-column .modern-table th {
+    background: #f8fafc; color: #475569;
+    font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+    text-align: left; padding: 10px 10px; white-space: nowrap;
+    border-bottom: 1.5px solid #e8edf3; border-right: 1px solid #f1f5f9;
+    position: sticky; top: 0; z-index: 2;
+}
+.left-column .modern-table th:last-child { border-right: none; }
+.left-column .modern-table td {
+    padding: 8px 10px; font-size: 13.5px; color: #334155; height: auto;
+    vertical-align: middle; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9;
+}
+.left-column .modern-table td:last-child { border-right: none; }
+.left-column .modern-table tbody tr:nth-child(even) { background: #fcfdfe; }
+.left-column .modern-table tbody tr:hover { background: #f5f9ff; }
+/* Ligne sélectionnée = look C2 (.c2-table tr.sel) — prime sur l'utilitaire bg-blue-100 */
+.left-column .modern-table tbody tr.bg-blue-100 { background: #eff6ff !important; box-shadow: inset 3px 0 0 #1859B3; outline: 1px solid #bfdbfe; outline-offset: -1px; }
+
+/* — Densité du texte des cellules alignée sur C2 (réf 14px / désignation 12.5px) — */
+.left-column .modern-table .cell-reference { font-size: 14px; font-weight: 700; letter-spacing: 0; margin-bottom: 1px; }
+.left-column .modern-table .cell-description { font-size: 12.5px; }
+
+/* — Colonne Appro (Imp / Cmd) — badges IDENTIQUES à C2 (.c2-appro .imp/.cmd/.z) :
+   I {qty} bleu · C {qty} orange · grisé (.z) si 0 · cliquable (souligné au survol) si > 0. */
+.left-column .c2-appro { text-align: left; white-space: nowrap; }
+.left-column .c2-appro span { display: inline-block; font-size: 11.5px; font-weight: 800; padding: 2px 7px; border-radius: 5px; margin-right: 4px; font-variant-numeric: tabular-nums; }
+.left-column .c2-appro .imp { color: #1d4ed8; background: #eff6ff; border: 1px solid #dbeafe; }
+.left-column .c2-appro .cmd { color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; }
+.left-column .c2-appro .z { color: #94a3b8; background: #f8fafc; border-color: #eef2f7; }
+.left-column .c2-appro .imp.clickable, .left-column .c2-appro .cmd.clickable { cursor: pointer; }
+.left-column .c2-appro .imp.clickable:hover, .left-column .c2-appro .cmd.clickable:hover { text-decoration: underline; filter: brightness(0.92); }
 </style>

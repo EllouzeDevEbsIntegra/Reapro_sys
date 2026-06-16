@@ -2,7 +2,7 @@
   <div class="so-stats-grid">
     <!-- Skeleton loading -->
     <template v-if="loading">
-      <div v-for="i in 4" :key="i" class="so-stat-card so-stat-skeleton">
+      <div v-for="i in 5" :key="i" class="so-stat-card so-stat-skeleton">
         <div class="skeleton-icon"></div>
         <div class="skeleton-lines">
           <div class="skeleton-line w60"></div>
@@ -19,6 +19,21 @@
 
     <!-- Stats cards -->
     <template v-else>
+      <!-- KPI n°1 : total résultats (ex-titre « Opportunités de recherche · X résultats ») -->
+      <div class="so-stat-card so-stat-ocean">
+        <div class="so-stat-icon-wrap ocean">
+          <i class="pi pi-list"></i>
+        </div>
+        <div class="so-stat-divider ocean"></div>
+        <div class="so-stat-content">
+          <span class="so-stat-value">
+            <i v-if="loadingResults" class="pi pi-spin pi-spinner" style="font-size: 0.85rem;"></i>
+            <template v-else>{{ formatNumber(totalResults ?? '—') }}</template>
+          </span>
+          <span class="so-stat-label">Résultats de recherche</span>
+        </div>
+      </div>
+
       <div class="so-stat-card so-stat-indigo">
         <div class="so-stat-icon-wrap indigo">
           <i class="pi pi-chart-bar"></i>
@@ -70,7 +85,9 @@
 const props = defineProps({
   stats: { type: Object, default: null },
   loading: { type: Boolean, default: false },
-  error: { type: Boolean, default: false }
+  error: { type: Boolean, default: false },
+  totalResults: { type: [Number, String], default: 0 },  // total résultats (ex-titre tableau), KPI n°1
+  loadingResults: { type: Boolean, default: false }       // liste en cours → spinner (vs « 0 » trompeur)
 })
 
 function formatNumber(val) {
@@ -82,7 +99,8 @@ function formatNumber(val) {
 <style scoped>
 .so-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 250px);   /* 5 KPI × 250px (= Sync Adaptable) */
+  justify-content: flex-end;                 /* alignés à droite */
   gap: 0.75rem;
   width: 100%;
 }
@@ -122,6 +140,7 @@ function formatNumber(val) {
   font-size: 0.95rem;
   flex-shrink: 0;
 }
+.so-stat-icon-wrap.ocean  { background: #eff6ff; color: var(--c2-primary); border: 1px solid #dbeafe; }
 .so-stat-icon-wrap.indigo { background: #eef2ff; color: #4f46e5; border: 1px solid #e0e7ff; }
 .so-stat-icon-wrap.blue   { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
 .so-stat-icon-wrap.red    { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
@@ -133,6 +152,7 @@ function formatNumber(val) {
   border-radius: 99px;
   flex-shrink: 0;
 }
+.so-stat-divider.ocean  { background: var(--c2-primary); }
 .so-stat-divider.indigo { background: #4f46e5; }
 .so-stat-divider.blue   { background: #1d4ed8; }
 .so-stat-divider.red    { background: #dc2626; }

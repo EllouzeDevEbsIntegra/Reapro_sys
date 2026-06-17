@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import ProfileDialog from './ProfileDialog.vue';
 import ebsLogo from '../assets/ebs-integra-logo.svg';
+import apiClient from '../api/axios';
 
 const router = useRouter();
 const route = useRoute();
@@ -17,6 +18,37 @@ const profileOpen = ref(false);
 // Tant qu'il n'existe pas, repli automatique sur la recréation SVG (aucune image cassée).
 const ebsLogoSrc = ref('/ebs-logo.png');
 const onLogoError = () => { if (ebsLogoSrc.value !== ebsLogo) ebsLogoSrc.value = ebsLogo; };
+
+// Version applicative : lue dynamiquement depuis /api/version (source = version du pom backend),
+// affichée en court « V<majeur>.<mineur> » (ex. V2.6). Repli sobre « V?.? » si l'API est indisponible.
+// Mise en cache (sessionStorage) car la navbar est re-montée à chaque navigation → un seul appel/session.
+const VERSION_CACHE_KEY = 'reapro.appVersion';
+const appVersion = ref('V?.?');
+try {
+  const cached = sessionStorage.getItem(VERSION_CACHE_KEY);
+  if (cached) appVersion.value = cached;
+} catch (e) { /* noop */ }
+
+function shortDisplayVersion(displayVersion) {
+  const match = String(displayVersion || '').match(/V(\d+)\.(\d+)/i);
+  return match ? `V${match[1]}.${match[2]}` : 'V?.?';
+}
+
+async function loadAppVersion() {
+  // déjà résolue (cache) → pas de re-fetch ; seul « V?.? » (échec/non chargé) retente.
+  if (appVersion.value && appVersion.value !== 'V?.?') return;
+  try {
+    const { data } = await apiClient.get('/api/version');
+    const label = shortDisplayVersion(data?.displayVersion);
+    appVersion.value = label;
+    if (label !== 'V?.?') {
+      try { sessionStorage.setItem(VERSION_CACHE_KEY, label); } catch (e) { /* noop */ }
+    }
+  } catch (e) {
+    // silencieux : ne pas spammer la console, ne pas casser la navbar.
+    appVersion.value = 'V?.?';
+  }
+}
 
 // Collapse desktop — PERSISTÉ : la navbar est re-montée à chaque navigation
 // (montée par vue), donc on conserve l'état dans localStorage pour éviter un reset.
@@ -82,6 +114,7 @@ const onDocClick = () => { profileOpen.value = false; };
 onMounted(() => {
   applyWidth();
   document.addEventListener('click', onDocClick);
+  loadAppVersion();
 });
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick);
@@ -150,7 +183,7 @@ watch(() => route.path, () => closeAll());
     <!-- 4. Pied : rappel navy (version + chip) -->
     <div class="rv-foot">
       <div class="rv-foot-card">
-        <span class="rv-foot-version">V2.5</span>
+        <span class="rv-foot-version">{{ appVersion }}</span>
         <img class="rv-foot-logo" :src="ebsLogoSrc" @error="onLogoError" alt="EBS" />
       </div>
     </div>

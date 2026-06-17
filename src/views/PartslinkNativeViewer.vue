@@ -10,26 +10,17 @@
         </div>
 
         <div class="header-controls">
-          <!-- Session Status Badge -->
+          <!-- Disponibilité du catalogue (pool de sessions isolées, auto-géré) -->
           <div class="session-status-container">
             <span v-if="checkingSession" class="checking-text">
               <i class="pi pi-spin pi-spinner mr-1"></i> Vérification...
             </span>
             <span v-else-if="sessionState && sessionState.active" class="badge badge-success cursor-pointer" @click="checkSession" title="Cliquez pour rafraîchir">
-              <i class="pi pi-circle-fill status-dot mr-1 text-xs"></i> Session Active
+              <i class="pi pi-circle-fill status-dot mr-1 text-xs"></i> Catalogue prêt
             </span>
             <span v-else class="badge badge-danger">
-              <i class="pi pi-circle-fill status-dot mr-1 text-xs"></i> Session Inactive
+              <i class="pi pi-circle-fill status-dot mr-1 text-xs"></i> Catalogue indisponible
             </span>
-            
-            <Button 
-              v-if="!checkingSession && (!sessionState || !sessionState.active)"
-              label="Démarrer la session" 
-              icon="pi pi-power-off" 
-              class="p-button-warning p-button-sm start-session-btn" 
-              :loading="sessionRestarting"
-              @click="handleRestartSession"
-            />
           </div>
 
           <Button 
@@ -64,16 +55,26 @@
         </div>
       </header>
 
-      <!-- Loading State Panel -->
+      <!-- Loading / File d'attente -->
       <section v-if="loading" class="loading-panel card">
         <i class="pi pi-spin pi-spinner spinner-icon"></i>
-        <h2>Identification du véhicule en cours...</h2>
+        <h2 v-if="jobStatus === 'QUEUED'">En file d'attente…</h2>
+        <h2 v-else>Identification du véhicule en cours…</h2>
+        <span v-if="jobStatus === 'QUEUED' && queuePosition > 0" class="badge-queue">
+          <i class="pi pi-clock mr-1 text-xs"></i> Position {{ queuePosition }} dans la file
+        </span>
         <p class="loading-sub">
           {{ currentStep || "Connexion à la session sécurisée Partslink et extraction des données..." }}
         </p>
         <div class="loading-progress-bar">
           <div class="progress-fill"></div>
         </div>
+        <Button
+          label="Annuler"
+          icon="pi pi-times"
+          class="p-button-outlined p-button-sm mt-3 cancel-search-btn"
+          @click="handleCancelSearch"
+        />
       </section>
 
       <!-- Error State -->
@@ -395,7 +396,7 @@
 
             <div v-if="!isSessionActive" class="session-warning-card">
               <i class="pi pi-exclamation-circle"></i>
-              <span>La session Partslink est actuellement inactive. Veuillez cliquer sur <strong>"Démarrer la session"</strong> en haut à droite avant de pouvoir rechercher.</span>
+              <span>Le catalogue Partslink est momentanément indisponible. Réessayez dans quelques instants.</span>
             </div>
           </div>
         </div>
@@ -419,7 +420,7 @@ import {
   getSubgroupDetails,
   getSearchStatus,
   getSessionStatus,
-  restartSession
+  cancelSearch
 } from '@/api/partslinkNativeService'
 
 const vinInput = ref('')
@@ -489,7 +490,11 @@ const handleImageError = (brand) => {
 
 const sessionState = ref(null)
 const checkingSession = ref(false)
-const sessionRestarting = ref(false)
+
+// État du job de recherche (file d'attente isolée par utilisateur)
+const currentJobId = ref(null)
+const jobStatus = ref('')        // QUEUED | RUNNING | COMPLETED | FAILED | CANCELLED
+const queuePosition = ref(0)
 
 const vehicle = ref(null)
 const groups = ref([])
@@ -582,21 +587,22 @@ const checkSession = async () => {
   }
 }
 
-const handleRestartSession = async () => {
-  sessionRestarting.value = true
-  errorMessage.value = ''
+const handleCancelSearch = async () => {
+  if (!currentJobId.value) {
+    clearPolling()
+    loading.value = false
+    return
+  }
   try {
-    const res = await restartSession()
-    sessionState.value = {
-      active: res.state === 'ACTIVE',
-      state: res.state,
-      message: res.message
-    }
-    await checkSession()
+    await cancelSearch(currentJobId.value)
   } catch (err) {
-    logError(err, 'Impossible de démarrer la session Partslink.')
+    // annulation best-effort : on arrête le polling quoi qu'il arrive
   } finally {
-    sessionRestarting.value = false
+    clearPolling()
+    loading.value = false
+    jobStatus.value = 'CANCELLED'
+    errorMessage.value = 'Recherche annulée.'
+    currentJobId.value = null
   }
 }
 
@@ -634,28 +640,44 @@ const handleVinSearch = async () => {
   details.value = null
   selectedGroupId.value = null
   selectedSubgroupId.value = null
+  currentJobId.value = null
+  jobStatus.value = ''
+  queuePosition.value = 0
 
   try {
     const data = await searchVehicleByVin(vin, selectedBrand.value?.code)
-    
-    // Si la recherche est terminée directement (Fast-Path cache hit)
+    currentJobId.value = data.jobId || null
+    jobStatus.value = data.status || ''
+
+    // Fast-Path : cache hit → résultat instantané (aucune session navigateur réservée)
     if (data.completed || data.status === 'COMPLETED') {
       vehicle.value = data.vehicle
       groups.value = normalizeGroups(data.groups)
       loading.value = false
     } else {
-      // Démarrage du polling (Slow-Path cache miss)
-      currentStep.value = data.step || 'Connexion à Partslink24...'
+      // Slow-Path : cache miss → job dans la file isolée, on suit son avancement
+      currentStep.value = data.step || 'En file d\'attente...'
       pollInterval = setInterval(async () => {
         try {
           const progress = await getSearchStatus(data.jobId)
-          currentStep.value = progress.step || 'Chargement...'
-          
+          jobStatus.value = progress.status || ''
+          queuePosition.value = progress.queuePosition || 0
+          if (progress.status === 'QUEUED') {
+            currentStep.value = queuePosition.value > 0
+              ? `En file d'attente — position ${queuePosition.value}`
+              : 'En file d\'attente...'
+          } else {
+            currentStep.value = progress.step || 'Chargement...'
+          }
+
           if (progress.completed) {
             clearPolling()
             if (progress.status === 'COMPLETED') {
               vehicle.value = progress.vehicle
               groups.value = normalizeGroups(progress.groups)
+              loading.value = false
+            } else if (progress.status === 'CANCELLED') {
+              errorMessage.value = 'Recherche annulée.'
               loading.value = false
             } else {
               errorMessage.value = progress.error || 'Erreur lors de la recherche du véhicule.'
@@ -1498,6 +1520,31 @@ const logError = (err, fallback) => {
 
 .mr-1 {
   margin-right: 0.25rem;
+}
+
+.mt-3 {
+  margin-top: 0.75rem;
+}
+
+/* Badge "file d'attente" — pilule info charte C2 (cobalt sur bleu clair) */
+.badge-queue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #eff6ff;
+  color: var(--c2-select-accent, #1d4ed8);
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 0.75rem 0;
+}
+
+.cancel-search-btn {
+  font-weight: 600;
 }
 
 .text-xs {

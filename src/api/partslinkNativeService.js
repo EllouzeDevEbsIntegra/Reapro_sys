@@ -21,12 +21,16 @@ export const getSearchStatus = async (jobId) => {
   return response.data
 }
 
+export const cancelSearch = async (jobId) => {
+  const response = await api.post(`/api/partslink/search/status/${encodeURIComponent(jobId)}/cancel`)
+  return response.data
+}
+
 export const getSessionStatus = async () => {
   const response = await api.get('/api/partslink/session/status')
   return response.data
 }
 
-export const restartSession = async () => {
-  const response = await api.post('/api/partslink/session/restart')
-  return response.data
-}
+// NB : /session/restart et /session/close sont désormais réservés aux administrateurs
+// (action globale sur tout le pool). Le pool crée/recycle les sessions à la demande :
+// aucun "démarrage de session" manuel n'est requis côté utilisateur standard.

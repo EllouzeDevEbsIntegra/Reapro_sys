@@ -235,6 +235,27 @@
             <i class="pi pi-spin pi-spinner spinner-icon"></i>
             <h3>Chargement du schéma et des pièces...</h3>
           </div>
+          <div v-else-if="detailsError" class="render-error">
+            <i class="pi pi-exclamation-triangle"></i>
+            <h3>Schéma / pièces indisponibles</h3>
+            <p>{{ detailsError }}</p>
+            <div class="render-error-actions">
+              <Button
+                label="Réessayer cette sous-famille"
+                icon="pi pi-refresh"
+                class="p-button-outlined p-button-sm"
+                @click="handleRetrySubgroup"
+              />
+              <Button
+                v-if="detailsRefreshNeeded"
+                label="Rafraîchir ce VIN"
+                icon="pi pi-refresh"
+                class="p-button-outlined p-button-sm"
+                :loading="refreshingVin"
+                @click="handleRefreshVin"
+              />
+            </div>
+          </div>
           <div v-else-if="false" class="render-placeholder">
             <i class="pi pi-images placeholder-icon"></i>
             <h3>Aucun sous-groupe sélectionné</h3>
@@ -527,6 +548,10 @@ const subgroupError = ref('')
 const subgroupRefreshNeeded = ref(false)
 const refreshingVin = ref(false)
 
+// Erreur par zone sur le schéma/pièces (clic sous-famille) — n'écrase pas l'espace de travail
+const detailsError = ref('')
+const detailsRefreshNeeded = ref(false)
+
 const normalizeGroups = (items) => {
   if (!Array.isArray(items)) return []
   return items.map((g) => {
@@ -662,6 +687,8 @@ const handleVinSearch = async () => {
   selectedSubgroupId.value = null
   subgroupError.value = ''
   subgroupRefreshNeeded.value = false
+  detailsError.value = ''
+  detailsRefreshNeeded.value = false
   currentJobId.value = null
   jobStatus.value = ''
   queuePosition.value = 0
@@ -727,6 +754,8 @@ const selectGroup = async (groupId) => {
   details.value = null
   subgroupError.value = ''
   subgroupRefreshNeeded.value = false
+  detailsError.value = ''
+  detailsRefreshNeeded.value = false
   loadingSubgroups.value = true
 
   try {
@@ -769,6 +798,8 @@ const handleRefreshVin = async () => {
 const selectSubgroup = async (subgroupId) => {
   selectedSubgroupId.value = subgroupId
   details.value = null
+  detailsError.value = ''
+  detailsRefreshNeeded.value = false
   loadingDetails.value = true
   zoomReset()
 
@@ -776,15 +807,32 @@ const selectSubgroup = async (subgroupId) => {
     const data = await getSubgroupDetails(vehicle.value.vin, subgroupId)
     details.value = data
   } catch (err) {
-    logError(err, 'Impossible de charger les pièces et schémas.')
+    // Erreur par zone : on reste dans l'espace de travail, pas d'écran d'erreur global
+    const code = err.response?.data?.code
+    if (err.response?.status === 409 && code === 'SUBGROUP_REFRESH_NEEDED') {
+      detailsRefreshNeeded.value = true
+      detailsError.value = err.response?.data?.message || 'Schéma/pièces à rafraîchir pour ce véhicule.'
+    } else if (err.response?.status === 503 && err.response?.data?.busy) {
+      detailsError.value = 'Toutes les sessions Partslink sont occupées. Réessayez dans un instant.'
+    } else {
+      detailsError.value = err.response?.data?.message || 'Impossible de charger le schéma et les pièces.'
+    }
   } finally {
     loadingDetails.value = false
+  }
+}
+
+const handleRetrySubgroup = () => {
+  if (selectedSubgroupId.value) {
+    selectSubgroup(selectedSubgroupId.value)
   }
 }
 
 const backToGroupOverview = () => {
   selectedSubgroupId.value = null
   details.value = null
+  detailsError.value = ''
+  detailsRefreshNeeded.value = false
   loadingDetails.value = false
   zoomReset()
 }
@@ -1341,6 +1389,42 @@ const logError = (err, fallback) => {
   flex: 1;
   gap: 1rem;
   color: var(--text-secondary);
+}
+
+/* Erreur par zone schéma/pièces — charte C2, ne casse pas l'espace de travail */
+.render-error {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.render-error i {
+  font-size: 2.25rem;
+  color: #ea580c;
+}
+.render-error h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.render-error p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  max-width: 420px;
+}
+.render-error-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.5rem;
 }
 
 .render-content {

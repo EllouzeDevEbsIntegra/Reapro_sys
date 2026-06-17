@@ -192,9 +192,24 @@
             </IconField>
           </div>
           
-          <div v-if="loadingSubgroups" class="panel-loader">
+          <div v-if="refreshingVin" class="panel-loader">
+            <i class="pi pi-spin pi-spinner"></i>
+            <span>Rafraîchissement du VIN…</span>
+          </div>
+          <div v-else-if="loadingSubgroups" class="panel-loader">
             <i class="pi pi-spin pi-spinner"></i>
             <span>Chargement...</span>
+          </div>
+          <div v-else-if="subgroupError" class="panel-subgroup-error">
+            <i class="pi pi-exclamation-triangle"></i>
+            <p>{{ subgroupError }}</p>
+            <Button
+              v-if="subgroupRefreshNeeded"
+              label="Rafraîchir ce VIN"
+              icon="pi pi-refresh"
+              class="p-button-outlined p-button-sm"
+              @click="handleRefreshVin"
+            />
           </div>
           <div v-else-if="!selectedGroupId" class="panel-placeholder">
             <span>Sélectionnez un groupe principal pour afficher ses sous-groupes.</span>
@@ -507,6 +522,11 @@ const selectedSubgroupId = ref(null)
 const groupFilter = ref('')
 const subgroupFilter = ref('')
 
+// Récupération ciblée quand le cache du groupe est incohérent (HTTP 409 GROUP_REFRESH_NEEDED)
+const subgroupError = ref('')
+const subgroupRefreshNeeded = ref(false)
+const refreshingVin = ref(false)
+
 const normalizeGroups = (items) => {
   if (!Array.isArray(items)) return []
   return items.map((g) => {
@@ -640,6 +660,8 @@ const handleVinSearch = async () => {
   details.value = null
   selectedGroupId.value = null
   selectedSubgroupId.value = null
+  subgroupError.value = ''
+  subgroupRefreshNeeded.value = false
   currentJobId.value = null
   jobStatus.value = ''
   queuePosition.value = 0
@@ -703,15 +725,44 @@ const selectGroup = async (groupId) => {
   selectedSubgroupId.value = null
   subgroups.value = []
   details.value = null
+  subgroupError.value = ''
+  subgroupRefreshNeeded.value = false
   loadingSubgroups.value = true
 
   try {
     const data = await getSubgroups(vehicle.value.vin, groupId)
     subgroups.value = normalizeSubgroups(Array.isArray(data) ? data : data?.subgroups)
   } catch (err) {
-    logError(err, 'Impossible de charger les sous-groupes.')
+    // Erreur ciblée sous-groupe : on garde l'espace de travail (pas d'écran d'erreur global)
+    const code = err.response?.data?.code
+    if (err.response?.status === 409 && code === 'GROUP_REFRESH_NEEDED') {
+      subgroupRefreshNeeded.value = true
+      subgroupError.value = err.response?.data?.message || 'Données de ce groupe à rafraîchir pour ce véhicule.'
+    } else if (err.response?.status === 503 && err.response?.data?.busy) {
+      subgroupError.value = 'Toutes les sessions Partslink sont occupées. Réessayez dans un instant.'
+    } else {
+      subgroupError.value = err.response?.data?.message || 'Impossible de charger les sous-groupes.'
+    }
   } finally {
     loadingSubgroups.value = false
+  }
+}
+
+const handleRefreshVin = async () => {
+  if (!vehicle.value?.vin) return
+  refreshingVin.value = true
+  subgroupError.value = ''
+  try {
+    // Re-déclenche la recherche VIN : complète le brand_code côté serveur (self-heal) puis on retente le groupe
+    await searchVehicleByVin(vehicle.value.vin, selectedBrand.value?.code)
+    subgroupRefreshNeeded.value = false
+    if (selectedGroupId.value) {
+      await selectGroup(selectedGroupId.value)
+    }
+  } catch (err) {
+    subgroupError.value = 'Le rafraîchissement a échoué. Réessayez.'
+  } finally {
+    refreshingVin.value = false
   }
 }
 
@@ -747,6 +798,8 @@ const backToVehicleOverview = () => {
   loadingDetails.value = false
   groupFilter.value = ''
   subgroupFilter.value = ''
+  subgroupError.value = ''
+  subgroupRefreshNeeded.value = false
   zoomReset()
 }
 
@@ -1234,6 +1287,28 @@ const logError = (err, fallback) => {
   color: var(--text-secondary);
   font-size: 0.88rem;
   text-align: center;
+}
+
+/* Erreur ciblée sous-groupe (cache à rafraîchir) — discrète, charte C2, ne casse pas l'espace de travail */
+.panel-subgroup-error {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.panel-subgroup-error i {
+  font-size: 1.75rem;
+  color: #ea580c;
+}
+.panel-subgroup-error p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
 }
 
 /* Panel 4 Render area */

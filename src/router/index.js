@@ -78,6 +78,12 @@ const routes = [
     name: 'ConfirmationAchat',
     component: () => import('../views/ConfirmationAchatView.vue'),
     meta: { title: 'Confirmation Achat' }
+  },
+  {
+    path: '/catalogue-tecdoc',
+    name: 'CatalogueTecDoc',
+    component: () => import('../views/CatalogueTecDocView.vue'),
+    meta: { title: 'Catalogue TecDoc' }
   }
 ]
 

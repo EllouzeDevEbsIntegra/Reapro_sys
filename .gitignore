@@ -27,3 +27,11 @@ dist-ssr
 debug_session.js
 dom_dump*.json
 dom_inputs.json
+
+# Local secrets / environment files
+.env
+.env.*
+!.env.example
+
+# Agent/private credentials
+.agent/credentials.md

@@ -21,12 +21,16 @@ apiClient.interceptors.request.use(
 )
 
 // Response Interceptor: Handle Token Refresh
+// 401 = NON authentifié (token absent/expiré) -> refresh puis logout si échec.
+// 403 = authentifié mais accès refusé -> NE JAMAIS déconnecter ; on laisse la vue afficher
+//       "Accès interdit ou droits insuffisants." (évite la déconnexion intempestive sur 403).
 apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config
+        const status = error.response?.status
 
-        if (error.response?.status === 401 || error.response?.status === 403) {
+        if (status === 401) {
             const refreshToken = localStorage.getItem('refreshToken')
 
             if (refreshToken && !originalRequest._retry) {
@@ -42,17 +46,23 @@ apiClient.interceptors.response.use(
                     originalRequest.headers.Authorization = `Bearer ${accessToken}`
                     return apiClient(originalRequest)
                 } catch (refreshError) {
-                    // Refresh token expired or invalid
+                    // Refresh token expiré ou invalide -> déconnexion
                     localStorage.removeItem('accessToken')
                     localStorage.removeItem('refreshToken')
                     router.push('/?sessionExpired=true')
                     return Promise.reject(refreshError)
                 }
             } else {
-                // No refresh token or already retried
+                // Pas de refresh token ou déjà retenté -> déconnexion
                 localStorage.removeItem('accessToken')
                 localStorage.removeItem('refreshToken')
                 router.push('/?sessionExpired=true')
+            }
+        } else if (status === 403) {
+            // Accès interdit : on NE déconnecte PAS. Message métier exploitable par les vues.
+            error.isForbidden = true
+            if (error.response && !error.response.data?.message) {
+                error.response.data = { ...(error.response.data || {}), message: 'Accès interdit ou droits insuffisants.' }
             }
         }
 

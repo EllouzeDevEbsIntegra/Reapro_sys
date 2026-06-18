@@ -159,11 +159,11 @@
                                     </td>
                                     <td class="c2-appro">
                                         <span class="imp" :class="{ z: !detail.importInventory, clickable: detail.importInventory > 0 }"
-                                            :title="detail.importInventory > 0 ? 'Voir les lignes d\'import' : ''"
-                                            @click.stop="openImportLines(detail.no, detail.buyFromVendorNo, detail.importInventory)">I {{ detail.importInventory ?? 0 }}</span>
+                                            :title="`Qté Import : ${detail.importInventory ?? 0}`"
+                                            @click.stop="openImportLines(detail.no, detail.buyFromVendorNo, detail.importInventory)">{{ detail.importInventory ?? 0 }}</span>
                                         <span class="cmd" :class="{ z: !detail.qtyOnPurchOrder, clickable: detail.qtyOnPurchOrder > 0 }"
-                                            :title="detail.qtyOnPurchOrder > 0 ? 'Voir les lignes de commande achat' : ''"
-                                            @click.stop="openPurchaseLinesDialog(detail.no, detail.qtyOnPurchOrder)">C {{ detail.qtyOnPurchOrder ?? 0 }}</span>
+                                            :title="`Qté Commandée : ${detail.qtyOnPurchOrder ?? 0}`"
+                                            @click.stop="openPurchaseLinesDialog(detail.no, detail.qtyOnPurchOrder)">{{ detail.qtyOnPurchOrder ?? 0 }}</span>
                                     </td>
                                     <td>
                                         <div class="cell-reference" :class="{ 'derp-link': !!detail.no }"
@@ -393,11 +393,11 @@
                                     </td>
                                     <td class="c2-appro">
                                         <span class="imp" :class="{ z: !item.qtyImport, clickable: item.qtyImport > 0 }"
-                                            :title="item.qtyImport > 0 ? 'Voir les lignes d\'import' : ''"
-                                            @click.stop="openImportLines(item.no, item.vendorNo, item.qtyImport)">I {{ item.qtyImport ?? 0 }}</span>
+                                            :title="`Qté Import : ${item.qtyImport ?? 0}`"
+                                            @click.stop="openImportLines(item.no, item.vendorNo, item.qtyImport)">{{ item.qtyImport ?? 0 }}</span>
                                         <span class="cmd" :class="{ z: !item.qtyOnPurchOrder, clickable: item.qtyOnPurchOrder > 0 }"
-                                            :title="item.qtyOnPurchOrder > 0 ? 'Voir les lignes de commande achat' : ''"
-                                            @click.stop="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder)">C {{ item.qtyOnPurchOrder ?? 0 }}</span>
+                                            :title="`Qté Commandée : ${item.qtyOnPurchOrder ?? 0}`"
+                                            @click.stop="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder)">{{ item.qtyOnPurchOrder ?? 0 }}</span>
                                     </td>
                                     <td>
                                         <div class="cell-reference" :class="[getStyleClass(item.styleDate), { 'derp-link': !!item.no }]"
@@ -565,11 +565,11 @@
                                     </td>
                                     <td class="c2-appro">
                                         <span class="imp" :class="{ z: !(item.qtyImport || 0), clickable: (item.qtyImport || 0) > 0 }"
-                                            :title="(item.qtyImport || 0) > 0 ? 'Voir les lignes d\'import' : ''"
-                                            @click.stop="openImportLines(item.no, item.vendorNo, item.qtyImport || 0)">I {{ item.qtyImport || 0 }}</span>
+                                            :title="`Qté Import : ${item.qtyImport || 0}`"
+                                            @click.stop="openImportLines(item.no, item.vendorNo, item.qtyImport || 0)">{{ item.qtyImport || 0 }}</span>
                                         <span class="cmd" :class="{ z: !(item.qtyOnPurchOrder || 0), clickable: (item.qtyOnPurchOrder || 0) > 0 }"
-                                            :title="(item.qtyOnPurchOrder || 0) > 0 ? 'Voir les lignes de commande achat' : ''"
-                                            @click.stop="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder || 0)">C {{ item.qtyOnPurchOrder || 0 }}</span>
+                                            :title="`Qté Commandée : ${item.qtyOnPurchOrder || 0}`"
+                                            @click.stop="openPurchaseLinesDialog(item.no, item.qtyOnPurchOrder || 0)">{{ item.qtyOnPurchOrder || 0 }}</span>
                                     </td>
                                     <td>
                                         <div class="cell-reference" :class="{ 'derp-link': !!item.no }"
@@ -3910,7 +3910,7 @@ const focusNextField = (currentField, detailId) => {
 /* Le right panel adopte le modèle largeur FIXE de C2 (.c2-side) : la zone gauche
    (flex:1) absorbe le reste. Les 3 largeurs = tokens C2 exacts. */
 .right-column {
-    width: min(564px, 41vw);
+    width: min(812px, 59vw);   /* +20% supplémentaire (ancien min(677px, 49vw) ; origine min(564px, 41vw)) */
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -3926,7 +3926,7 @@ const focusNextField = (currentField, detailId) => {
 }
 
 .right-column.expanded {
-    width: clamp(700px, 52%, 840px);
+    width: clamp(1008px, 74%, 1210px);   /* +20% supplémentaire (ancien clamp(840px, 62%, 1008px)) */
 }
 
 /* Modern Table Styles */
@@ -6066,7 +6066,7 @@ const focusNextField = (currentField, detailId) => {
     flex-shrink: 0;
     /* PAS de height:100% : comme C2, la zone (et donc la BARRE border-left) prend la hauteur
        de son contenu (~41px) et se centre dans le header → barre identique à C2. */
-    width: min(564px, 41vw);   /* = largeur de la zone droite C2 → STOCKS (flex:1) = même largeur que C2 */
+    width: min(812px, 59vw);   /* = largeur du panel droit en mode NORMAL (+20% supplémentaire) → limite gauche du bloc TOTAL alignée sur la limite gauche du panel droit */
     padding: 0 16px;
     border-left: 1px solid var(--c2-head-border);   /* = barre verticale C2 après STOCKS */
 }
@@ -6299,13 +6299,16 @@ const focusNextField = (currentField, detailId) => {
 .left-column .modern-table .cell-reference { font-size: 14px; font-weight: 700; letter-spacing: 0; margin-bottom: 1px; }
 .left-column .modern-table .cell-description { font-size: 12.5px; }
 
-/* — Colonne Appro (Imp / Cmd) — badges IDENTIQUES à C2 (.c2-appro .imp/.cmd/.z) :
-   I {qty} bleu · C {qty} orange · grisé (.z) si 0 · cliquable (souligné au survol) si > 0. */
+/* — Colonne Appro (Import / Commandé) — badges (.c2-appro .imp/.cmd/.z) :
+   quantité seule (sans lettre) · bleu = Import · orange = Commandé · neutre (.z) si 0 ·
+   cliquable (souligné au survol) si > 0 · tooltip « Qté Import/Commandée : xxx » même à 0. */
 .left-column .c2-appro { text-align: left; white-space: nowrap; }
 .left-column .c2-appro span { display: inline-block; font-size: 11.5px; font-weight: 800; padding: 2px 7px; border-radius: 5px; margin-right: 4px; font-variant-numeric: tabular-nums; }
-.left-column .c2-appro .imp { color: #1d4ed8; background: #eff6ff; border: 1px solid #dbeafe; }
-.left-column .c2-appro .cmd { color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; }
-.left-column .c2-appro .z { color: #94a3b8; background: #f8fafc; border-color: #eef2f7; }
+/* > 0 : bleu Import / orange Commandé plus FONCÉS & lisibles (charte C2, sans criard) */
+.left-column .c2-appro .imp { color: #1e40af; background: #dbeafe; border: 1px solid #bfdbfe; }
+.left-column .c2-appro .cmd { color: #9a3412; background: #ffedd5; border: 1px solid #fdba74; }
+/* = 0 : valeur visible mais NEUTRE / discrète (prime sur .imp/.cmd) */
+.left-column .c2-appro .z { color: #94a3b8; background: #f8fafc; border: 1px solid #eef2f7; }
 .left-column .c2-appro .imp.clickable, .left-column .c2-appro .cmd.clickable { cursor: pointer; }
 .left-column .c2-appro .imp.clickable:hover, .left-column .c2-appro .cmd.clickable:hover { text-decoration: underline; filter: brightness(0.92); }
 </style>

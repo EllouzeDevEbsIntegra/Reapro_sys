@@ -608,6 +608,36 @@ export const useCompareQuoteStore = defineStore('compareQuote', {
                 console.error('Fetch OEM equivalence count error:', err);
                 throw err;
             }
+        },
+
+        // ── Photo article Business Central (endpoints Reapro only) ──
+        // GET binaire : renvoie un Blob, ou null si l'article n'a pas de photo (404).
+        async fetchBcItemPicture(itemNo) {
+            try {
+                const response = await axios.get(`/api/bc/items/${encodeURIComponent(itemNo)}/picture`, {
+                    responseType: 'blob',
+                    validateStatus: (s) => s === 200 || s === 404
+                });
+                return response.status === 200 ? response.data : null;
+            } catch (err) {
+                // BC lent/indisponible : on ne casse pas l'Info Article, on retombe sur le fallback visuel.
+                console.error('Fetch BC item picture error:', err);
+                return null;
+            }
+        },
+
+        // UPDATE/upload : multipart, champ "file". Laisser axios poser le boundary multipart.
+        async uploadBcItemPicture(itemNo, file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await axios.put(`/api/bc/items/${encodeURIComponent(itemNo)}/picture`, formData);
+            return response.data;
+        },
+
+        // DELETE photo.
+        async deleteBcItemPicture(itemNo) {
+            const response = await axios.delete(`/api/bc/items/${encodeURIComponent(itemNo)}/picture`);
+            return response.data;
         }
     }
 })

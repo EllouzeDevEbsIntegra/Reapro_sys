@@ -519,8 +519,13 @@
       :visible="infoState.open"
       :item="infoState.data"
       :loading="infoState.loading"
+      :bc-picture-url="bcPicture.url"
+      :bc-picture-loading="bcPicture.loading"
+      :can-manage-picture="authStore.isAdmin"
       @update:visible="closeInfo"
       @load-vehicle-models="loadVehicleModels"
+      @update-photo="onUpdatePhoto"
+      @delete-photo="onDeletePhoto"
     />
 
     <!-- PHASE 10B : dialog historique / détail stock par société — composant PARTAGÉ -->
@@ -611,6 +616,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useToast } from 'primevue/usetoast'
 import { useCompareQuoteStore } from '../stores/compareQuote'
 import { useAuthStore } from '../stores/auth'
 import TecDocArticleInfoDialog from './tecdoc/TecDocArticleInfoDialog.vue'
@@ -655,6 +661,7 @@ const selectedFrs = ref(0)
 ══════════════════════════════════════════════════════════════════════════ */
 const store = useCompareQuoteStore()
 const authStore = useAuthStore()
+const toast = useToast()
 const quoteLineDetails = ref([])
 const isLoadingDetails = ref(false)
 const frsTotalElements = ref(0)        // PHASE 4C : total réel (badge FOURNISSEURS) via totalElements backend
@@ -1019,8 +1026,61 @@ const loadVehicleModels = async (group) => {
   }
 }
 
-const closeInfo = () => { infoState.value.open = false }
+/* Photo Business Central (fallback si pas d'image TecDoc) — blob URL géré ici (parent). */
+const bcPicture = ref({ url: null, loading: false })
+const revokeBcPicture = () => {
+  if (bcPicture.value.url) URL.revokeObjectURL(bcPicture.value.url)
+  bcPicture.value = { url: null, loading: false }
+}
+const loadBcPicture = async (itemNo) => {
+  revokeBcPicture()
+  if (!itemNo) return
+  bcPicture.value.loading = true
+  try {
+    const blob = await store.fetchBcItemPicture(itemNo)
+    bcPicture.value = { url: blob ? URL.createObjectURL(blob) : null, loading: false }
+  } catch (e) {
+    console.error('[C2] Photo BC:', e)
+    bcPicture.value = { url: null, loading: false }
+  }
+}
+const isValidPhotoFile = (file) => {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp']
+  const maxSize = 5 * 1024 * 1024 // 5 Mo (aligné backend)
+  return file && allowed.includes((file.type || '').toLowerCase()) && file.size > 0 && file.size <= maxSize
+}
+const onUpdatePhoto = async (file) => {
+  const itemNo = infoState.value.data?.no
+  if (!itemNo || !file) return
+  if (!isValidPhotoFile(file)) {
+    toast.add({ severity: 'warn', summary: 'Attention', detail: 'Format image invalide ou fichier trop volumineux.', life: 4000 })
+    return
+  }
+  try {
+    await store.uploadBcItemPicture(itemNo, file)
+    await loadBcPicture(itemNo)
+    toast.add({ severity: 'success', summary: 'Succès', detail: 'Photo article mise à jour.', life: 3000 })
+  } catch (e) {
+    console.error('[C2] Upload photo BC:', e)
+    toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de mettre à jour la photo article.', life: 4000 })
+  }
+}
+const onDeletePhoto = async () => {
+  const itemNo = infoState.value.data?.no
+  if (!itemNo) return
+  try {
+    await store.deleteBcItemPicture(itemNo)
+    revokeBcPicture()
+    toast.add({ severity: 'success', summary: 'Succès', detail: 'Photo article supprimée.', life: 3000 })
+  } catch (e) {
+    console.error('[C2] Suppression photo BC:', e)
+    toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de supprimer la photo article.', life: 4000 })
+  }
+}
+
+const closeInfo = () => { infoState.value.open = false; revokeBcPicture() }
 const openInfo = async (item) => {
+  revokeBcPicture()
   currentImageIndex.value = 0
   isOemSectionExpanded.value = true
   isPdfSectionExpanded.value = false
@@ -1046,7 +1106,7 @@ const openInfo = async (item) => {
   // Réf TecDoc + fabricant (mêmes casses que l'ancien composant)
   const articleRef = item.VendorItemNo || item.vendorItemNo || item.articleNumber
   const manufacturerId = item.ManufacturerTecdocId || item.manufacturerTecdocId || item.dataSupplierId || item.manufacturerId
-  if (!articleRef || !manufacturerId) { infoState.value.loading = false; return }
+  if (!articleRef || !manufacturerId) { infoState.value.loading = false; loadBcPicture(item.no); return }
   try {
     const response = await store.fetchTecdocArticleDetails(articleRef, manufacturerId)
     const article = response && response.articles && response.articles.length ? response.articles[0] : null
@@ -1077,6 +1137,11 @@ const openInfo = async (item) => {
     console.error('[C2 Phase 10A] Erreur TecDoc:', error)
   } finally {
     infoState.value.loading = false
+  }
+  // Fallback photo BC si aucune image TecDoc (ne bloque pas l'affichage du dialog)
+  const d = infoState.value.data
+  if (d && !(d.thumbnails && d.thumbnails.length) && !(d.images360 && d.images360.length)) {
+    loadBcPicture(d.no)
   }
 }
 

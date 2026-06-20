@@ -25,8 +25,14 @@
         <div class="c2-info-top">
           <div class="c2-info-media">
             <div class="c2-info-mainimg" :class="{ is360: is360 }" @mousemove="is360 ? on360Move($event) : null">
+              <!-- Priorité TecDoc : 360° puis vignettes -->
               <img v-if="is360 && item?.images360?.length" :src="item.images360[frame360]" alt="Vue 360°" />
               <img v-else-if="item?.thumbnails?.length" :src="item.thumbnails[currentImageIndex]" :alt="item?.no" />
+              <!-- Fallback Business Central (aperçu local prioritaire) -->
+              <img v-else-if="fallbackPictureUrl" :src="fallbackPictureUrl" :alt="item?.no" />
+              <!-- Chargement de la photo BC (optionnel, ne bloque pas le reste du dialog) -->
+              <div v-else-if="bcPictureLoading" class="c2-info-bcload"><i class="pi pi-spin pi-spinner"></i></div>
+              <!-- Aucune image -->
               <div v-else class="c2-info-noimg"><i class="pi pi-image"></i></div>
               <button v-if="item?.images360?.length" class="c2-info-360btn" :class="{ on: is360 }" @click.stop="is360 = !is360" :title="is360 ? 'Retour aux photos' : 'Vue 360°'"><i class="pi" :class="is360 ? 'pi-images' : 'pi-sync'"></i></button>
               <button v-if="!is360 && item?.thumbnails?.length > 1" class="c2-info-navbtn prev" @click.stop="prevImage" title="Photo précédente"><i class="pi pi-chevron-left"></i></button>
@@ -36,6 +42,9 @@
               <img v-for="(t, ti) in item.thumbnails" :key="ti" :src="t" :class="{ on: ti === currentImageIndex }" @click="currentImageIndex = ti" />
             </div>
             <div v-if="is360" class="c2-info-360hint"><i class="pi pi-arrows-h"></i> Déplacez la souris pour pivoter</div>
+            <!-- Gestion photo (ajout/modif/suppression) RETIRÉE de l'Info Article :
+                 sera gérée dans la future page « Gestion Articles ». Ici l'image est en lecture seule
+                 (TecDoc en priorité, sinon fallback photo Business Central). -->
           </div>
 
           <div class="c2-info-ident">
@@ -156,18 +165,53 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
   item: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   isMaster: { type: Boolean, default: false },        // flag « Référence Master » (B2B)
-  showSupplierGtin: { type: Boolean, default: false } // chips Fournisseur/GTIN (C2). B2B = false → identique
+  showSupplierGtin: { type: Boolean, default: false }, // chips Fournisseur/GTIN (C2). B2B = false → identique
+  bcPictureUrl: { type: String, default: null },       // photo Business Central (fallback) — blob URL fourni par le parent
+  bcPictureLoading: { type: Boolean, default: false }, // chargement de la photo BC (optionnel)
+  canManagePicture: { type: Boolean, default: false }  // droits modif/suppression photo (parent : authStore.isAdmin)
 })
-const emit = defineEmits(['update:visible', 'load-vehicle-models'])
+const emit = defineEmits(['update:visible', 'load-vehicle-models', 'update-photo', 'delete-photo'])
 
 const close = () => emit('update:visible', false)
+
+/* ── Photo BC : fallback + upload/suppression (présentationnel — API gérée par le parent) ── */
+const fileInputRef = ref(null)
+const selectedFile = ref(null)
+const localPreviewUrl = ref(null)   // aperçu local du fichier choisi (avant upload)
+
+const hasTecdocImage = computed(() => !!(props.item?.thumbnails?.length || props.item?.images360?.length))
+const isPreviewing = computed(() => !!localPreviewUrl.value)
+const fallbackPictureUrl = computed(() => localPreviewUrl.value || props.bcPictureUrl || null)
+
+const clearPreview = () => {
+  if (localPreviewUrl.value) URL.revokeObjectURL(localPreviewUrl.value)
+  localPreviewUrl.value = null
+  selectedFile.value = null
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
+const pickFile = () => fileInputRef.value?.click()
+const onFileChange = (e) => {
+  const f = e.target.files && e.target.files[0]
+  if (!f) return
+  clearPreview()
+  selectedFile.value = f
+  localPreviewUrl.value = URL.createObjectURL(f)
+}
+const cancelPreview = () => clearPreview()
+const confirmUpload = () => {
+  if (selectedFile.value) emit('update-photo', selectedFile.value)
+  clearPreview()
+}
+const requestDelete = () => emit('delete-photo')
+
+onUnmounted(clearPreview)
 
 /* ── État UI interne (galerie / 360° / accordéons) ── */
 const currentImageIndex = ref(0)
@@ -193,6 +237,7 @@ watch(() => props.visible, (open) => {
     vehOpen.value = false
     expandedOemBrands.value = new Set()
     expandedVehBrands.value = new Set()
+    clearPreview()
   }
 })
 
@@ -299,6 +344,18 @@ const toggleVehBrand = (group) => {
 .c2-info-mainimg img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .c2-info-mainimg.is360 { cursor: ew-resize; }
 .c2-info-noimg { color: #cbd5e1; font-size: 2.4rem; }
+.c2-info-bcload { color: var(--p); font-size: 1.6rem; }
+/* Barre de gestion photo BC (fallback) — boutons sobres, charte §10 */
+.c2-info-photoacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.c2-info-fileinput { display: none; }
+.c2-info-pbtn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid var(--line); background: #fff; color: #475569; transition: background .15s ease, color .15s ease, border-color .15s ease; }
+.c2-info-pbtn i { font-size: 0.82rem; }
+.c2-info-pbtn:focus-visible { outline: 2px solid var(--c2-focus, #82C9E5); outline-offset: 2px; }
+.c2-info-pbtn.primary { background: var(--c2-primary, var(--p)); border-color: var(--c2-primary, var(--p)); color: #fff; }
+.c2-info-pbtn.primary:hover { background: var(--c2-primary-hover, #12468f); }
+.c2-info-pbtn.ghost:hover { background: var(--line-soft); color: var(--ink); }
+.c2-info-pbtn.danger { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+.c2-info-pbtn.danger:hover { background: #fee2e2; }
 .c2-info-360btn { position: absolute; bottom: 8px; right: 8px; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--p); cursor: pointer; box-shadow: 0 2px 6px rgba(16, 24, 40, .12); }
 .c2-info-360btn.on { background: var(--p); color: #fff; border-color: var(--p); }
 .c2-info-360hint { margin-top: 8px; font-size: 0.72rem; color: var(--muted); text-align: center; }

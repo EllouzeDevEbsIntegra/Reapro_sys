@@ -917,6 +917,8 @@
             :item="selectedInfoItem"
             :loading="selectedInfoItem?.isLoading"
             :is-master="selectedInfoItem ? isProductItem(selectedInfoItem) : false"
+            :bc-picture-url="bcPicture.url"
+            :bc-picture-loading="bcPicture.loading"
             @load-vehicle-models="fetchVehiclesForBrand"
         />
 
@@ -2302,6 +2304,28 @@ const updateLine = async (detail, markAsTreated = false) => {
     }
 }
 
+/* Photo Business Central (fallback si pas d'image TecDoc) — blob URL géré ici (parent),
+   même comportement que B2B / Confirmation Achat C2 (dialog Info Article partagé). */
+const bcPicture = ref({ url: null, loading: false })
+const revokeBcPicture = () => {
+    if (bcPicture.value.url) URL.revokeObjectURL(bcPicture.value.url)
+    bcPicture.value = { url: null, loading: false }
+}
+const loadBcPicture = async (itemNo) => {
+    revokeBcPicture()
+    if (!itemNo) return
+    bcPicture.value.loading = true
+    try {
+        const blob = await store.fetchBcItemPicture(itemNo)
+        bcPicture.value = { url: blob ? URL.createObjectURL(blob) : null, loading: false }
+    } catch (e) {
+        console.error('[Comparateur] Photo BC:', e)
+        bcPicture.value = { url: null, loading: false }
+    }
+}
+watch(showInfoDialog, (v) => { if (!v) revokeBcPicture() })
+onUnmounted(() => revokeBcPicture())
+
 const openInfoDialog = async (item) => {
     // Show dialog immediately with loading state
     currentImageIndex.value = 0
@@ -2309,6 +2333,9 @@ const openInfoDialog = async (item) => {
     current360Frame.value = 0
     showInfoDialog.value = true
     expandedBrands.value.clear()
+
+    // Photo BC en parallèle (affichée par le dialog seulement s'il n'y a pas d'image TecDoc)
+    loadBcPicture(item.no || item.itemNo)
 
     // Debug: Log the item to verify fields are present
 

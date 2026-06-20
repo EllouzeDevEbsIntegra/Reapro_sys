@@ -686,7 +686,12 @@
             :item="selectedInfoItem"
             :loading="selectedInfoItem?.isLoading"
             :is-master="selectedInfoItem ? isProductItem(selectedInfoItem) : false"
+            :bc-picture-url="bcPicture.url"
+            :bc-picture-loading="bcPicture.loading"
+            :can-manage-picture="authStore.isAdmin"
             @load-vehicle-models="fetchVehiclesForBrand"
+            @update-photo="onUpdatePhoto"
+            @delete-photo="onDeletePhoto"
         />
 
 
@@ -695,6 +700,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useToast } from 'primevue/usetoast'
 import TheNavbar from '../components/TheNavbar.vue'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
@@ -708,6 +714,7 @@ import TecDocArticleInfoDialog from '../components/tecdoc/TecDocArticleInfoDialo
 const compareStore = useCompareQuoteStore()
 const authStore = useAuthStore()
 const salesOrderStore = useSalesOrderStore()
+const toast = useToast()
 
 const formatReference = (refVal) => {
     if (!refVal) return ''
@@ -961,6 +968,60 @@ const resetFilters = () => {
 // State variables for Article Info Dialog
 const showInfoDialog = ref(false)
 const selectedInfoItem = ref(null)
+
+/* Photo Business Central (fallback si pas d'image TecDoc) — blob URL géré ici (parent). */
+const bcPicture = ref({ url: null, loading: false })
+const revokeBcPicture = () => {
+    if (bcPicture.value.url) URL.revokeObjectURL(bcPicture.value.url)
+    bcPicture.value = { url: null, loading: false }
+}
+const loadBcPicture = async (itemNo) => {
+    revokeBcPicture()
+    if (!itemNo) return
+    bcPicture.value.loading = true
+    try {
+        const blob = await compareStore.fetchBcItemPicture(itemNo)
+        bcPicture.value = { url: blob ? URL.createObjectURL(blob) : null, loading: false }
+    } catch (e) {
+        console.error('[B2B] Photo BC:', e)
+        bcPicture.value = { url: null, loading: false }
+    }
+}
+const isValidPhotoFile = (file) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    const maxSize = 5 * 1024 * 1024 // 5 Mo (aligné backend)
+    return file && allowed.includes((file.type || '').toLowerCase()) && file.size > 0 && file.size <= maxSize
+}
+const onUpdatePhoto = async (file) => {
+    const itemNo = selectedInfoItem.value?.no
+    if (!itemNo || !file) return
+    if (!isValidPhotoFile(file)) {
+        toast.add({ severity: 'warn', summary: 'Attention', detail: 'Format image invalide ou fichier trop volumineux.', life: 4000 })
+        return
+    }
+    try {
+        await compareStore.uploadBcItemPicture(itemNo, file)
+        await loadBcPicture(itemNo)
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Photo article mise à jour.', life: 3000 })
+    } catch (e) {
+        console.error('[B2B] Upload photo BC:', e)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de mettre à jour la photo article.', life: 4000 })
+    }
+}
+const onDeletePhoto = async () => {
+    const itemNo = selectedInfoItem.value?.no
+    if (!itemNo) return
+    try {
+        await compareStore.deleteBcItemPicture(itemNo)
+        revokeBcPicture()
+        toast.add({ severity: 'success', summary: 'Succès', detail: 'Photo article supprimée.', life: 3000 })
+    } catch (e) {
+        console.error('[B2B] Suppression photo BC:', e)
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de supprimer la photo article.', life: 4000 })
+    }
+}
+// Révoque le blob quand le dialog se ferme (v-model:visible)
+watch(showInfoDialog, (open) => { if (!open) revokeBcPicture() })
 const currentImageIndex = ref(0)
 const isViewing360 = ref(false)
 const current360Frame = ref(0)
@@ -1011,6 +1072,7 @@ const openTecdocDialog = async (item) => {
     isViewing360.value = false
     current360Frame.value = 0
     showInfoDialog.value = true
+    revokeBcPicture()
     expandedBrands.value.clear()
     expandedOemBrands.value.clear()
     isOemSectionExpanded.value      = false
@@ -1039,6 +1101,7 @@ const openTecdocDialog = async (item) => {
         if (!articleRef || !manufacturerId) {
             console.error('Missing article reference or manufacturer ID')
             selectedInfoItem.value.isLoading = false
+            loadBcPicture(item.no)
             return
         }
 
@@ -1102,6 +1165,11 @@ const openTecdocDialog = async (item) => {
     } catch (error) {
         console.error('Error fetching TecDoc article details:', error)
         selectedInfoItem.value.isLoading = false
+    }
+    // Fallback photo BC si aucune image TecDoc (n'empêche pas l'affichage du dialog)
+    const d = selectedInfoItem.value
+    if (d && !(d.thumbnails && d.thumbnails.length) && !(d.images360 && d.images360.length)) {
+        loadBcPicture(d.no)
     }
 }
 

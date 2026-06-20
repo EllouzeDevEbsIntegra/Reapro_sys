@@ -65,6 +65,7 @@ const navItems = [
   { label: 'Sync Adaptable', full: 'Synchronisation Adaptable', icon: 'pi pi-sync', route: '/sync-adaptable' },
   { label: 'Partslink', full: 'Catalogue Partslink', icon: 'pi pi-desktop', route: '/partslink-viewer' },
   { label: 'TecDoc', full: 'Catalogue TecDoc', icon: 'pi pi-box', route: '/catalogue-tecdoc' },
+  { label: 'Gestion Articles', full: 'Gestion Articles', icon: 'pi pi-tags', route: '/gestion-articles' },
 ];
 
 const userName = computed(() =>

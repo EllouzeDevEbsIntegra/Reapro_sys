@@ -84,6 +84,12 @@ const routes = [
     name: 'CatalogueTecDoc',
     component: () => import('../views/CatalogueTecDocView.vue'),
     meta: { title: 'Catalogue TecDoc' }
+  },
+  {
+    path: '/gestion-articles',
+    name: 'GestionArticles',
+    component: () => import('../views/ArticleManagementView.vue'),
+    meta: { title: 'Gestion Articles' }
   }
 ]
 

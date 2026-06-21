@@ -136,4 +136,14 @@ label {
 .text-center { text-align: center; }
 .text-xl { font-size: 1.25rem; }
 .tracking-widest { letter-spacing: 0.1em; }
+
+/* Bouton principal (PrimeVue solide) → cobalt charte ; le bouton « Retour » (text) reste inchangé */
+:deep(.p-button:not(.p-button-text):not(.p-button-outlined)) {
+  background: var(--c2-primary, #1859B3);
+  border-color: var(--c2-primary, #1859B3);
+}
+:deep(.p-button:not(.p-button-text):not(.p-button-outlined):hover) {
+  background: var(--c2-primary-hover, #12468f);
+  border-color: var(--c2-primary-hover, #12468f);
+}
 </style>

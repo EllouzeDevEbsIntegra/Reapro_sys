@@ -126,4 +126,65 @@ const router = createRouter({
   routes: import.meta.env.DEV ? [...routes, ...devRoutes] : routes
 })
 
+// ──────────────────────────────────────────────────────────────────────────
+// Garde d'authentification globale.
+//  - Routes publiques (auth) accessibles sans token.
+//  - Toute autre route = protégée : sans session exploitable → redirection /login (route '/')
+//    avec ?redirect=<cible> pour revenir après connexion.
+//  - Utilisateur déjà connecté arrivant sur la page de connexion → page métier par défaut.
+//  - Source de vérité = localStorage (cohérent avec l'intercepteur axios) ; on ne logge aucun token.
+// ──────────────────────────────────────────────────────────────────────────
+const PUBLIC_PATHS = new Set(['/', '/login', '/register', '/forgot-password', '/reset-password'])
+
+function decodeJwtExp(token) {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return null
+    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof json.exp === 'number' ? json.exp : null
+  } catch (_) {
+    return null
+  }
+}
+
+function isAccessTokenValid() {
+  const t = localStorage.getItem('accessToken')
+  if (!t) return false
+  const exp = decodeJwtExp(t)
+  if (exp == null) return true // exp illisible → on laisse l'API/refresh trancher
+  return exp * 1000 > Date.now() + 5000 // marge de 5 s
+}
+
+// Session exploitable = access token valide OU refresh token présent (l'intercepteur tentera le refresh).
+function hasSession() {
+  return isAccessTokenValid() || !!localStorage.getItem('refreshToken')
+}
+
+function isSafeRedirect(value) {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
+}
+
+router.beforeEach((to) => {
+  // /login → route de connexion canonique ('/'), en conservant la query
+  if (to.path === '/login') {
+    return { path: '/', query: to.query }
+  }
+
+  const isPublic = PUBLIC_PATHS.has(to.path)
+  const authed = hasSession()
+
+  // Route protégée sans session → connexion (avec retour)
+  if (!isPublic && !authed) {
+    return { path: '/', query: { redirect: to.fullPath } }
+  }
+
+  // Déjà connecté et arrive sur la page de connexion → page métier (ou redirect demandé)
+  if (to.path === '/' && authed) {
+    const redirect = isSafeRedirect(to.query.redirect) ? to.query.redirect : null
+    return redirect || { path: '/comparateur' }
+  }
+
+  return true
+})
+
 export default router

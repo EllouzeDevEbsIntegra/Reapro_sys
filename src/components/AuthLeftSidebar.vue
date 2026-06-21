@@ -22,7 +22,8 @@
 <style scoped>
 .auth-left {
   flex: 1;
-  background-color: #1e3a8a;
+  /* Charte Reapro/C2 — Deep Ocean (remplace l'ancien bleu royal #1e3a8a) */
+  background: linear-gradient(160deg, var(--c2-navy-surface, #0a3a68) 0%, var(--c2-deep-ocean, #002A51) 100%);
   color: white;
   display: flex;
   flex-direction: column;

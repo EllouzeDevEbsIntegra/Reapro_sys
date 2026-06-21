@@ -207,7 +207,7 @@ label {
 }
 
 .text-primary {
-  color: #1e3a8a;
+  color: var(--c2-primary, #1859B3);
 }
 
 .font-semibold {
@@ -217,6 +217,20 @@ label {
 .register-submit-btn {
   height: 48px;
   font-weight: 700;
+}
+
+/* Bouton principal d'inscription (PrimeVue) → cobalt charte */
+:deep(.register-submit-btn.p-button) {
+  background: var(--c2-primary, #1859B3);
+  border-color: var(--c2-primary, #1859B3);
+}
+:deep(.register-submit-btn.p-button:hover) {
+  background: var(--c2-primary-hover, #12468f);
+  border-color: var(--c2-primary-hover, #12468f);
+}
+:deep(.register-submit-btn.p-button:focus-visible) {
+  outline: 2px solid var(--c2-focus, #82C9E5);
+  outline-offset: 2px;
 }
 
 :deep(.p-password) {

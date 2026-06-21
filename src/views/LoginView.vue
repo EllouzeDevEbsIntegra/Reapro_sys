@@ -74,8 +74,9 @@ const form = reactive({
 onMounted(() => {
   if (route.query.sessionExpired === 'true') {
     toast.add({ severity: 'warn', summary: 'Session expirée', detail: 'Votre session a expiré. Veuillez vous reconnecter.', life: 5000 })
-    // Clean up the URL
-    router.replace({ query: {} })
+    // Nettoie l'URL mais CONSERVE 'redirect' (retour à la page initiale après reconnexion)
+    const keep = typeof route.query.redirect === 'string' ? { redirect: route.query.redirect } : {}
+    router.replace({ query: keep })
   }
 })
 
@@ -90,7 +91,10 @@ const handleLogin = async () => {
       email: form.email,
       password: form.password
     })
-    router.push('/comparateur')
+    // Retour à la page initialement demandée (guard) si fournie et sûre, sinon page métier par défaut
+    const redirect = route.query.redirect
+    const safe = typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+    router.push(safe ? redirect : '/comparateur')
   } catch (error) {
     console.error('Login failed', error)
   }
@@ -165,7 +169,7 @@ label {
 }
 
 .forgot-password {
-  color: #1e3a8a;
+  color: var(--c2-primary, #1859B3);
   text-decoration: none;
   font-weight: 600;
 }
@@ -193,8 +197,26 @@ label {
   height: 48px;
   font-weight: 700;
   color: white !important;
-  background-color: #3b82f6 !important;
-  border-color: #3b82f6 !important;
+  background-color: var(--c2-primary, #1859B3) !important;
+  border-color: var(--c2-primary, #1859B3) !important;
+}
+.register-button:hover {
+  background-color: var(--c2-primary-hover, #12468f) !important;
+  border-color: var(--c2-primary-hover, #12468f) !important;
+}
+
+/* Bouton principal « Se connecter » (PrimeVue) → cobalt charte */
+:deep(.login-button.p-button) {
+  background: var(--c2-primary, #1859B3);
+  border-color: var(--c2-primary, #1859B3);
+}
+:deep(.login-button.p-button:hover) {
+  background: var(--c2-primary-hover, #12468f);
+  border-color: var(--c2-primary-hover, #12468f);
+}
+:deep(.login-button.p-button:focus-visible) {
+  outline: 2px solid var(--c2-focus, #82C9E5);
+  outline-offset: 2px;
 }
 
 @media (max-width: 768px) {

@@ -70,9 +70,9 @@
                             </div>
                             <div class="form-group">
                                 <label>Société</label>
-                                <Select v-model="profileForm.bcCompanyId" :options="authStore.companies"
-                                    optionLabel="displayName" optionValue="id" placeholder="Sélectionner une société"
-                                    class="w-full company-dropdown" panelClass="c2-dropdown-panel" />
+                                <!-- ⛔ RBAC : la société n'est plus modifiable par l'utilisateur (lecture seule).
+                                     Affectation réservée au SUPER ADMIN via Paramètres > Utilisateurs. -->
+                                <InputText :value="companyDisplay" disabled class="bg-gray-50" />
                             </div>
                         </div>
 
@@ -140,7 +140,7 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Divider from 'primevue/divider';
 import Avatar from 'primevue/avatar';
-import Select from 'primevue/select';
+import { computed } from 'vue';
 
 const props = defineProps({
     visible: {
@@ -159,9 +159,11 @@ const profileForm = ref({
     firstname: '',
     lastname: '',
     email: '',
-    role: '',
-    bcCompanyId: ''
+    role: ''
 });
+
+// Société en lecture seule (affectée par le super-admin ; non modifiable ici).
+const companyDisplay = computed(() => authStore.user?.bcCompanyName || '—');
 
 const passwordForm = ref({
     oldPassword: '',
@@ -181,16 +183,8 @@ watch(() => props.visible, async (newVal) => {
                 firstname: authStore.user.firstname || '',
                 lastname: authStore.user.lastname || '',
                 email: authStore.user.email || '',
-                role: authStore.user.role || '',
-                bcCompanyId: authStore.user.bcCompanyId || ''
+                role: authStore.user.role || ''
             };
-        }
-
-        // Fetch companies
-        try {
-            await authStore.fetchCompanies();
-        } catch (error) {
-            console.error('Failed to fetch companies:', error);
         }
 
         // 2. Try to refresh from API
@@ -201,8 +195,7 @@ watch(() => props.visible, async (newVal) => {
                     firstname: userData.firstname || '',
                     lastname: userData.lastname || '',
                     email: userData.email || '',
-                    role: userData.role || '',
-                    bcCompanyId: userData.bcCompanyId || ''
+                    role: userData.role || ''
                 };
             }
         } catch (error) {
@@ -222,17 +215,12 @@ watch(() => props.visible, async (newVal) => {
 const handleUpdateProfile = async () => {
     loadingProfile.value = true;
     try {
-        // 1. Update basic profile
+        // Mise à jour des infos de base uniquement (la société n'est plus modifiable ici).
         await authStore.updateProfile({
             firstname: profileForm.value.firstname,
             lastname: profileForm.value.lastname,
             email: profileForm.value.email
         });
-
-        // 2. Update company if changed
-        if (profileForm.value.bcCompanyId !== authStore.user.bcCompanyId) {
-            await authStore.updateCompany(profileForm.value.bcCompanyId);
-        }
 
         toast.add({ severity: 'success', summary: 'Succès', detail: 'Profil mis à jour avec succès', life: 3000 });
     } catch (err) {

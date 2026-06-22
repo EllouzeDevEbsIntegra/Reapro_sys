@@ -356,11 +356,12 @@ import {
 const router = useRouter()
 const authStore = useAuthStore()
 
-// Access Control - Restricted to admin
+// Contrôle d'accès (RBAC Lot 3) : superAdmin OU permission Paramètres système.
+// Le router (meta.permissions) protège déjà la route ; ce garde-fou évite l'accès direct du composant.
 if (!authStore.user) {
   router.push('/')
-} else if (!authStore.isAdmin) {
-  router.push('/search-opportunities')
+} else if (!(authStore.isSuperAdmin || authStore.hasPermission('SYSTEM_SETTINGS_ACCESS'))) {
+  router.push('/acces-refuse')
 }
 
 // Tabs state

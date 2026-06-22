@@ -56,17 +56,27 @@ const COLLAPSE_KEY = 'reapro.nav.collapsed';
 const collapsed = ref(false);
 try { collapsed.value = localStorage.getItem(COLLAPSE_KEY) === '1'; } catch (e) { /* noop */ }
 
-// 7 entrées à plat (label court + libellé complet en tooltip). Routes existantes, inchangées.
+// Entrées à plat (label court + libellé complet en tooltip). Routes existantes, inchangées.
+// `perm` = permission RBAC requise (Lot 3) : l'entrée est masquée si l'utilisateur ne l'a pas.
+// superAdmin voit tout (authStore.hasPermission renvoie true). Le backend reste la source de vérité.
 const navItems = [
-  { label: 'Comparateur', full: 'Comparateur Achat', icon: 'pi pi-search-plus', route: '/comparateur' },
-  { label: 'Confirmation Achat', full: 'Confirmation Achat', icon: 'pi pi-check-square', route: '/confirmation-achat' },
-  { label: 'B2B', full: 'B2B', icon: 'pi pi-users', route: '/b2b' },
-  { label: 'Analyse B2B', full: 'Analyse Recherches B2B', icon: 'pi pi-chart-line', route: '/search-opportunities' },
-  { label: 'Sync Adaptable', full: 'Synchronisation Adaptable', icon: 'pi pi-sync', route: '/sync-adaptable' },
-  { label: 'Partslink', full: 'Catalogue Partslink', icon: 'pi pi-desktop', route: '/partslink-viewer' },
-  { label: 'TecDoc', full: 'Catalogue TecDoc', icon: 'pi pi-box', route: '/catalogue-tecdoc' },
-  { label: 'Gestion Articles', full: 'Gestion Articles', icon: 'pi pi-tags', route: '/gestion-articles' },
+  { label: 'Comparateur', full: 'Comparateur Achat', icon: 'pi pi-search-plus', route: '/comparateur', perm: 'COMPARATOR_ACCESS' },
+  { label: 'Confirmation Achat', full: 'Confirmation Achat', icon: 'pi pi-check-square', route: '/confirmation-achat', perm: 'PURCHASE_CONFIRMATION_ACCESS' },
+  { label: 'B2B', full: 'B2B', icon: 'pi pi-users', route: '/b2b', perm: 'B2B_ACCESS' },
+  { label: 'Analyse B2B', full: 'Analyse Recherches B2B', icon: 'pi pi-chart-line', route: '/search-opportunities', perm: 'SEARCH_OPPORTUNITIES_ACCESS' },
+  { label: 'Sync Adaptable', full: 'Synchronisation Adaptable', icon: 'pi pi-sync', route: '/sync-adaptable', perm: 'ADAPTABLE_SYNC_ACCESS' },
+  { label: 'Partslink', full: 'Catalogue Partslink', icon: 'pi pi-desktop', route: '/partslink-viewer', perm: 'PARTSLINK_ACCESS' },
+  { label: 'TecDoc', full: 'Catalogue TecDoc', icon: 'pi pi-box', route: '/catalogue-tecdoc', perm: 'TECDOC_CATALOG_ACCESS' },
+  { label: 'Gestion Articles', full: 'Gestion Articles', icon: 'pi pi-tags', route: '/gestion-articles', perm: 'ARTICLE_MANAGEMENT_ACCESS' },
 ];
+
+// Entrées visibles = celles dont la permission est accordée (superAdmin → toutes).
+const visibleNavItems = computed(() =>
+  navItems.filter((it) => !it.perm || authStore.hasPermission(it.perm))
+);
+
+// Bouton « Paramètres » visible si au moins un onglet d'administration est accessible.
+const canOpenSettings = computed(() => authStore.canOpenSettings);
 
 const userName = computed(() =>
   authStore.user?.lastname || authStore.user?.nom || authStore.user?.name || 'User'
@@ -149,16 +159,16 @@ watch(() => route.path, () => closeAll());
     <!-- 2. Menu principal (zone scrollable) -->
     <div class="rv-section">Navigation</div>
     <nav class="rv-menu">
-      <RouterLink v-for="it in navItems" :key="it.route" :to="it.route" class="rv-link"
+      <RouterLink v-for="it in visibleNavItems" :key="it.route" :to="it.route" class="rv-link"
         :class="{ 'is-active': isRouteActive(it.route) }" :title="it.full" @click="closeAll">
         <i :class="it.icon"></i><span class="rv-label">{{ it.label }}</span>
       </RouterLink>
     </nav>
 
-    <!-- 3. Zone compte (séparée, ancrée en bas) : Paramètres (admin) + profil -->
+    <!-- 3. Zone compte (séparée, ancrée en bas) : Paramètres (selon permissions) + profil -->
     <div class="rv-actions">
-      <button v-if="authStore.isAdmin" type="button" class="rv-link" title="Paramètres"
-        @click="navigateTo('/admin/settings')">
+      <button v-if="canOpenSettings" type="button" class="rv-link" title="Paramètres"
+        @click="navigateTo('/parametres')">
         <i class="pi pi-cog"></i><span class="rv-label">Paramètres</span>
       </button>
 

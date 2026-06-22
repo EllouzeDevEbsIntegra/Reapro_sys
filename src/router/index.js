@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
+import { useAuthStore } from '../stores/auth'
 
 const routes = [
   {
@@ -25,24 +26,28 @@ const routes = [
   {
     path: '/comparateur',
     name: 'comparateur',
-    component: () => import('../views/CompareQuotesView.vue')
+    component: () => import('../views/CompareQuotesView.vue'),
+    meta: { permissions: ['COMPARATOR_ACCESS'] }
   },
   {
     path: '/comparateur/:compareQuoteNo',
     name: 'comparateur-detail',
-    component: () => import('../views/CompareQuoteDetailView.vue')
+    component: () => import('../views/CompareQuoteDetailView.vue'),
+    meta: { permissions: ['COMPARATOR_ACCESS'] }
   },
   {
     path: '/b2b',
     name: 'b2b',
-    component: () => import('../views/B2BView.vue')
+    component: () => import('../views/B2BView.vue'),
+    meta: { permissions: ['B2B_ACCESS'] }
   },
   {
     path: '/search-opportunities',
     name: 'SearchOpportunities',
     component: () => import('../views/SearchOpportunitiesView.vue'),
     meta: {
-      title: 'Analyse Recherches B2B'
+      title: 'Analyse Recherches B2B',
+      permissions: ['SEARCH_OPPORTUNITIES_ACCESS']
     }
   },
   {
@@ -50,7 +55,8 @@ const routes = [
     name: 'SearchExclusions',
     component: () => import('../views/SearchExclusionsView.vue'),
     meta: {
-      title: 'Exclusions Recherches B2B'
+      title: 'Exclusions Recherches B2B',
+      permissions: ['SEARCH_OPPORTUNITIES_ACCESS']
     }
   },
   {
@@ -58,38 +64,73 @@ const routes = [
     name: 'Settings',
     component: () => import('../views/SettingsView.vue'),
     meta: {
-      title: 'Paramètres'
+      title: 'Paramètres système',
+      permissions: ['SYSTEM_SETTINGS_ACCESS']
     }
+  },
+  // ── RBAC Lot 3 : section Paramètres + administration des utilisateurs/autorisations ──
+  {
+    path: '/parametres',
+    name: 'SettingsHub',
+    component: () => import('../views/SettingsHubView.vue'),
+    meta: {
+      title: 'Paramètres',
+      permissions: ['SETTINGS_ACCESS', 'USER_MANAGEMENT_ACCESS', 'PERMISSION_ASSIGNMENT_ACCESS', 'SYSTEM_SETTINGS_ACCESS']
+    }
+  },
+  {
+    path: '/admin/users',
+    name: 'UsersAdmin',
+    component: () => import('../views/UsersAdminView.vue'),
+    meta: {
+      title: 'Utilisateurs',
+      permissions: ['USER_MANAGEMENT_ACCESS']
+    }
+  },
+  {
+    path: '/admin/autorisations',
+    name: 'PermissionsAdmin',
+    component: () => import('../views/PermissionsAdminView.vue'),
+    meta: {
+      title: 'Autorisations',
+      permissions: ['PERMISSION_ASSIGNMENT_ACCESS']
+    }
+  },
+  {
+    path: '/acces-refuse',
+    name: 'Forbidden',
+    component: () => import('../views/ForbiddenView.vue'),
+    meta: { title: 'Accès non autorisé' }
   },
   {
     path: '/sync-adaptable',
     name: 'SyncAdaptable',
     component: () => import('../views/SyncAdaptableView.vue'),
-    meta: { title: 'Synchronisation Adaptable' }
+    meta: { title: 'Synchronisation Adaptable', permissions: ['ADAPTABLE_SYNC_ACCESS'] }
   },
   {
     path: '/partslink-viewer',
     name: 'PartslinkViewer',
     component: () => import('../views/PartslinkNativeViewer.vue'),
-    meta: { title: 'Catalogue Partslink' }
+    meta: { title: 'Catalogue Partslink', permissions: ['PARTSLINK_ACCESS'] }
   },
   {
     path: '/confirmation-achat',
     name: 'ConfirmationAchat',
     component: () => import('../views/ConfirmationAchatView.vue'),
-    meta: { title: 'Confirmation Achat' }
+    meta: { title: 'Confirmation Achat', permissions: ['PURCHASE_CONFIRMATION_ACCESS'] }
   },
   {
     path: '/catalogue-tecdoc',
     name: 'CatalogueTecDoc',
     component: () => import('../views/CatalogueTecDocView.vue'),
-    meta: { title: 'Catalogue TecDoc' }
+    meta: { title: 'Catalogue TecDoc', permissions: ['TECDOC_CATALOG_ACCESS'] }
   },
   {
     path: '/gestion-articles',
     name: 'GestionArticles',
     component: () => import('../views/ArticleManagementView.vue'),
-    meta: { title: 'Gestion Articles' }
+    meta: { title: 'Gestion Articles', permissions: ['ARTICLE_MANAGEMENT_ACCESS'] }
   }
 ]
 
@@ -178,10 +219,19 @@ router.beforeEach((to) => {
     return { path: '/', query: { redirect: to.fullPath } }
   }
 
-  // Déjà connecté et arrive sur la page de connexion → page métier (ou redirect demandé)
+  const auth = useAuthStore()
+
+  // Déjà connecté et arrive sur la page de connexion → page d'accueil autorisée (ou redirect demandé)
   if (to.path === '/' && authed) {
     const redirect = isSafeRedirect(to.query.redirect) ? to.query.redirect : null
-    return redirect || { path: '/comparateur' }
+    return redirect || auth.landingRoute || { path: '/comparateur' }
+  }
+
+  // ── RBAC : contrôle de permission par route (meta.permissions / meta.permission).
+  //    superAdmin bypass (géré dans canAccessRoute). Manque de droit → page « accès refusé » (403 propre).
+  //    Le backend reste la source de vérité : l'API renverra de toute façon 401/403 le cas échéant.
+  if (!isPublic && authed && to.name !== 'Forbidden' && !auth.canAccessRoute(to)) {
+    return { name: 'Forbidden', query: { from: to.fullPath } }
   }
 
   return true

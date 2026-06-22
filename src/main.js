@@ -6,6 +6,7 @@ import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from './stores/auth'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Paginator from 'primevue/paginator'
@@ -37,7 +38,8 @@ app.component('Dropdown', Dropdown)
 app.component('Drawer', Drawer)
 app.directive('tooltip', Tooltip)
 
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 app.use(PrimeVue, {
     theme: {
@@ -73,4 +75,10 @@ app.use(PrimeVue, {
 app.use(ToastService)
 app.use(ConfirmationService)
 
-app.mount('#app')
+// RBAC (Lot 3) : si un token est présent, charger la session (/api/auth/me) AVANT le 1er rendu,
+// afin que les gardes de route et la sidebar disposent des permissions dès la première navigation.
+// On ne bloque jamais le démarrage : en cas d'échec, l'intercepteur axios gère l'invalidation.
+const authStore = useAuthStore(pinia)
+authStore.bootstrap().finally(() => {
+    app.mount('#app')
+})

@@ -91,10 +91,11 @@ const handleLogin = async () => {
       email: form.email,
       password: form.password
     })
-    // Retour à la page initialement demandée (guard) si fournie et sûre, sinon page métier par défaut
+    // Retour à la page initialement demandée (guard) si fournie et sûre,
+    // sinon 1er module autorisé selon les permissions (RBAC Lot 3).
     const redirect = route.query.redirect
     const safe = typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
-    router.push(safe ? redirect : '/comparateur')
+    router.push(safe ? redirect : (authStore.landingRoute || '/comparateur'))
   } catch (error) {
     console.error('Login failed', error)
   }
